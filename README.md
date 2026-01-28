@@ -36,6 +36,7 @@ pip install -r requirements.txt
 # Run BlueSploit
 python bluesploit.py
 ```
+![](a.png)
 
 ### Requirements
 
