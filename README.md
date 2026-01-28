@@ -37,7 +37,7 @@ python bluesploit.py
 
 ### Requirements
 
-- Python 3.8+
+- Python 3.10+
 - Bluetooth adapter (built-in or USB dongle)
 - Linux: `bluez` stack installed
 - macOS: Works out of the box
