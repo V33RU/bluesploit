@@ -24,6 +24,10 @@ A Metasploit-style modular framework for Bluetooth Classic and BLE security test
 git clone https://github.com/v33ru/bluesploit.git
 cd bluesploit
 
+#create python virtual environment
+python3 -m venv env
+source env/bin/activate
+
 # Install dependencies
 pip install -r requirements.txt
 
