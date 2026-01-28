@@ -4,14 +4,13 @@ Connects to a BLE device and enumerates all GATT services and characteristics
 """
 
 import asyncio
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 from core.base import (
     ScannerModule, ModuleInfo, ModuleOption,
-    BTProtocol, Severity, ScanResult, Target
+    BTProtocol, Severity
 )
 from core.utils.printer import (
-    print_success, print_error, print_info, print_warning,
-    print_service, print_characteristic, Colors
+    print_success, print_error, print_info, print_warning, Colors
 )
 
 try:
@@ -31,42 +30,35 @@ KNOWN_SERVICES = {
     "00001802-0000-1000-8000-00805f9b34fb": "Immediate Alert",
     "00001803-0000-1000-8000-00805f9b34fb": "Link Loss",
     "00001804-0000-1000-8000-00805f9b34fb": "Tx Power",
-    "0000180d-0000-1000-8000-00805f9b34fb": "Heart Rate",
+    "00001805-0000-1000-8000-00805f9b34fb": "Current Time",
     "00001809-0000-1000-8000-00805f9b34fb": "Health Thermometer",
-    "00001812-0000-1000-8000-00805f9b34fb": "Human Interface Device",
-    "0000fee0-0000-1000-8000-00805f9b34fb": "Xiaomi Service",
-    "0000feb3-0000-1000-8000-00805f9b34fb": "Tile Service",
+    "0000180d-0000-1000-8000-00805f9b34fb": "Heart Rate",
+    "00001812-0000-1000-8000-00805f9b34fb": "HID Service",
+    "00001813-0000-1000-8000-00805f9b34fb": "Scan Parameters",
 }
 
 # Well-known characteristic UUIDs
 KNOWN_CHARACTERISTICS = {
     "00002a00-0000-1000-8000-00805f9b34fb": "Device Name",
     "00002a01-0000-1000-8000-00805f9b34fb": "Appearance",
-    "00002a04-0000-1000-8000-00805f9b34fb": "Peripheral Preferred Connection Parameters",
+    "00002a04-0000-1000-8000-00805f9b34fb": "Periph Pref Conn",
     "00002a05-0000-1000-8000-00805f9b34fb": "Service Changed",
-    "00002a19-0000-1000-8000-00805f9b34fb": "Battery Level",
-    "00002a23-0000-1000-8000-00805f9b34fb": "System ID",
-    "00002a24-0000-1000-8000-00805f9b34fb": "Model Number String",
-    "00002a25-0000-1000-8000-00805f9b34fb": "Serial Number String",
-    "00002a26-0000-1000-8000-00805f9b34fb": "Firmware Revision String",
-    "00002a27-0000-1000-8000-00805f9b34fb": "Hardware Revision String",
-    "00002a28-0000-1000-8000-00805f9b34fb": "Software Revision String",
-    "00002a29-0000-1000-8000-00805f9b34fb": "Manufacturer Name String",
     "00002a06-0000-1000-8000-00805f9b34fb": "Alert Level",
     "00002a07-0000-1000-8000-00805f9b34fb": "Tx Power Level",
+    "00002a19-0000-1000-8000-00805f9b34fb": "Battery Level",
+    "00002a23-0000-1000-8000-00805f9b34fb": "System ID",
+    "00002a24-0000-1000-8000-00805f9b34fb": "Model Number",
+    "00002a25-0000-1000-8000-00805f9b34fb": "Serial Number",
+    "00002a26-0000-1000-8000-00805f9b34fb": "Firmware Rev",
+    "00002a27-0000-1000-8000-00805f9b34fb": "Hardware Rev",
+    "00002a28-0000-1000-8000-00805f9b34fb": "Software Rev",
+    "00002a29-0000-1000-8000-00805f9b34fb": "Manufacturer",
+    "00002a2b-0000-1000-8000-00805f9b34fb": "Current Time",
 }
 
 
 class Module(ScannerModule):
-    """
-    GATT Service/Characteristic Enumerator
-    
-    Connects to a BLE device and extracts:
-    - All GATT services
-    - All characteristics with properties
-    - Identifies potentially vulnerable characteristics
-    - Attempts to read readable characteristics
-    """
+    """GATT Service/Characteristic Enumerator"""
     
     info = ModuleInfo(
         name="scanners/ble/gatt_enum",
@@ -74,14 +66,10 @@ class Module(ScannerModule):
         author=["v33ru"],
         protocol=BTProtocol.BLE,
         severity=Severity.INFO,
-        references=[
-            "https://www.bluetooth.com/specifications/gatt/",
-            "https://github.com/v33ru/PhantomTouch"
-        ]
+        references=["https://www.bluetooth.com/specifications/gatt/"]
     )
     
     def _setup_options(self) -> None:
-        """Define module options"""
         self.options = {
             "target": ModuleOption(
                 name="target",
@@ -100,12 +88,6 @@ class Module(ScannerModule):
                 description="Attempt to read characteristic values",
                 default=True
             ),
-            "check_vulns": ModuleOption(
-                name="check_vulns",
-                required=False,
-                description="Check for potential vulnerabilities",
-                default=True
-            ),
             "output_file": ModuleOption(
                 name="output_file",
                 required=False,
@@ -115,74 +97,63 @@ class Module(ScannerModule):
         }
     
     def _get_service_name(self, uuid: str) -> str:
-        """Get human-readable service name from UUID"""
         uuid_lower = uuid.lower()
-        return KNOWN_SERVICES.get(uuid_lower, "Unknown Service")
+        if uuid_lower in KNOWN_SERVICES:
+            return KNOWN_SERVICES[uuid_lower]
+        return f"Vendor 0x{uuid[4:8].upper()}"
     
     def _get_char_name(self, uuid: str) -> str:
-        """Get human-readable characteristic name from UUID"""
         uuid_lower = uuid.lower()
-        return KNOWN_CHARACTERISTICS.get(uuid_lower, "Unknown Characteristic")
+        if uuid_lower in KNOWN_CHARACTERISTICS:
+            return KNOWN_CHARACTERISTICS[uuid_lower]
+        return f"0x{uuid[4:8].upper()}"
     
-    def _analyze_security(self, char_props: List[str], 
-                          service_uuid: str) -> List[Dict[str, str]]:
-        """
-        Analyze characteristic for potential security issues
-        
-        Returns list of vulnerability flags
-        """
-        vulns = []
-        
-        # Check for write without response (potential for unauth writes)
-        if "write-without-response" in char_props:
-            vulns.append({
-                "type": "UNAUTH_WRITE_POSSIBLE",
-                "severity": "MEDIUM",
-                "description": "Write-without-response enabled - may allow unauthenticated writes"
-            })
-        
-        # Check for notify without authentication
-        if "notify" in char_props or "indicate" in char_props:
-            vulns.append({
-                "type": "UNAUTH_NOTIFY",
-                "severity": "LOW",
-                "description": "Notifications enabled - data may leak without authentication"
-            })
-        
-        # Check for broadcast
-        if "broadcast" in char_props:
-            vulns.append({
-                "type": "BROADCAST_ENABLED",
-                "severity": "LOW",
-                "description": "Broadcast flag set - data may be publicly visible"
-            })
-        
-        # Writable characteristics are interesting for exploitation
-        if "write" in char_props or "write-without-response" in char_props:
-            vulns.append({
-                "type": "WRITABLE",
-                "severity": "INFO",
-                "description": "Writable characteristic - potential command injection point"
-            })
-        
-        return vulns
+    def _format_props(self, props: List[str]) -> str:
+        p = []
+        if "read" in props:
+            p.append("R")
+        if "write" in props:
+            p.append("W")
+        if "write-without-response" in props:
+            p.append("WNR")
+        if "notify" in props:
+            p.append("N")
+        if "indicate" in props:
+            p.append("I")
+        return " ".join(p) if p else "-"
+    
+    def _format_value(self, value: Any, max_len: int = 18) -> str:
+        if value is None:
+            return "-"
+        if isinstance(value, bytes):
+            try:
+                decoded = value.decode('utf-8').strip('\x00')
+                if decoded.isprintable() and decoded:
+                    if len(decoded) > max_len:
+                        return decoded[:max_len-2] + ".."
+                    return decoded
+            except:
+                pass
+            hex_str = value.hex()
+            if len(hex_str) > max_len - 2:
+                return "0x" + hex_str[:max_len-4] + ".."
+            return "0x" + hex_str
+        return str(value)[:max_len]
     
     async def _enumerate_async(self, address: str) -> Dict[str, Any]:
-        """Perform async GATT enumeration"""
         timeout = self.get_option("timeout")
         read_values = self.get_option("read_values")
-        check_vulns = self.get_option("check_vulns")
         
         results = {
             "target": address,
             "services": [],
-            "vulnerabilities": [],
-            "readable_data": {},
+            "characteristics": [],
             "stats": {
                 "total_services": 0,
-                "total_characteristics": 0,
-                "writable_chars": 0,
-                "readable_chars": 0
+                "total_chars": 0,
+                "readable": 0,
+                "writable": 0,
+                "notify": 0
             }
         }
         
@@ -198,191 +169,177 @@ class Module(ScannerModule):
                 print_info("Enumerating GATT services...\n")
                 
                 for service in client.services:
-                    service_uuid = str(service.uuid)
-                    service_name = self._get_service_name(service_uuid)
-                    
-                    service_info = {
-                        "uuid": service_uuid,
-                        "name": service_name,
-                        "handle": service.handle,
-                        "characteristics": []
-                    }
-                    
-                    # Print service
-                    print(f"\n  {Colors.MAGENTA}[Service]{Colors.RESET} {service_uuid}")
-                    print(f"  {Colors.DIM}{service_name} (Handle: 0x{service.handle:04X}){Colors.RESET}")
+                    svc_uuid = str(service.uuid)
+                    svc_name = self._get_service_name(svc_uuid)
                     
                     results["stats"]["total_services"] += 1
+                    results["services"].append({
+                        "uuid": svc_uuid,
+                        "name": svc_name,
+                        "handle": service.handle,
+                        "chars": len(service.characteristics)
+                    })
                     
                     for char in service.characteristics:
                         char_uuid = str(char.uuid)
                         char_name = self._get_char_name(char_uuid)
+                        props = list(char.properties)
                         
-                        char_info = {
+                        results["stats"]["total_chars"] += 1
+                        
+                        is_read = "read" in props
+                        is_write = "write" in props or "write-without-response" in props
+                        is_notify = "notify" in props or "indicate" in props
+                        
+                        if is_read:
+                            results["stats"]["readable"] += 1
+                        if is_write:
+                            results["stats"]["writable"] += 1
+                        if is_notify:
+                            results["stats"]["notify"] += 1
+                        
+                        value = "-"
+                        if read_values and is_read:
+                            try:
+                                raw = await client.read_gatt_char(char.uuid)
+                                value = self._format_value(raw)
+                            except:
+                                value = "(error)"
+                        
+                        results["characteristics"].append({
+                            "svc_uuid": svc_uuid,
+                            "svc_name": svc_name,
                             "uuid": char_uuid,
                             "name": char_name,
                             "handle": char.handle,
-                            "properties": char.properties,
-                            "descriptors": [str(d.uuid) for d in char.descriptors],
-                            "value": None,
-                            "vulnerabilities": []
-                        }
-                        
-                        results["stats"]["total_characteristics"] += 1
-                        
-                        # Count writable/readable
-                        if "write" in char.properties or "write-without-response" in char.properties:
-                            results["stats"]["writable_chars"] += 1
-                        if "read" in char.properties:
-                            results["stats"]["readable_chars"] += 1
-                        
-                        # Check for vulnerabilities
-                        if check_vulns:
-                            vulns = self._analyze_security(char.properties, service_uuid)
-                            char_info["vulnerabilities"] = vulns
-                            for v in vulns:
-                                results["vulnerabilities"].append({
-                                    **v,
-                                    "characteristic": char_uuid,
-                                    "service": service_uuid
-                                })
-                        
-                        # Try to read value
-                        value_str = None
-                        if read_values and "read" in char.properties:
-                            try:
-                                value = await client.read_gatt_char(char.uuid)
-                                char_info["value"] = value.hex()
-                                results["readable_data"][char_uuid] = value.hex()
-                                
-                                # Try to decode as string
-                                try:
-                                    value_str = value.decode('utf-8').strip('\x00')
-                                except:
-                                    value_str = f"0x{value.hex()}"
-                            except Exception as e:
-                                value_str = f"(read error: {str(e)[:30]})"
-                        
-                        # Print characteristic
-                        props_str = ", ".join(char.properties)
-                        vuln_indicator = ""
-                        if char_info["vulnerabilities"]:
-                            high_sev = [v for v in char_info["vulnerabilities"] 
-                                       if v["severity"] in ["HIGH", "MEDIUM"]]
-                            if high_sev:
-                                vuln_indicator = f" {Colors.RED}⚠ VULN{Colors.RESET}"
-                        
-                        print(f"    {Colors.CYAN}├── [Char]{Colors.RESET} {char_uuid}{vuln_indicator}")
-                        print(f"    │   {Colors.DIM}{char_name}{Colors.RESET}")
-                        print(f"    │   Properties: {props_str}")
-                        print(f"    │   Handle: 0x{char.handle:04X}")
-                        
-                        if value_str:
-                            print(f"    │   Value: {Colors.GREEN}{value_str}{Colors.RESET}")
-                        
-                        if char_info["vulnerabilities"] and check_vulns:
-                            for v in char_info["vulnerabilities"]:
-                                if v["severity"] in ["HIGH", "MEDIUM"]:
-                                    print(f"    │   {Colors.RED}⚠ {v['type']}: {v['description']}{Colors.RESET}")
-                        
-                        service_info["characteristics"].append(char_info)
-                    
-                    results["services"].append(service_info)
+                            "props": props,
+                            "is_read": is_read,
+                            "is_write": is_write,
+                            "is_notify": is_notify,
+                            "value": value
+                        })
                 
-                print_success("\nEnumeration complete")
+                print_success("Enumeration complete")
                 
         except asyncio.TimeoutError:
-            print_error(f"Connection timed out after {timeout}s")
+            print_error(f"Timeout after {timeout}s")
         except BleakError as e:
             print_error(f"BLE error: {e}")
         except Exception as e:
-            print_error(f"Unexpected error: {e}")
+            print_error(f"Error: {e}")
         
         return results
     
-    def _print_summary(self, results: Dict[str, Any]) -> None:
-        """Print enumeration summary"""
+    def _print_table(self, results: Dict[str, Any]) -> None:
+        C = Colors
+        
+        if not results["characteristics"]:
+            print_warning("No characteristics found")
+            return
+        
         stats = results["stats"]
-        vulns = results["vulnerabilities"]
         
-        print(f"\n  {Colors.CYAN}═══ Enumeration Summary ═══{Colors.RESET}")
-        print(f"  Target: {results['target']}")
-        print(f"  Services: {stats['total_services']}")
-        print(f"  Characteristics: {stats['total_characteristics']}")
-        print(f"  Readable: {stats['readable_chars']}")
-        print(f"  Writable: {stats['writable_chars']}")
+        # ========== HEADER ==========
+        print(f"\n  {C.CYAN}{'='*105}{C.RESET}")
+        print(f"  {C.BOLD}{C.WHITE}GATT ENUMERATION RESULTS{C.RESET}")
+        print(f"  {C.CYAN}{'='*105}{C.RESET}")
+        print(f"  Target: {C.WHITE}{results['target']}{C.RESET}\n")
         
-        if vulns:
-            # Count by severity
-            high = len([v for v in vulns if v["severity"] == "HIGH"])
-            medium = len([v for v in vulns if v["severity"] == "MEDIUM"])
-            low = len([v for v in vulns if v["severity"] == "LOW"])
-            info = len([v for v in vulns if v["severity"] == "INFO"])
+        # ========== SERVICES TABLE ==========
+        print(f"  {C.BOLD}SERVICES ({stats['total_services']}){C.RESET}\n")
+        print(f"  {C.DARK_GREY}+------+------------------------------------------+----------------------------+--------+{C.RESET}")
+        print(f"  {C.DARK_GREY}|{C.RESET} {C.BOLD}{'#':<4}{C.RESET} {C.DARK_GREY}|{C.RESET} {C.BOLD}{'UUID':<40}{C.RESET} {C.DARK_GREY}|{C.RESET} {C.BOLD}{'NAME':<26}{C.RESET} {C.DARK_GREY}|{C.RESET} {C.BOLD}{'CHARS':<6}{C.RESET} {C.DARK_GREY}|{C.RESET}")
+        print(f"  {C.DARK_GREY}+------+------------------------------------------+----------------------------+--------+{C.RESET}")
+        
+        for i, s in enumerate(results["services"], 1):
+            name = s["name"][:26]
+            print(f"  {C.DARK_GREY}|{C.RESET} {i:<4} {C.DARK_GREY}|{C.RESET} {C.CYAN}{s['uuid']:<40}{C.RESET} {C.DARK_GREY}|{C.RESET} {name:<26} {C.DARK_GREY}|{C.RESET} {s['chars']:<6} {C.DARK_GREY}|{C.RESET}")
+        
+        print(f"  {C.DARK_GREY}+------+------------------------------------------+----------------------------+--------+{C.RESET}")
+        
+        # ========== CHARACTERISTICS TABLE ==========
+        print(f"\n  {C.BOLD}CHARACTERISTICS ({stats['total_chars']}){C.RESET}\n")
+        print(f"  {C.DARK_GREY}+-----+------------------------------------------+------------------+----------+--------+--------------------+{C.RESET}")
+        print(f"  {C.DARK_GREY}|{C.RESET} {C.BOLD}{'#':<3}{C.RESET} {C.DARK_GREY}|{C.RESET} {C.BOLD}{'UUID':<40}{C.RESET} {C.DARK_GREY}|{C.RESET} {C.BOLD}{'NAME':<16}{C.RESET} {C.DARK_GREY}|{C.RESET} {C.BOLD}{'PROPS':<8}{C.RESET} {C.DARK_GREY}|{C.RESET} {C.BOLD}{'HANDLE':<6}{C.RESET} {C.DARK_GREY}|{C.RESET} {C.BOLD}{'VALUE':<18}{C.RESET} {C.DARK_GREY}|{C.RESET}")
+        print(f"  {C.DARK_GREY}+-----+------------------------------------------+------------------+----------+--------+--------------------+{C.RESET}")
+        
+        for i, c in enumerate(results["characteristics"], 1):
+            name = c["name"][:16]
+            props = self._format_props(c["props"])[:8]
+            handle = f"0x{c['handle']:04X}"
+            value = c["value"][:18]
             
-            print(f"\n  {Colors.RED}Potential Issues Found:{Colors.RESET}")
-            if high:
-                print(f"    {Colors.RED}HIGH: {high}{Colors.RESET}")
-            if medium:
-                print(f"    {Colors.YELLOW}MEDIUM: {medium}{Colors.RESET}")
-            if low:
-                print(f"    LOW: {low}")
-            if info:
-                print(f"    INFO: {info}")
+            if c["is_write"]:
+                pc = C.YELLOW
+            elif c["is_notify"]:
+                pc = C.MAGENTA
+            else:
+                pc = ""
             
-            # Show writable characteristics (interesting for exploitation)
-            writable = [v for v in vulns if v["type"] == "WRITABLE"]
-            if writable:
-                print(f"\n  {Colors.YELLOW}Writable Characteristics (potential attack surface):{Colors.RESET}")
-                for v in writable[:5]:  # Show first 5
-                    print(f"    - {v['characteristic']}")
+            print(f"  {C.DARK_GREY}|{C.RESET} {i:<3} {C.DARK_GREY}|{C.RESET} {C.CYAN}{c['uuid']:<40}{C.RESET} {C.DARK_GREY}|{C.RESET} {name:<16} {C.DARK_GREY}|{C.RESET} {pc}{props:<8}{C.RESET} {C.DARK_GREY}|{C.RESET} {handle:<6} {C.DARK_GREY}|{C.RESET} {C.GREEN}{value:<18}{C.RESET} {C.DARK_GREY}|{C.RESET}")
         
-        print()
+        print(f"  {C.DARK_GREY}+-----+------------------------------------------+------------------+----------+--------+--------------------+{C.RESET}")
+        
+        # Legend
+        print(f"\n  {C.DARK_GREY}Props: R=Read  W=Write  WNR=Write-No-Response  N=Notify  I=Indicate{C.RESET}")
+        
+        # ========== SUMMARY ==========
+        print(f"\n  {C.CYAN}{'-'*105}{C.RESET}")
+        print(f"  {C.BOLD}SUMMARY{C.RESET}")
+        print(f"  {C.CYAN}{'-'*105}{C.RESET}")
+        print(f"  Services: {stats['total_services']}   Characteristics: {stats['total_chars']}   {C.GREEN}Readable: {stats['readable']}{C.RESET}   {C.YELLOW}Writable: {stats['writable']}{C.RESET}   {C.MAGENTA}Notify: {stats['notify']}{C.RESET}")
+        
+        # ========== WRITABLE LIST ==========
+        writable = [c for c in results["characteristics"] if c["is_write"]]
+        if writable:
+            print(f"\n  {C.YELLOW}WRITABLE CHARACTERISTICS (Attack Surface):{C.RESET}")
+            for c in writable:
+                p = self._format_props(c["props"])
+                print(f"    {C.YELLOW}>{C.RESET} {c['uuid']}  [{p}]")
+        
+        # ========== NOTIFY LIST ==========
+        notify = [c for c in results["characteristics"] if c["is_notify"]]
+        if notify:
+            print(f"\n  {C.MAGENTA}NOTIFY/INDICATE CHARACTERISTICS:{C.RESET}")
+            for c in notify:
+                p = self._format_props(c["props"])
+                print(f"    {C.MAGENTA}>{C.RESET} {c['uuid']}  [{p}]")
+        
+        print(f"\n  {C.CYAN}{'='*105}{C.RESET}\n")
     
     def _save_results(self, results: Dict[str, Any], filename: str) -> None:
-        """Save results to JSON file"""
         import json
-        
         try:
             with open(filename, 'w') as f:
                 json.dump(results, f, indent=2)
-            print_success(f"Results saved to: {filename}")
+            print_success(f"Saved: {filename}")
         except Exception as e:
-            print_error(f"Failed to save: {e}")
+            print_error(f"Save failed: {e}")
     
     def run(self) -> bool:
-        """Execute GATT enumeration"""
         if not BLEAK_AVAILABLE:
-            print_error("Bleak library not installed!")
-            print_info("Install with: pip install bleak")
+            print_error("Install bleak: pip install bleak")
             return False
         
         target = self.target
-        
-        # Validate BD_ADDR format
         if not self.validate_bd_addr(target):
-            print_error(f"Invalid BD_ADDR format: {target}")
-            print_info("Expected format: XX:XX:XX:XX:XX:XX")
+            print_error(f"Invalid BD_ADDR: {target}")
             return False
         
         try:
             results = asyncio.run(self._enumerate_async(target))
-            
-            # Store results
             self.add_result(results)
+            self._print_table(results)
             
-            # Print summary
-            self._print_summary(results)
-            
-            # Save if requested
-            output_file = self.get_option("output_file")
-            if output_file:
-                self._save_results(results, output_file)
+            out = self.get_option("output_file")
+            if out:
+                self._save_results(results, out)
             
             return results["stats"]["total_services"] > 0
             
         except KeyboardInterrupt:
-            print_warning("\nEnumeration interrupted")
+            print_warning("\nInterrupted")
             return False
         except Exception as e:
-            print_error(f"Enumeration failed: {e}")
+            print_error(f"Failed: {e}")
             return False
