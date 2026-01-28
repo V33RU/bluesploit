@@ -8,7 +8,7 @@ I started building this with a purpose. Since it’s an early version, there may
 
 ![Python](https://img.shields.io/badge/python-3.10+-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
-![Platform](https://img.shields.io/badge/platform-Linux%20|%20macOS%20|%20Windows-lightgrey.svg)
+![Platform](https://img.shields.io/badge/platform-Linux%20|%20macOS%20|-lightgrey.svg)
 
 ## Features
 
@@ -50,15 +50,35 @@ python bluesploit.py
 ```
 $ python bluesploit.py
 
-╔══════════════════════════════════════════════════════════════╗
-║   ██████╗ ██╗     ██╗   ██╗███████╗███████╗██████╗ ██╗       ║
-║   ██╔══██╗██║     ██║   ██║██╔════╝██╔════╝██╔══██╗██║       ║
-║   ██████╔╝██║     ██║   ██║█████╗  ███████╗██████╔╝██║       ║
-║   ██╔══██╗██║     ██║   ██║██╔══╝  ╚════██║██╔═══╝ ██║       ║
-║   ██████╔╝███████╗╚██████╔╝███████╗███████║██║     ███████╗  ║
-║   ╚═════╝ ╚══════╝ ╚═════╝ ╚══════╝╚══════╝╚═╝     ╚══════╝  ║
-║        Bluetooth Exploitation Framework v1.0.0               ║
-╚══════════════════════════════════════════════════════════════╝
+    ╔═════════════════════════════════════════════════════════════════════════════════╗
+    ║                                                                                 ║
+    ║  ██████╗ ██╗     ██╗   ██╗███████╗███████╗██████╗ ██╗      ██████╗ ██╗████████╗ ║
+    ║  ██╔══██╗██║     ██║   ██║██╔════╝██╔════╝██╔══██╗██║     ██╔═══██╗██║╚══██╔══╝ ║
+    ║  ██████╔╝██║     ██║   ██║█████╗  ███████╗██████╔╝██║     ██║   ██║██║   ██║    ║
+    ║  ██╔══██╗██║     ██║   ██║██╔══╝  ╚════██║██╔═══╝ ██║     ██║   ██║██║   ██║    ║
+    ║  ██████╔╝███████╗╚██████╔╝███████╗███████║██║     ███████╗╚██████╔╝██║   ██║    ║
+    ║  ╚═════╝ ╚══════╝ ╚═════╝ ╚══════╝╚══════╝╚═╝     ╚══════╝ ╚═════╝ ╚═╝   ╚═╝    ║
+    ║                                                                                 ║
+    ╠═════════════════════════════════════════════════════════════════════════════════╣
+    ║                                                                                 ║
+    ║  Bluetooth Exploitation Framework                            v1.0.0             ║
+    ║  ─────────────────────────────────────────────────────────────────────────────  ║
+    ║                                                                                 ║
+    ║  ◉ Author    : v33ru / Mr-IoT                                                   ║
+    ║  ◉ Community : IoT Security Research Group (IOTSRG)                             ║
+    ║  ◉ GitHub    : https://github.com/v33ru                                         ║
+    ║                                                                                 ║
+    ╠═════════════════════════════════════════════════════════════════════════════════╣
+    ║                                                                                 ║
+    ║  [+] BLE Scanning & Enumeration    [+] GATT Service Analysis                    ║
+    ║  [+] Bluetooth Classic Attacks     [+] Vulnerability Detection                  ║
+    ║  [+] Exploitation Modules          [+] Protocol Reverse Engineering             ║
+    ║                                                                                 ║
+    ╚═════════════════════════════════════════════════════════════════════════════════╝
+
+    ┌─────────────────────────────────────────────────────────────────────────────┐
+    │   Type 'help' for commands     Type 'show modules' to list modules          │
+    └─────────────────────────────────────────────────────────────────────────────┘
 
 bluesploit > help
 
@@ -72,10 +92,20 @@ bluesploit > help
   Module Commands
   ===============
     set <opt> <val>   Set module option
+    unset <option>    Clear module option
     options           Show module options
     info              Show module info
     run / exploit     Execute module
     check             Check if vulnerable
+    
+  Utility Commands
+  ================
+    clear             Clear screen
+    reload            Reload modules
+    setg <opt> <val>  Set global option
+    banner            Show banner
+    exit / quit       Exit BlueSploit
+
 ```
 
 ## Usage Examples
