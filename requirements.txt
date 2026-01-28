@@ -1,0 +1,15 @@
+# BlueSploit Dependencies
+# Bluetooth Exploitation Framework
+
+# Core BLE library (cross-platform)
+bleak>=0.21.0
+
+# For Bluetooth Classic support (Linux)
+# pybluez>=0.23; sys_platform == 'linux'
+
+# Optional: Enhanced CLI features
+# cmd2>=2.4.0
+# rich>=13.0.0
+
+# Optional: For packet crafting
+# scapy>=2.5.0
