@@ -4,6 +4,8 @@
 
 A Metasploit-style modular framework for Bluetooth Classic and BLE security testing.
 
+I started building this with a purpose. Since it’s an early version, there may be stability issues and false positives. I’m still working on it, so please be patient.
+
 ![Python](https://img.shields.io/badge/python-3.10+-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Platform](https://img.shields.io/badge/platform-Linux%20|%20macOS%20|%20Windows-lightgrey.svg)
@@ -149,7 +151,7 @@ modules/
 │   │   └── unauth_write.py    # Unauthenticated GATT write
 │   └── classic/
 │       └── ...
-├── creds/              # Credential attacks
+├── creds/              # Credential attacks (this is not right folder fixing soon full release)
 │   └── ...
 ├── auxiliary/          # Support modules
 │   └── ...
