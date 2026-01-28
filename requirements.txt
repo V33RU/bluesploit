@@ -1,100 +1,29 @@
-# ══════════════════════════════════════════════════════════════
-# BlueSploit - Bluetooth Exploitation Framework
-# Requirements File
-# ══════════════════════════════════════════════════════════════
+# BlueSploit Dependencies
+# Bluetooth Exploitation Framework
+# Install: pip install -r requirements.txt
 
-# ─────────────────────────────────────────────────────────────
-# CORE DEPENDENCIES (Required)
-# ─────────────────────────────────────────────────────────────
+# ===================
+# Core Dependencies
+# ===================
+bleak>=0.21.0                    # BLE support (cross-platform)
 
-# BLE library - cross-platform (Windows/Linux/macOS)
-bleak>=0.21.0
+# ===================
+# Optional: Bluetooth Classic (Linux only)
+# ===================
+# pybluez>=0.23                  # Uncomment for Classic BT support
+                                 # Requires: sudo apt install libbluetooth-dev
 
-# Bluetooth Classic support (Linux only)
-pybluez>=0.23; sys_platform == 'linux'
+# ===================
+# Optional: Enhanced Features
+# ===================
+# rich>=13.0.0                   # Beautiful terminal output
+# cmd2>=2.4.0                    # Advanced CLI features
+# scapy>=2.5.0                   # Packet crafting
+# cryptography>=41.0.0           # Encryption analysis
 
-# ─────────────────────────────────────────────────────────────
-# CLI & OUTPUT (Recommended)
-# ─────────────────────────────────────────────────────────────
-
-# Enhanced command line interface
-cmd2>=2.4.0
-
-# Beautiful terminal output (tables, progress bars)
-rich>=13.0.0
-
-# Colored terminal output
-colorama>=0.4.6
-
-# ─────────────────────────────────────────────────────────────
-# PACKET CRAFTING & ANALYSIS (For Advanced Modules)
-# ─────────────────────────────────────────────────────────────
-
-# Packet crafting and sniffing
-scapy>=2.5.0
-
-# BTSnoop log parsing
-construct>=2.10.0
-
-# ─────────────────────────────────────────────────────────────
-# DATA HANDLING & STORAGE
-# ─────────────────────────────────────────────────────────────
-
-# Database for session/loot storage
-sqlalchemy>=2.0.0
-
-# Data analysis (optional, for report generation)
-pandas>=2.0.0
-
-# ─────────────────────────────────────────────────────────────
-# ASYNC & NETWORKING
-# ─────────────────────────────────────────────────────────────
-
-# Async support (usually built-in Python 3.8+)
-asyncio-throttle>=1.0.0
-
-# Async timeout handling
-async-timeout>=4.0.0
-
-# ─────────────────────────────────────────────────────────────
-# UTILITIES
-# ─────────────────────────────────────────────────────────────
-
-# MAC/OUI vendor lookup
-mac-vendor-lookup>=0.1.12
-
-# Configuration file handling
-pyyaml>=6.0.0
-
-# Type hints runtime checking (development)
-typing-extensions>=4.0.0
-
-# ─────────────────────────────────────────────────────────────
-# LINUX SYSTEM DEPENDENCIES (Install via apt)
-# ─────────────────────────────────────────────────────────────
-# sudo apt install -y \
-#     bluez \
-#     bluez-tools \
-#     libbluetooth-dev \
-#     libglib2.0-dev \
-#     libboost-python-dev \
-#     libboost-thread-dev \
-#     python3-dev
-
-# ─────────────────────────────────────────────────────────────
-# OPTIONAL: HARDWARE TOOL INTEGRATION
-# ─────────────────────────────────────────────────────────────
-
-# Ubertooth support (if using Ubertooth One)
-# pyusb>=1.2.0
-
-# Serial communication (for some BT dongles)
-# pyserial>=3.5
-
-# ─────────────────────────────────────────────────────────────
-# DEVELOPMENT & TESTING
-# ─────────────────────────────────────────────────────────────
-
+# ===================
+# Development
+# ===================
 # pytest>=7.0.0
 # pytest-asyncio>=0.21.0
 # black>=23.0.0
