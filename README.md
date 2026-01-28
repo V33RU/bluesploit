@@ -8,7 +8,7 @@ I started building this with a purpose. Since it’s an early version, there may
 
 ![Python](https://img.shields.io/badge/python-3.10+-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
-![Platform](https://img.shields.io/badge/platform-Linux%20|%20macOS%20|%20Windows-lightgrey.svg)
+![Platform](https://img.shields.io/badge/platform-Linux%20|%20macOS%20|-lightgrey.svg)
 
 ## Features
 
