@@ -250,7 +250,7 @@ This tool is provided for educational and authorized security testing purposes o
 **v33ru / Mr-IoT** - IoT Security Research Group (IOTSRG)
 
 - GitHub: [@v33ru](https://github.com/v33ru)
-- Research: Pre-Pairing Attack Surface in BLE
+- Research: All Attack Surface in BLE
 
 ## License
 
