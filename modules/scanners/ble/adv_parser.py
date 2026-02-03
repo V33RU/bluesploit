@@ -3,7 +3,7 @@ BlueSploit Module: BLE Advertisement Parser
 Deep analysis of BLE advertisement data including manufacturer data,
 service UUIDs, flags, and device fingerprinting
 
-Author: v33ru
+Author: Mr-IoT
 """
 
 import asyncio
