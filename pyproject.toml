@@ -9,10 +9,10 @@ description = "Bluetooth Exploitation Framework for Security Researchers"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
-    {name = "v33ru", email = "v33ru@iotsrg.org"}
+    {name = "v33ru"}
 ]
 maintainers = [
-    {name = "v33ru", email = "v33ru@iotsrg.org"}
+    {name = "v33ru"}
 ]
 requires-python = ">=3.8"
 keywords = [
