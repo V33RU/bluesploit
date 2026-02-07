@@ -243,18 +243,6 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Legal Disclaimer
 
-This tool is provided for educational and authorized security testing purposes only. Unauthorized access to computer systems is illegal. Users are responsible for complying with all applicable laws. The authors assume no liability for misuse.
-
-## Author
-
-**v33ru / Mr-IoT** - IoT Security Research Group (IOTSRG)
-
-- GitHub: [@v33ru](https://github.com/v33ru)
-- Research: All Attack Surface in BLE
-
-## License
-
-MIT License - See [LICENSE](LICENSE) for details.
 
 ## Acknowledgments
 
