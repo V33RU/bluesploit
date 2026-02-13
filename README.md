@@ -194,15 +194,7 @@ modules/
 │           ├── bluesmack.py       # L2CAP echo flood (large packets)
 │           ├── sdp_flood.py       # SDP query flood
 │           └── rfcomm_flood.py    # RFCOMM connection exhaustion
-│
-├── auxiliary/                     # Helpers (parsers, utils, common IO)
-│   └── ...
-│
-├── payloads/                      # Payload generators / builders
-│   └── ...
-│
-└── creds/                         # Credential attacks (temporary; will be reorganized)
-    └── ...
+
 
 ```
 
