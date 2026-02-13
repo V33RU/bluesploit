@@ -198,37 +198,6 @@ modules/
 
 ```
 
-## Writing Custom Modules
-
-Create a new module in the appropriate directory:
-
-```python
-# modules/scanners/ble/my_scanner.py
-
-from core.base import ScannerModule, ModuleInfo, ModuleOption, BTProtocol, Severity
-
-class Module(ScannerModule):
-    info = ModuleInfo(
-        name="scanners/ble/my_scanner",
-        description="My custom BLE scanner",
-        author=["your_name"],
-        protocol=BTProtocol.BLE,
-        severity=Severity.INFO
-    )
-    
-    def _setup_options(self):
-        self.options = {
-            "target": ModuleOption("target", True, "Target BD_ADDR"),
-            "timeout": ModuleOption("timeout", False, "Scan timeout", default=10)
-        }
-    
-    def run(self) -> bool:
-        # Your scanning logic here
-        target = self.get_option("target")
-        print(f"Scanning {target}...")
-        return True
-```
-
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
