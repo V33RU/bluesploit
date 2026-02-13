@@ -171,23 +171,39 @@ bluesploit (exploits/ble/unauth_write) > run
 
 ```
 modules/
-├── scanners/           # Discovery & enumeration
+├── scanners/                      # Discovery & enumeration
 │   ├── ble/
-│   │   ├── discovery.py       # BLE device discovery
-│   │   └── gatt_enum.py       # GATT service enumeration
+│   │   ├── discovery.py           # BLE device discovery
+│   │   └── gatt_enum.py           # GATT service + characteristic enumeration
 │   └── classic/
-│       └── sdp_enum.py        # SDP service discovery
-├── exploits/           # Vulnerability exploits
+│       └── sdp_enum.py            # Classic SDP service discovery
+│
+├── exploits/                      # Exploits + attack modules
 │   ├── ble/
-│   │   └── unauth_write.py    # Unauthenticated GATT write
-│   └── classic/
-│       └── ...
-├── creds/              # Credential attacks (this is not right folder fixing soon full release)
+│   │   └── unauth_write.py        # BLE unauthenticated GATT write
+│   │
+│   ├── classic/
+│   │   ├── blueborne_leak.py      # CVE-2017-0781 info leak
+│   │   └── bnep_heap_disclosure.py# CVE-2017-13258 heap disclosure
+│   │
+│   └── dos/
+│       ├── ble/
+│       │   └── notify_flood.py    # BLE notification / GATT flood
+│       └── classic/
+│           ├── l2ping_dos.py      # L2CAP ping flood
+│           ├── bluesmack.py       # L2CAP echo flood (large packets)
+│           ├── sdp_flood.py       # SDP query flood
+│           └── rfcomm_flood.py    # RFCOMM connection exhaustion
+│
+├── auxiliary/                     # Helpers (parsers, utils, common IO)
 │   └── ...
-├── auxiliary/          # Support modules
+│
+├── payloads/                      # Payload generators / builders
 │   └── ...
-└── payloads/           # Payload generators
+│
+└── creds/                         # Credential attacks (temporary; will be reorganized)
     └── ...
+
 ```
 
 ## Writing Custom Modules
