@@ -1,1 +1,0 @@
-# Bluespolit core module
