@@ -1,0 +1,30 @@
+# BlueSploit Dependencies
+# Bluetooth Exploitation Framework
+# Install: pip install -r requirements.txt
+
+# ===================
+# Core Dependencies
+# ===================
+bleak>=0.21.0                    # BLE support (cross-platform)
+
+# ===================
+# Optional: Bluetooth Classic (Linux only)
+# ===================
+# pybluez>=0.23                  # Uncomment for Classic BT support
+                                 # Requires: sudo apt install libbluetooth-dev
+
+# ===================
+# Optional: Enhanced Features
+# ===================
+# rich>=13.0.0                   # Beautiful terminal output
+# cmd2>=2.4.0                    # Advanced CLI features
+# scapy>=2.5.0                   # Packet crafting
+# cryptography>=41.0.0           # Encryption analysis
+
+# ===================
+# Development
+# ===================
+# pytest>=7.0.0
+# pytest-asyncio>=0.21.0
+# black>=23.0.0
+# flake8>=6.0.0
