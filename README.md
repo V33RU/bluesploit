@@ -1,267 +1,148 @@
-# BlueSploit
-
-**Bluetooth Exploitation Framework**
-
-A Metasploit-style modular framework for Bluetooth Classic and BLE security testing.
-
-I started building this with a purpose. Since it’s an early version, there may be stability issues and false positives. I’m still working on it, so please be patient.
-
-![Python](https://img.shields.io/badge/python-3.10+-blue.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
-![Platform](https://img.shields.io/badge/platform-Linux%20|%20macOS%20|-lightgrey.svg)
-
-## Features
-
-- 🔍 **Device Discovery** - Scan for nearby BLE and Classic Bluetooth devices
-- 📊 **GATT Enumeration** - Enumerate services, characteristics, and descriptors
-- 🔓 **Exploit Modules** - Ready-to-use exploits for common vulnerabilities
-- 🔑 **Credential Testing** - Test for default/weak PINs and pairing vulnerabilities
-- 📝 **Modular Architecture** - Easy to extend with custom modules
-- 💾 **Result Export** - Save scan results and loot to JSON
-
-## Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/v33ru/bluesploit.git
-cd bluesploit
-
-#create python virtual environment
-python3 -m venv env
-source env/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run BlueSploit
-python bluesploit.py
-```
-![](a.png)
-
-### Requirements
-
-- Python 3.10+
-- Bluetooth adapter (built-in or USB dongle)
-- Linux: `bluez` stack installed
-- macOS: Works out of the box
-- Windows: Requires Windows 10+ with BLE support
+# BlueSploit - Bluetooth Exploitation Framework
 
 ## Quick Start
+
+```bash
+# Run the console (default)
+python bluesploit.py
+
+# Run with hacker theme (green colors)
+python bluesploit.py --theme hacker
+
+# Run web interface (requires Flask)
+python bluesploit.py --web
+
+# List all modules
+python bluesploit.py --list
+```
+
+## Console Commands
+
+| Command | Description |
+|---------|-------------|
+| `help` | Show all commands |
+| `use <module>` | Select a module |
+| `set <opt> <val>` | Set option value |
+| `options` | Show current options |
+| `run` | Execute module |
+| `back` | Deselect module |
+| `show modules` | List all modules |
+| `show scanners` | List scanners |
+| `show exploits` | List exploits |
+| `search <term>` | Search modules |
+| `info <module>` | Show module info |
+| `theme <name>` | Change theme |
+| `exit` | Exit |
+
+## Available Themes
+
+- `default` - Cyan/Red (default)
+- `hacker` - Green Matrix style
+- `ocean` - Blue tones
+- `fire` - Red/Orange
+- `purple` - Purple/Magenta
+
+## Modules Included
+
+### Scanners
+- `scanners/ble_scanner` - BLE Device Discovery
+- `scanners/classic_scanner` - Classic Bluetooth Scanner
+- `scanners/hidden_scanner` - Find Hidden Devices
+
+### Recon
+- `recon/vuln_scanner` - CVE Vulnerability Detection
+- `recon/gatt_enum` - BLE GATT Enumeration
+- `recon/sdp_enum` - SDP Service Discovery
+- `recon/oui_lookup` - Manufacturer Lookup
+
+### Exploits
+- `exploits/bluefrag` - CVE-2020-0022 (Android RCE)
+- `exploits/keystroke_injection` - HID Injection
+- `exploits/blueborne_rce` - CVE-2017-1000251
+
+### DoS
+- `dos/bluesmack` - L2CAP Ping Flood
+- `dos/ble_flood` - BLE Connection Flood
+
+## Example Session
 
 ```
 $ python bluesploit.py
 
-    ╔═════════════════════════════════════════════════════════════════════════════════╗
-    ║                                                                                 ║
-    ║  ██████╗ ██╗     ██╗   ██╗███████╗███████╗██████╗ ██╗      ██████╗ ██╗████████╗ ║
-    ║  ██╔══██╗██║     ██║   ██║██╔════╝██╔════╝██╔══██╗██║     ██╔═══██╗██║╚══██╔══╝ ║
-    ║  ██████╔╝██║     ██║   ██║█████╗  ███████╗██████╔╝██║     ██║   ██║██║   ██║    ║
-    ║  ██╔══██╗██║     ██║   ██║██╔══╝  ╚════██║██╔═══╝ ██║     ██║   ██║██║   ██║    ║
-    ║  ██████╔╝███████╗╚██████╔╝███████╗███████║██║     ███████╗╚██████╔╝██║   ██║    ║
-    ║  ╚═════╝ ╚══════╝ ╚═════╝ ╚══════╝╚══════╝╚═╝     ╚══════╝ ╚═════╝ ╚═╝   ╚═╝    ║
-    ║                                                                                 ║
-    ╠═════════════════════════════════════════════════════════════════════════════════╣
-    ║                                                                                 ║
-    ║  Bluetooth Exploitation Framework                            v1.0.0             ║
-    ║  ─────────────────────────────────────────────────────────────────────────────  ║
-    ║                                                                                 ║
-    ║  ◉ Author    : v33ru / Mr-IoT                                                   ║
-    ║  ◉ Community : IoT Security Research Group (IOTSRG)                             ║
-    ║  ◉ GitHub    : https://github.com/v33ru                                         ║
-    ║                                                                                 ║
-    ╠═════════════════════════════════════════════════════════════════════════════════╣
-    ║                                                                                 ║
-    ║  [+] BLE Scanning & Enumeration    [+] GATT Service Analysis                    ║
-    ║  [+] Bluetooth Classic Attacks     [+] Vulnerability Detection                  ║
-    ║  [+] Exploitation Modules          [+] Protocol Reverse Engineering             ║
-    ║                                                                                 ║
-    ╚═════════════════════════════════════════════════════════════════════════════════╝
+    ____  __           _____       __      _ __ 
+   / __ )/ /_  _____  / ___/____  / /___  (_) /_
+  / __  / / / / / _ \ \__ \/ __ \/ / __ \/ / __/
+ / /_/ / / /_/ /  __/___/ / /_/ / / /_/ / / /_  
+/_____/_/\__,_/\___//____/ .___/_/\____/_/\__/  
+                        /_/                     
 
-    ┌─────────────────────────────────────────────────────────────────────────────┐
-    │   Type 'help' for commands     Type 'show modules' to list modules          │
-    └─────────────────────────────────────────────────────────────────────────────┘
+bluesploit > use scanners/ble_scanner
+[+] Using: scanners/ble_scanner
 
-bluesploit > help
+bluesploit(scanners/ble_scanner) > options
 
-  Core Commands
-  =============
-    use <module>      Load a module
-    back              Unload current module
-    search <keyword>  Search for modules
-    show <type>       Show modules/options
-    
-  Module Commands
-  ===============
-    set <opt> <val>   Set module option
-    unset <option>    Clear module option
-    options           Show module options
-    info              Show module info
-    run / exploit     Execute module
-    check             Check if vulnerable
-    
-  Utility Commands
-  ================
-    clear             Clear screen
-    reload            Reload modules
-    setg <opt> <val>  Set global option
-    banner            Show banner
-    exit / quit       Exit BlueSploit
+  Name            Value                Req   Description
+  ───────────────────────────────────────────────────────
+  timeout         10                   No    Scan duration (seconds)
+  rssi_filter     -100                 No    Min RSSI threshold
 
+bluesploit(scanners/ble_scanner) > run
+[*] Scanning for BLE devices (10s)...
+  Scanning [████████████████████████████████████████] 100.0%
+
+  ════════════════════════════════════════════════════════════
+  BLE SCAN RESULTS
+  ════════════════════════════════════════════════════════════
+  Found: 4 devices
+
+  ADDRESS              NAME            RSSI       TYPE
+  ────────────────────────────────────────────────────────────
+  AA:BB:CC:DD:EE:FF    iPhone 14       -45 dBm    Phone
+  11:22:33:44:55:66    Galaxy S21      -62 dBm    Phone
+
+bluesploit(scanners/ble_scanner) > back
+[*] Module deselected
+
+bluesploit > use exploits/bluefrag
+[+] Using: exploits/bluefrag
+[*] CVE: CVE-2020-0022
+
+bluesploit(exploits/bluefrag) > set target AA:BB:CC:DD:EE:FF
+[+] target => AA:BB:CC:DD:EE:FF
+
+bluesploit(exploits/bluefrag) > run
+[*] Target: AA:BB:CC:DD:EE:FF
+[*] Mode: check
+✓ Running check mode...
+[+] Target appears VULNERABLE to CVE-2020-0022
+
+bluesploit > exit
+[*] Goodbye!
 ```
 
-## Usage Examples
+## Web Interface
 
-### Discover BLE Devices
+```bash
+# Install Flask (optional, for web UI)
+pip install flask
 
-```
-bluesploit > use scanners/ble/discovery
-bluesploit (scanners/ble/discovery) > set timeout 15
-bluesploit (scanners/ble/discovery) > run
+# Start web interface
+python bluesploit.py --web
 
-[*] Scanning for BLE devices (15s)...
-[+] AA:BB:CC:DD:EE:FF - Smart Lock [-45 dBm] [Nordic Semiconductor]
-[+] 11:22:33:44:55:66 - MI Band 7 [-62 dBm] [Xiaomi]
-[+] Found 2 devices
+# Open in browser
+# http://127.0.0.1:5000
 ```
 
-### Enumerate GATT Services
+## Requirements
 
-```
-bluesploit > use scanners/ble/gatt_enum
-bluesploit (scanners/ble/gatt_enum) > set target AA:BB:CC:DD:EE:FF
-bluesploit (scanners/ble/gatt_enum) > run
+- Python 3.7+
+- No external dependencies for console mode
+- Flask (optional, for web interface)
 
-[+] Connected to AA:BB:CC:DD:EE:FF
-[*] Enumerating GATT services...
+## Author
 
-  [Service] 00001800-0000-1000-8000-00805f9b34fb
-  Generic Access (Handle: 0x0001)
-    ├── [Char] 00002a00-0000-1000-8000-00805f9b34fb
-    │   Device Name
-    │   Properties: read
-    │   Value: Smart Lock
+v33ru (IOTSRG)
 
-  [Service] 0000fee0-0000-1000-8000-00805f9b34fb
-  Custom Service (Handle: 0x0010)
-    ├── [Char] 0000fee1-0000-1000-8000-00805f9b34fb ⚠ VULN
-    │   Properties: write-without-response, notify
-    │   ⚠ UNAUTH_WRITE_POSSIBLE: Write-without-response enabled
-```
+## Disclaimer
 
-### Exploit Unauthenticated Write
-
-```
-bluesploit > use exploits/ble/unauth_write
-bluesploit (exploits/ble/unauth_write) > set target AA:BB:CC:DD:EE:FF
-bluesploit (exploits/ble/unauth_write) > set char_uuid 0000fee1-0000-1000-8000-00805f9b34fb
-bluesploit (exploits/ble/unauth_write) > set payload 0601  # Unlock command
-bluesploit (exploits/ble/unauth_write) > check
-
-[*] Checking AA:BB:CC:DD:EE:FF for vulnerability...
-[+] Found characteristic: 0000fee1-0000-1000-8000-00805f9b34fb
-[+] VULNERABLE: Write-without-response enabled!
-
-bluesploit (exploits/ble/unauth_write) > run
-
-[+] Connected to AA:BB:CC:DD:EE:FF
-[+] Payload delivered!
-```
-
-## Module Structure
-
-```
-modules/
-├── scanners/                      # Discovery & enumeration
-│   ├── ble/
-│   │   ├── discovery.py           # BLE device discovery
-│   │   └── gatt_enum.py           # GATT service + characteristic enumeration
-│   └── classic/
-│       └── sdp_enum.py            # Classic SDP service discovery
-│
-├── exploits/                      # Exploits + attack modules
-│   ├── ble/
-│   │   └── unauth_write.py        # BLE unauthenticated GATT write
-│   │
-│   ├── classic/
-│   │   ├── blueborne_leak.py      # CVE-2017-0781 info leak
-│   │   └── bnep_heap_disclosure.py# CVE-2017-13258 heap disclosure
-│   │
-│   └── dos/
-│       ├── ble/
-│       │   └── notify_flood.py    # BLE notification / GATT flood
-│       └── classic/
-│           ├── l2ping_dos.py      # L2CAP ping flood
-│           ├── bluesmack.py       # L2CAP echo flood (large packets)
-│           ├── sdp_flood.py       # SDP query flood
-│           └── rfcomm_flood.py    # RFCOMM connection exhaustion
-│
-├── auxiliary/                     # Helpers (parsers, utils, common IO)
-│   └── ...
-│
-├── payloads/                      # Payload generators / builders
-│   └── ...
-│
-└── creds/                         # Credential attacks (temporary; will be reorganized)
-    └── ...
-
-```
-
-## Writing Custom Modules
-
-Create a new module in the appropriate directory:
-
-```python
-# modules/scanners/ble/my_scanner.py
-
-from core.base import ScannerModule, ModuleInfo, ModuleOption, BTProtocol, Severity
-
-class Module(ScannerModule):
-    info = ModuleInfo(
-        name="scanners/ble/my_scanner",
-        description="My custom BLE scanner",
-        author=["your_name"],
-        protocol=BTProtocol.BLE,
-        severity=Severity.INFO
-    )
-    
-    def _setup_options(self):
-        self.options = {
-            "target": ModuleOption("target", True, "Target BD_ADDR"),
-            "timeout": ModuleOption("timeout", False, "Scan timeout", default=10)
-        }
-    
-    def run(self) -> bool:
-        # Your scanning logic here
-        target = self.get_option("target")
-        print(f"Scanning {target}...")
-        return True
-```
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/new-module`)
-3. Commit your changes (`git commit -am 'Add new module'`)
-4. Push to the branch (`git push origin feature/new-module`)
-5. Open a Pull Request
-
-## Roadmap
-
-- [ ] Bluetooth Classic support (BR/EDR)
-- [ ] PIN bruteforce module
-- [ ] BTSnoop log analyzer (GhostWrite integration)
-- [ ] Replay attack module
-- [ ] Database for session/loot storage
-- [ ] Ubertooth integration
-- [ ] BTLEJuice integration
-
-## Legal Disclaimer
-
-
-## Acknowledgments
-
-- Inspired by [RouterSploit](https://github.com/threat9/routersploit) and [Metasploit](https://www.metasploit.com/)
-- Built with [Bleak](https://github.com/hbldh/bleak) for cross-platform BLE support
-- Thanks to the Bluetooth security research community
+This tool is for educational and authorized security testing only.
