@@ -1,1 +1,1 @@
-# BlueSploit Core Module
+# Bluespolit core module
