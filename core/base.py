@@ -17,6 +17,8 @@ class ModuleType(Enum):
     CREDS = "creds"
     AUXILIARY = "auxiliary"
     PAYLOAD = "payloads"
+    DOS = "dos"
+    RECON = "recon"
 
 
 class BTProtocol(Enum):
@@ -24,6 +26,7 @@ class BTProtocol(Enum):
     CLASSIC = "classic"      # BR/EDR
     BLE = "ble"              # Bluetooth Low Energy
     DUAL = "dual"            # Both supported
+    BOTH = "dual"            # Alias for DUAL
 
 
 class Severity(Enum):
@@ -70,7 +73,7 @@ class ModuleInfo:
     protocol: BTProtocol = BTProtocol.BLE
     references: List[str] = field(default_factory=list)
     severity: Severity = Severity.INFO
-    cve: Optional[str] = None
+    cve: Optional[List[str]] = None
     
     def __str__(self) -> str:
         return f"{self.name} - {self.description}"
@@ -256,7 +259,8 @@ class BaseModule(ABC):
         print(f"  Severity: {self.info.severity.value}")
         
         if self.info.cve:
-            print(f"  CVE: {self.info.cve}")
+            cve_str = ', '.join(self.info.cve) if isinstance(self.info.cve, list) else self.info.cve
+            print(f"  CVE: {cve_str}")
         
         if self.info.references:
             print("  References:")
@@ -316,8 +320,18 @@ class AuxiliaryModule(BaseModule):
 class PayloadModule(BaseModule):
     """Base class for payload modules"""
     module_type = ModuleType.PAYLOAD
-    
+
     @abstractmethod
     def generate(self) -> bytes:
         """Generate the payload bytes"""
         pass
+
+
+class DosModule(ExploitModule):
+    """Base class for denial-of-service modules"""
+    module_type = ModuleType.DOS
+
+
+class ReconModule(ScannerModule):
+    """Base class for reconnaissance modules"""
+    module_type = ModuleType.RECON
