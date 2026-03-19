@@ -4,6 +4,7 @@ Professional UI for Bluetooth Exploitation Framework
 """
 
 import os
+import re
 import sys
 import shutil
 from datetime import datetime
@@ -62,7 +63,6 @@ def center_text(text: str, width: int = None) -> str:
     """Center text in terminal"""
     if width is None:
         width = get_terminal_width()
-    import re
     clean = re.sub(r'\033\[[0-9;]*m', '', text)
     padding = (width - len(clean)) // 2
     return " " * max(0, padding) + text
