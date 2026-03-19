@@ -1,16 +1,12 @@
 # BlueSploit - Bluetooth Exploitation Framework
 
+A Metasploit-style Bluetooth security testing framework supporting Classic BR/EDR and BLE.
+
 ## Quick Start
 
 ```bash
-# Run the console (default)
+# Run the console
 python bluesploit.py
-
-# Run with hacker theme (green colors)
-python bluesploit.py --theme hacker
-
-# Run web interface (requires Flask)
-python bluesploit.py --web
 
 # List all modules
 python bluesploit.py --list
@@ -27,117 +23,87 @@ python bluesploit.py --list
 | `run` | Execute module |
 | `back` | Deselect module |
 | `show modules` | List all modules |
-| `show scanners` | List scanners |
-| `show exploits` | List exploits |
 | `search <term>` | Search modules |
 | `info <module>` | Show module info |
-| `theme <name>` | Change theme |
 | `exit` | Exit |
 
-## Available Themes
+## Modules (45)
 
-- `default` - Cyan/Red (default)
-- `hacker` - Green Matrix style
-- `ocean` - Blue tones
-- `fire` - Red/Orange
-- `purple` - Purple/Magenta
+### Exploits (20)
+| Module | Description |
+|--------|-------------|
+| `exploits/bluefrag` | CVE-2020-0022 Android RCE |
+| `exploits/blueborne_linux_rce` | CVE-2017-1000251 Linux RCE |
+| `exploits/blueborne_leak` | CVE-2017-0781 Info Leak |
+| `exploits/bnep_heap_disclosure` | CVE-2017-13258 Heap Disclosure |
+| `exploits/knob` | CVE-2019-9506 Key Negotiation Check |
+| `exploits/knob_active` | CVE-2019-9506 Active Key Downgrade |
+| `exploits/bluffs` | CVE-2023-24023 Session Key Downgrade |
+| `exploits/bluffs_mitm` | CVE-2023-24023 Active MITM |
+| `exploits/bias` | BIAS Authentication Bypass |
+| `exploits/sweyntooth` | SweynTooth BLE Exploits |
+| `exploits/braktooth_esp32` | BrakTooth ESP32 LMP Crash |
+| `exploits/badkarma` | BadKarma BLE Attack |
+| `exploits/badchoice` | BadChoice BLE Attack |
+| `exploits/keystroke_injection` | HID Keystroke Injection |
+| `exploits/bluebugging` | Bluebugging AT Command Attack |
+| `exploits/bluesnarfing` | Bluesnarfing File Theft |
+| `exploits/unauth_write` | BLE Unauthenticated GATT Write |
+| `exploits/ble_mitm` | BLE MITM Relay |
+| `exploits/ble_pairing_downgrade` | BLE Pairing Downgrade |
+| `exploits/ble_replay` | BLE Capture & Replay |
+| `exploits/rfcomm_shell` | RFCOMM Reverse Shell |
 
-## Modules Included
+### Scanners (5)
+| Module | Description |
+|--------|-------------|
+| `scanners/vuln_scanner` | Vulnerability Scanner |
+| `scanners/vuln_scan` | Quick Vuln Scan |
+| `scanners/blueborne_scan` | BlueBorne Detection |
+| `scanners/ble_vuln_scanner` | BLE Vulnerability Scanner |
+| `scanners/hidden_scanner` | Hidden Device Finder |
 
-### Scanners
-- `scanners/ble_scanner` - BLE Device Discovery
-- `scanners/classic_scanner` - Classic Bluetooth Scanner
-- `scanners/hidden_scanner` - Find Hidden Devices
+### Recon (6)
+| Module | Description |
+|--------|-------------|
+| `recon/discovery` | Device Discovery |
+| `recon/gatt_enum` | BLE GATT Enumeration |
+| `recon/sdp_enum` | SDP Service Enumeration |
+| `recon/adv_parser` | BLE Advertisement Parser |
+| `recon/oui_lookup` | OUI Manufacturer Lookup |
+| `recon/version_fingerprint` | Version Fingerprinting |
 
-### Recon
-- `recon/vuln_scanner` - CVE Vulnerability Detection
-- `recon/gatt_enum` - BLE GATT Enumeration
-- `recon/sdp_enum` - SDP Service Discovery
-- `recon/oui_lookup` - Manufacturer Lookup
+### DoS (5)
+| Module | Description |
+|--------|-------------|
+| `dos/bluesmack` | L2CAP Echo Flood |
+| `dos/l2ping_flood` | L2CAP Ping Flood |
+| `dos/sdp_flood` | SDP Query Flood |
+| `dos/rfcomm_flood` | RFCOMM Connection Flood |
+| `dos/notify_flood` | BLE Notification Flood |
 
-### Exploits
-- `exploits/bluefrag` - CVE-2020-0022 (Android RCE)
-- `exploits/keystroke_injection` - HID Injection
-- `exploits/blueborne_rce` - CVE-2017-1000251
+### Auxiliary (4)
+| Module | Description |
+|--------|-------------|
+| `auxiliary/hw_detect` | Hardware Detection |
+| `auxiliary/ble_fuzzer` | BLE Protocol Fuzzer |
+| `auxiliary/ubertooth_sniff` | Ubertooth One Sniffer |
+| `auxiliary/btlejack_capture` | BTLEJack Capture & Inject |
+| `auxiliary/nrf_sniffer` | nRF52840 BLE Sniffer |
 
-### DoS
-- `dos/bluesmack` - L2CAP Ping Flood
-- `dos/ble_flood` - BLE Connection Flood
-
-## Example Session
-
-```
-$ python bluesploit.py
-
-    ____  __           _____       __      _ __ 
-   / __ )/ /_  _____  / ___/____  / /___  (_) /_
-  / __  / / / / / _ \ \__ \/ __ \/ / __ \/ / __/
- / /_/ / / /_/ /  __/___/ / /_/ / / /_/ / / /_  
-/_____/_/\__,_/\___//____/ .___/_/\____/_/\__/  
-                        /_/                     
-
-bluesploit > use scanners/ble_scanner
-[+] Using: scanners/ble_scanner
-
-bluesploit(scanners/ble_scanner) > options
-
-  Name            Value                Req   Description
-  ───────────────────────────────────────────────────────
-  timeout         10                   No    Scan duration (seconds)
-  rssi_filter     -100                 No    Min RSSI threshold
-
-bluesploit(scanners/ble_scanner) > run
-[*] Scanning for BLE devices (10s)...
-  Scanning [████████████████████████████████████████] 100.0%
-
-  ════════════════════════════════════════════════════════════
-  BLE SCAN RESULTS
-  ════════════════════════════════════════════════════════════
-  Found: 4 devices
-
-  ADDRESS              NAME            RSSI       TYPE
-  ────────────────────────────────────────────────────────────
-  AA:BB:CC:DD:EE:FF    iPhone 14       -45 dBm    Phone
-  11:22:33:44:55:66    Galaxy S21      -62 dBm    Phone
-
-bluesploit(scanners/ble_scanner) > back
-[*] Module deselected
-
-bluesploit > use exploits/bluefrag
-[+] Using: exploits/bluefrag
-[*] CVE: CVE-2020-0022
-
-bluesploit(exploits/bluefrag) > set target AA:BB:CC:DD:EE:FF
-[+] target => AA:BB:CC:DD:EE:FF
-
-bluesploit(exploits/bluefrag) > run
-[*] Target: AA:BB:CC:DD:EE:FF
-[*] Mode: check
-✓ Running check mode...
-[+] Target appears VULNERABLE to CVE-2020-0022
-
-bluesploit > exit
-[*] Goodbye!
-```
-
-## Web Interface
-
-```bash
-# Install Flask (optional, for web UI)
-pip install flask
-
-# Start web interface
-python bluesploit.py --web
-
-# Open in browser
-# http://127.0.0.1:5000
-```
+### Post-Exploitation (2)
+| Module | Description |
+|--------|-------------|
+| `post/link_key_dump` | Extract Stored Link Keys |
+| `post/bt_impersonation` | Paired Device Impersonation |
 
 ## Requirements
 
 - Python 3.7+
-- No external dependencies for console mode
-- Flask (optional, for web interface)
+- Linux with BlueZ stack
+- `pybluez` — Classic Bluetooth (L2CAP, RFCOMM, SDP)
+- `bleak` — BLE (GATT, scanning)
+- Hardware (optional): Ubertooth One, nRF52840, BTLEJack
 
 ## Author
 
@@ -145,85 +111,4 @@ v33ru (IOTSRG)
 
 ## Disclaimer
 
-<<<<<<< HEAD
-This tool is for educational and authorized security testing only.
-=======
-### Exploit Unauthenticated Write
-
-```
-bluesploit > use exploits/ble/unauth_write
-bluesploit (exploits/ble/unauth_write) > set target AA:BB:CC:DD:EE:FF
-bluesploit (exploits/ble/unauth_write) > set char_uuid 0000fee1-0000-1000-8000-00805f9b34fb
-bluesploit (exploits/ble/unauth_write) > set payload 0601  # Unlock command
-bluesploit (exploits/ble/unauth_write) > check
-
-[*] Checking AA:BB:CC:DD:EE:FF for vulnerability...
-[+] Found characteristic: 0000fee1-0000-1000-8000-00805f9b34fb
-[+] VULNERABLE: Write-without-response enabled!
-
-bluesploit (exploits/ble/unauth_write) > run
-
-[+] Connected to AA:BB:CC:DD:EE:FF
-[+] Payload delivered!
-```
-
-## Module Structure
-
-```
-modules/
-├── scanners/                      # Discovery & enumeration
-│   ├── ble/
-│   │   ├── discovery.py           # BLE device discovery
-│   │   └── gatt_enum.py           # GATT service + characteristic enumeration
-│   └── classic/
-│       └── sdp_enum.py            # Classic SDP service discovery
-│
-├── exploits/                      # Exploits + attack modules
-│   ├── ble/
-│   │   └── unauth_write.py        # BLE unauthenticated GATT write
-│   │
-│   ├── classic/
-│   │   ├── blueborne_leak.py      # CVE-2017-0781 info leak
-│   │   └── bnep_heap_disclosure.py# CVE-2017-13258 heap disclosure
-│   │
-│   └── dos/
-│       ├── ble/
-│       │   └── notify_flood.py    # BLE notification / GATT flood
-│       └── classic/
-│           ├── l2ping_dos.py      # L2CAP ping flood
-│           ├── bluesmack.py       # L2CAP echo flood (large packets)
-│           ├── sdp_flood.py       # SDP query flood
-│           └── rfcomm_flood.py    # RFCOMM connection exhaustion
-
-
-```
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/new-module`)
-3. Commit your changes (`git commit -am 'Add new module'`)
-4. Push to the branch (`git push origin feature/new-module`)
-5. Open a Pull Request
-
-## Roadmap
-
-- [ ] Bluetooth Classic support (BR/EDR)
-- [ ] PIN bruteforce module
-- [ ] BTSnoop log analyzer (GhostWrite integration)
-- [ ] Replay attack module
-- [ ] Database for session/loot storage
-- [ ] Ubertooth integration
-- [ ] BTLEJuice integration
-
-## Legal Disclaimer
-
-
-## Acknowledgments
-
-- Inspired by [RouterSploit](https://github.com/threat9/routersploit) and [Metasploit](https://www.metasploit.com/)
-- Built with [Bleak](https://github.com/hbldh/bleak) for cross-platform BLE support
-- Thanks to the Bluetooth security research community
->>>>>>> 2378f13c707a2d114e925bec75e7f90e8deea52d
+This tool is for educational and authorized security testing only. Unauthorized use against devices you do not own or have permission to test is illegal.
