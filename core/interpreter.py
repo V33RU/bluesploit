@@ -33,11 +33,12 @@ class BlueSploitInterpreter(cmd.Cmd):
         self.history_file = ".bluesploit_history"
         self._load_history()
 
-        # Global options
+        # Global options (applied to all modules via setg)
         self.global_options = {
             "interface": "hci0",
             "verbose": False,
             "timeout": 10,
+            "pcap_file": None,
         }
 
         # Set initial prompt
@@ -211,6 +212,11 @@ class BlueSploitInterpreter(cmd.Cmd):
             print_error("No module loaded. Use 'use <module>' first")
             return
 
+        # Apply global pcap_file if set and module doesn't have one
+        global_pcap = self.global_options.get("pcap_file")
+        if global_pcap and not self.current_module.get_option("pcap_file"):
+            self.current_module.set_option("pcap_file", global_pcap)
+
         if not self.current_module.validate_options():
             print_error("Required options not set. Use 'options' to see required options")
             return
@@ -219,7 +225,7 @@ class BlueSploitInterpreter(cmd.Cmd):
         print()
 
         try:
-            success = self.current_module.run()
+            success = self.current_module.execute()
             print()
             if success:
                 print_success("Module execution completed")
@@ -378,62 +384,6 @@ class BlueSploitInterpreter(cmd.Cmd):
                 print(f"  {module_path:<40} {severity:<8} {module.info.description}")
         print()
 
-    # ==================== Theme Commands ====================
-
-    def do_theme(self, name: str) -> None:
-        """
-        Change or show current color theme
-        Usage: theme [name]
-        Example: theme hacker
-        """
-        try:
-            from core.ui.themes import theme_manager, get_theme, set_theme
-        except ImportError:
-            print_error("Theme system not available")
-            return
-
-        if not name:
-            current = get_theme()
-            print_info(f"Current theme: {current.name}")
-            print_info(f"Available: {', '.join(theme_manager.list_themes().keys())}")
-            return
-
-        if set_theme(name):
-            print_success(f"Theme changed to: {name}")
-            self._update_prompt()
-        else:
-            print_error(f"Unknown theme: {name}")
-            themes = theme_manager.list_themes()
-            print_info(f"Available: {', '.join(themes.keys())}")
-
-    def complete_theme(self, text: str, line: str, begidx: int, endidx: int) -> List[str]:
-        """Tab completion for theme command"""
-        try:
-            from core.ui.themes import theme_manager
-            themes = list(theme_manager.list_themes().keys())
-            if text:
-                return [t for t in themes if t.startswith(text)]
-            return themes
-        except ImportError:
-            return []
-
-    def do_themes(self, _: str) -> None:
-        """List all available themes with descriptions"""
-        try:
-            from core.ui.themes import theme_manager, get_theme
-        except ImportError:
-            print_error("Theme system not available")
-            return
-
-        current = get_theme()
-        themes = theme_manager.list_themes()
-
-        print(f"\n  Available themes:\n")
-        for name, description in themes.items():
-            marker = f" {Colors.GREEN}(active){Colors.RESET}" if name == current.name else ""
-            print(f"    {name:<12} {description}{marker}")
-        print()
-
     # ==================== Utility Commands ====================
 
     def do_clear(self, _: str) -> None:
@@ -502,11 +452,6 @@ class BlueSploitInterpreter(cmd.Cmd):
     info              Show module info
     run / exploit     Execute module
     check             Check if vulnerable
-
-  {Colors.CYAN}Theme Commands{Colors.RESET}
-  ==============
-    theme [name]      Change or show theme
-    themes            List available themes
 
   {Colors.CYAN}Utility Commands{Colors.RESET}
   ================
