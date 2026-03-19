@@ -134,7 +134,9 @@ class BaseModule(ABC):
     def __init__(self):
         self.options: Dict[str, ModuleOption] = {}
         self._results: List[Any] = []
+        self._pcap_capture = None
         self._setup_options()
+        self._add_global_options()
     
     @abstractmethod
     def _setup_options(self) -> None:
@@ -152,6 +154,50 @@ class BaseModule(ABC):
         Returns True on success, False on failure
         """
         pass
+
+    def _add_global_options(self) -> None:
+        """Add framework-wide optional features to every module"""
+        self.options["pcap_file"] = ModuleOption(
+            name="pcap_file",
+            required=False,
+            description="Save Bluetooth HCI capture to PCAP file (Wireshark)",
+            default=None,
+        )
+
+    def execute(self) -> bool:
+        """
+        Execute module with optional PCAP capture.
+        Called by the interpreter instead of run() directly.
+        Wraps run() with automatic pcap start/stop when pcap_file is set.
+        """
+        pcap_file = self.get_option("pcap_file")
+
+        if pcap_file:
+            from core.capture import PCAPCapture
+            self._pcap_capture = PCAPCapture(str(pcap_file))
+            if self._pcap_capture.start():
+                print(
+                    f"[\033[92m+\033[0m] PCAP capture started "
+                    f"({self._pcap_capture.backend}): {pcap_file}"
+                )
+            else:
+                print(
+                    "[\033[93m!\033[0m] PCAP capture unavailable "
+                    "(install btmon or tcpdump)"
+                )
+                self._pcap_capture = None
+
+        try:
+            return self.run()
+        finally:
+            if self._pcap_capture:
+                self._pcap_capture.stop()
+                size_kb = self._pcap_capture.file_size / 1024
+                print(
+                    f"[\033[92m+\033[0m] PCAP saved: {pcap_file} "
+                    f"({size_kb:.1f} KB)"
+                )
+                self._pcap_capture = None
     
     def set_option(self, name: str, value: Any) -> bool:
         """
