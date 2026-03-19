@@ -1,0 +1,43 @@
+# BlueSploit — Hardware dongle dependencies
+# Enables: hw_detect, sweyntooth, nRF Sniffer capture, BTLEJack hijacking
+#
+# Install all hardware support:
+#   pip install -r requirements-hardware.txt
+#
+# Then install system packages for your specific hardware:
+#
+#   Ubertooth One:
+#     sudo apt install ubertooth wireshark
+#
+#   Nordic nRF52840 Sniffer:
+#     sudo apt install wireshark
+#     (flash nRF Sniffer firmware to dongle, add Wireshark plugin)
+#
+#   HackRF One:
+#     sudo apt install hackrf gr-bluetooth
+#
+#   BTLEJack (BBC micro:bit / nRF52840):
+#     (flash BTLEJack firmware to micro:bit)
+#
+#   YARD Stick One:
+#     (no extra system packages)
+
+-r requirements.txt
+
+# ── BLE low-level (SweynTooth, BTLEJack session) ───────────────────
+# Linux only — needs: sudo apt install libglib2.0-dev
+bluepy>=1.3.0
+
+# ── Serial port (nRF Sniffer, BTLEJack, YARD Stick One) ─────────────
+pyserial>=3.5
+
+# ── BTLEJack library (BLE connection hijacking) ──────────────────────
+btlejack>=1.2
+
+# ── HackRF / raw BLE+Classic packet dissection ───────────────────────
+scapy>=2.5.0
+
+# ── YARD Stick One ───────────────────────────────────────────────────
+# rfcat is not on PyPI — install from source:
+#   pip install git+https://github.com/atlas0fd00m/rfcat.git
+# rfcat>=1.9.5
