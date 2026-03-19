@@ -1,29 +1,55 @@
-# BlueSploit Dependencies
+# BlueSploit — Dependency File
 # Bluetooth Exploitation Framework
-# Install: pip install -r requirements.txt
+#
+# INSTALL OPTIONS
+# ───────────────
+# Minimum (BLE only):
+#   pip install -r requirements.txt
+#
+# Recommended (BLE + Classic + all new modules):
+#   pip install -r requirements.txt -r requirements-classic.txt
+#
+# Full (everything including hardware dongles):
+#   pip install -r requirements.txt -r requirements-full.txt
+#
+# System packages (run once on Debian/Ubuntu):
+#   sudo apt install bluez bluetooth libbluetooth-dev python3-dev \
+#                    libglib2.0-dev libboost-python-dev libboost-thread-dev
+# ═══════════════════════════════════════════════════════════════════════
 
-# ===================
-# Core Dependencies
-# ===================
-bleak>=0.21.0                    # BLE support (cross-platform)
+# ── Core (required) ─────────────────────────────────────────────────
+bleak>=0.21.0              # BLE scanning + GATT (cross-platform, no root)
 
-# ===================
-# Optional: Bluetooth Classic (Linux only)
-# ===================
-# pybluez>=0.23                  # Uncomment for Classic BT support
-                                 # Requires: sudo apt install libbluetooth-dev
+# ── Bluetooth Classic (required for most exploit modules) ────────────
+# Uncomment OR install requirements-classic.txt
+# Needs: sudo apt install libbluetooth-dev
+# pybluez2>=0.46           # Maintained fork of PyBluez; L2CAP/RFCOMM sockets
 
-# ===================
-# Optional: Enhanced Features
-# ===================
-# rich>=13.0.0                   # Beautiful terminal output
-# cmd2>=2.4.0                    # Advanced CLI features
-# scapy>=2.5.0                   # Packet crafting
-# cryptography>=41.0.0           # Encryption analysis
+# ── Packet crafting ─────────────────────────────────────────────────
+# Required by: sweyntooth, bluffs (bruteforce), hw_detect (hackrf path)
+# scapy>=2.5.0             # BT/BLE frame construction + raw injection
 
-# ===================
-# Development
-# ===================
+# ── BLE low-level (required by sweyntooth module) ───────────────────
+# Needs: sudo apt install libglib2.0-dev
+# bluepy>=1.3.0            # Raw BLE connections + GATT handles (Linux only)
+
+# ── Cryptography (required by bluffs, knob key analysis) ────────────
+# cryptography>=41.0.0     # Key derivation (E0/E3), AES for session keys
+
+# ── Serial comms (required by nRF Sniffer, BTLEJack hardware) ───────
+# pyserial>=3.5            # Serial port access for hardware dongles
+
+# ── BTLEJack (BLE connection hijacking via micro:bit / nRF52840) ────
+# btlejack>=1.2            # BTLEJack Python library + CLI
+
+# ── YARD Stick One ──────────────────────────────────────────────────
+# rfcat>=1.9.5             # YARD Stick One (sub-GHz / BLE injection)
+
+# ── Enhanced terminal UI ─────────────────────────────────────────────
+# rich>=13.0.0             # Colour tables, progress bars
+# cmd2>=2.4.0              # Advanced REPL (history, scripting)
+
+# ── Development / CI ────────────────────────────────────────────────
 # pytest>=7.0.0
 # pytest-asyncio>=0.21.0
 # black>=23.0.0
