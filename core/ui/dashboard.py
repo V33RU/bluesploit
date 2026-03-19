@@ -365,7 +365,6 @@ class HelpPanel(Panel):
             ("r", "Run module"),
             ("o", "Set options"),
             ("c", "Clear output"),
-            ("t", "Change theme"),
             ("q", "Quit"),
             ("?", "Toggle help"),
         ]
