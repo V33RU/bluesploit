@@ -155,6 +155,10 @@ class BaseModule(ABC):
         """
         pass
 
+    def add_option(self, option: 'ModuleOption') -> None:
+        """Add a single option to the module's options dictionary"""
+        self.options[option.name] = option
+
     def _add_global_options(self) -> None:
         """Add framework-wide optional features to every module"""
         self.options["pcap_file"] = ModuleOption(
