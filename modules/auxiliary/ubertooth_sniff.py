@@ -16,6 +16,7 @@ import time
 import os
 import signal
 from core.base import AuxiliaryModule, ModuleInfo, ModuleOption, BTProtocol, Severity
+from core.utils.printer import print_success, print_error, print_info, print_warning
 
 
 class Module(AuxiliaryModule):
@@ -23,7 +24,7 @@ class Module(AuxiliaryModule):
     info = ModuleInfo(
         name="Ubertooth Sniffer",
         description="Ubertooth One BLE/Classic passive sniffing wrapper",
-        author="BlueSploit Team",
+        author=["BlueSploit Team"],
         protocol=BTProtocol.DUAL,
         references=[
             "https://ubertooth.sourceforge.net/",
