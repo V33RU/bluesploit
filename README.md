@@ -280,7 +280,7 @@ bluesploit/
 
 ## Author
 
-**v33ru** / Mr-IoT - [IoT Security Research Group (IOTSRG)](https://iotsrg.org)
+**v33ru** / Mr-IoT
 
 ---
 
