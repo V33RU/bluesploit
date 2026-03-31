@@ -15,8 +15,8 @@ A Metasploit-style Bluetooth security testing framework for Classic BR/EDR and B
 
 ## Features
 
-- **49 modules** across 6 categories: exploits, scanners, recon, DoS, auxiliary, post-exploitation
-- **16+ CVEs** implemented with working proof-of-concept exploits
+- **52 modules** across 6 categories: exploits, scanners, recon, DoS, auxiliary, post-exploitation
+- **19+ CVEs** implemented with working proof-of-concept exploits
 - **Hardware support** for Ubertooth One, nRF52840, BTLEJack, HackRF One, YARD Stick One
 - **Interactive CLI** with Metasploit-style command interface (use/set/run/show)
 - **PCAP capture** for all module runs via btmon/tcpdump
@@ -107,9 +107,9 @@ bluesploit (keystroke_injection) > run
 
 ---
 
-## Modules (49)
+## Modules (52)
 
-### Exploits (28)
+### Exploits (30)
 
 | Module | CVE | Description |
 |--------|-----|-------------|
@@ -127,6 +127,9 @@ bluesploit (keystroke_injection) > run
 | `exploits/blueborne_linux_rce` | CVE-2017-1000251 | Linux BlueZ L2CAP stack overflow RCE |
 | `exploits/blueborne_leak` | CVE-2017-0781 | Android Bluetooth info leak |
 | `exploits/bnep_heap_disclosure` | CVE-2017-13258 | Android BNEP heap disclosure |
+| `exploits/whisperpair` | CVE-2025-36911 | Google Fast Pair hijack — force-pair without pairing mode |
+| `exploits/zephyr_ble_smp_crash` | CVE-2025-10456 | Zephyr RTOS BLE fixed-channel integer overflow DoS |
+| `exploits/airoha_race_chain` | CVE-2025-20700/20701/20702 | Airoha 3-stage BLE→Classic→RACE RCE chain |
 | `exploits/bluebugging` | - | AT command injection via RFCOMM |
 | `exploits/bluesnarfing` | - | OBEX file theft (contacts, SMS, calendar) |
 | `exploits/a2dp_inject` | - | A2DP audio injection & media control |
@@ -220,6 +223,9 @@ bluesploit (keystroke_injection) > run
 | CVE-2017-1000251 | BlueBorne (Linux) | Linux RCE |
 | CVE-2017-0781 | BlueBorne (Android) | Android info leak |
 | CVE-2017-13258 | BNEP Heap Disclosure | Android memory leak |
+| CVE-2025-36911 | WhisperPair | Google Fast Pair hijack |
+| CVE-2025-10456 | Zephyr BLE Crash | Zephyr RTOS DoS / memory corruption |
+| CVE-2025-20700/20701/20702 | Airoha RACE Chain | Airoha chipset RCE (Sony/Bose/JBL/29+ devices) |
 
 ---
 
@@ -241,7 +247,7 @@ bluesploit/
 │   └── ui/
 │       └── themes.py      # Color themes
 ├── modules/
-│   ├── exploits/          # 28 exploit modules
+│   ├── exploits/          # 30 exploit modules
 │   ├── scanners/          # 5 scanner modules
 │   ├── recon/             # 6 reconnaissance modules
 │   ├── dos/               # 5 denial-of-service modules
