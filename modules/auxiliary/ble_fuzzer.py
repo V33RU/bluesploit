@@ -13,7 +13,6 @@ Fuzzing strategies:
 import asyncio
 import struct
 import os
-import time
 import random
 from core.base import AuxiliaryModule, ModuleInfo, ModuleOption, BTProtocol, Severity
 

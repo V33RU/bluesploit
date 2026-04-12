@@ -296,7 +296,6 @@ class Module(ExploitModule):
 
     def _connect_sdp(self, target: str) -> bool:
         """Test connection via SDP query"""
-        import socket
         try:
             import bluetooth
             services = bluetooth.find_service(address=target)
@@ -326,7 +325,6 @@ class Module(ExploitModule):
 
     def _connect_rfcomm(self, target: str, channel: int) -> bool:
         """Test connection via RFCOMM"""
-        import socket
         try:
             import bluetooth
             sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
@@ -344,7 +342,6 @@ class Module(ExploitModule):
 
     def _connect_l2cap(self, target: str) -> bool:
         """Test connection via L2CAP"""
-        import socket
         try:
             import bluetooth
             sock = bluetooth.BluetoothSocket(bluetooth.L2CAP)

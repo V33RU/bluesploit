@@ -9,8 +9,6 @@ Author: v33ru
 """
 
 import subprocess
-import struct
-import time
 import re
 from typing import Dict, Any, List, Optional, Tuple
 from core.base import (
@@ -22,7 +20,6 @@ from core.utils.printer import (
 )
 
 try:
-    import bluetooth
     BLUETOOTH_AVAILABLE = True
 except ImportError:
     BLUETOOTH_AVAILABLE = False

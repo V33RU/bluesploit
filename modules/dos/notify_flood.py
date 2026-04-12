@@ -10,7 +10,7 @@ Author: v33ru
 
 import asyncio
 import time
-from typing import List, Dict, Optional
+from typing import List, Dict
 from core.base import (
     ExploitModule, ModuleInfo, ModuleOption,
     BTProtocol, Severity
@@ -20,7 +20,7 @@ from core.utils.printer import (
 )
 
 try:
-    from bleak import BleakClient, BleakScanner
+    from bleak import BleakClient
     from bleak.exc import BleakError
     BLEAK_AVAILABLE = True
 except ImportError:

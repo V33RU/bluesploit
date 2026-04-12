@@ -11,7 +11,7 @@ Author: v33ru
 import time
 import subprocess
 import threading
-from typing import Optional, List
+from typing import List
 from core.base import (
     ExploitModule, ModuleInfo, ModuleOption,
     BTProtocol, Severity

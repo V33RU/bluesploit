@@ -28,7 +28,7 @@ import socket
 import time
 import os
 import threading
-from typing import List, Dict
+from typing import Dict
 from core.base import (
     ExploitModule, ModuleInfo, ModuleOption,
     BTProtocol, Severity

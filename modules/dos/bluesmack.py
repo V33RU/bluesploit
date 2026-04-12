@@ -10,8 +10,6 @@ Author: v33ru
 
 import struct
 import time
-import socket
-from typing import Optional
 from core.base import (
     ExploitModule, ModuleInfo, ModuleOption,
     BTProtocol, Severity
