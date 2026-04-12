@@ -4,7 +4,7 @@ Discovers nearby BLE devices with detailed information
 """
 
 import asyncio
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from core.base import (
     ScannerModule, ModuleInfo, ModuleOption, 
     BTProtocol, Severity, Target
@@ -17,8 +17,6 @@ from core.utils.printer import (
 # Try to import bleak, provide helpful error if not available
 try:
     from bleak import BleakScanner
-    from bleak.backends.device import BLEDevice
-    from bleak.backends.scanner import AdvertisementData
     BLEAK_AVAILABLE = True
 except ImportError:
     BLEAK_AVAILABLE = False

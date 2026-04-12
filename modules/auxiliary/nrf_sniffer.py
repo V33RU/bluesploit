@@ -13,7 +13,6 @@ Features:
 
 import subprocess
 import time
-import os
 import signal
 import struct
 from core.base import AuxiliaryModule, ModuleInfo, ModuleOption, BTProtocol, Severity

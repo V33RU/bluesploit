@@ -14,11 +14,8 @@ Author: v33ru
 """
 
 import subprocess
-import struct
-import socket
 import sys
-import os
-from typing import Dict, List, Tuple, Optional, Any
+from typing import Dict, List, Tuple, Any
 from dataclasses import dataclass
 from enum import Enum
 from core.base import (

@@ -7,9 +7,8 @@ Author: Mr-IoT
 """
 
 import asyncio
-import struct
-from typing import Dict, Any, List, Optional
-from dataclasses import dataclass, field
+from typing import Dict, List, Optional
+from dataclasses import dataclass
 from core.base import (
     ScannerModule, ModuleInfo, ModuleOption,
     BTProtocol, Severity, Target

@@ -13,7 +13,7 @@ import subprocess
 import time
 import threading
 import random
-from typing import Dict, Any, List, Optional, Tuple, Set
+from typing import Dict, Any, List, Optional, Tuple
 from core.base import (
     ScannerModule, ModuleInfo, ModuleOption,
     BTProtocol, Severity

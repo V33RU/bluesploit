@@ -10,7 +10,7 @@ Author: v33ru
 
 import time
 import threading
-from typing import List, Optional
+from typing import List
 from core.base import (
     ExploitModule, ModuleInfo, ModuleOption,
     BTProtocol, Severity

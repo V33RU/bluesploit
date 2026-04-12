@@ -14,7 +14,7 @@ import signal
 import time
 import os
 import sys
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 from dataclasses import dataclass
 from core.base import (
     ExploitModule, ModuleInfo, ModuleOption,

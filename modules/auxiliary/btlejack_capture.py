@@ -12,9 +12,7 @@ Capabilities:
 
 import subprocess
 import time
-import os
 import signal
-import json
 from core.base import AuxiliaryModule, ModuleInfo, ModuleOption, BTProtocol, Severity
 
 

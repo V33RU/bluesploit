@@ -7,7 +7,7 @@ Author: v33ru
 """
 
 import asyncio
-from typing import Dict, Any, List, Optional
+from typing import List, Optional
 from dataclasses import dataclass, field
 from enum import Enum
 from core.base import (
@@ -19,7 +19,7 @@ from core.utils.printer import (
 )
 
 try:
-    from bleak import BleakClient, BleakScanner
+    from bleak import BleakClient
     from bleak.exc import BleakError
     BLEAK_AVAILABLE = True
 except ImportError:

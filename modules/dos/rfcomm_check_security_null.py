@@ -14,8 +14,6 @@ CWE: CWE-476 (NULL Pointer Dereference)
 """
 
 import struct
-import socket
-import time
 import os
 import threading
 from core.base import (

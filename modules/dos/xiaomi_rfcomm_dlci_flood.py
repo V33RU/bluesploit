@@ -14,7 +14,6 @@ CWE: CWE-400 (Uncontrolled Resource Consumption)
 """
 
 import struct
-import socket
 import time
 import os
 import threading

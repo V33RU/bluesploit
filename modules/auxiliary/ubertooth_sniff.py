@@ -11,12 +11,9 @@ Modes:
 """
 
 import subprocess
-import threading
 import time
-import os
 import signal
 from core.base import AuxiliaryModule, ModuleInfo, ModuleOption, BTProtocol, Severity
-from core.utils.printer import print_success, print_error, print_info, print_warning
 
 
 class Module(AuxiliaryModule):

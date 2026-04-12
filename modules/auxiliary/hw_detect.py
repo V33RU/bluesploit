@@ -8,10 +8,9 @@ Usage (in bluesploit REPL):
     run
 """
 
-import subprocess
 import shutil
 from core.base import AuxiliaryModule, ModuleInfo, ModuleOption, BTProtocol, Severity
-from core.utils.printer import print_info, print_success, print_warning, Colors
+from core.utils.printer import print_info, print_warning, Colors
 from core.hardware import (
     get_hardware_manager, HardwareType, Capability,
     _detect_hci_adapters, _detect_ubertooth,

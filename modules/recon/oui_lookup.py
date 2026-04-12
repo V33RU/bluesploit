@@ -8,10 +8,8 @@ and provides detailed vendor information.
 Author: v33ru
 """
 
-import os
 import re
 import urllib.request
-import json
 from typing import Dict, Any, List, Optional, Tuple
 from core.base import (
     ScannerModule, ModuleInfo, ModuleOption,
