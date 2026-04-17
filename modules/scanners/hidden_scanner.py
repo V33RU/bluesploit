@@ -110,8 +110,10 @@ class Module(ScannerModule):
         author=["v33ru"],
         protocol=BTProtocol.BOTH,
         severity=Severity.INFO,
+        cve=["CVE-2022-24695"],
         references=[
-            "https://www.bluetooth.com/specifications/"
+            "https://www.bluetooth.com/specifications/",
+            "https://nvd.nist.gov/vuln/detail/CVE-2022-24695",
         ]
     )
     
