@@ -11,12 +11,17 @@ A Metasploit-style Bluetooth security testing framework for Classic BR/EDR and B
   ╚═════╝ ╚══════╝ ╚═════╝ ╚══════╝╚══════╝╚═╝     ╚══════╝ ╚═════╝ ╚═╝   ╚═╝
 ```
 
+### Console preview
+
+![BlueSploit interactive console](a.png)
+
 ---
 
 ## Features
 
-- **55 modules** across 6 categories: exploits, scanners, recon, DoS, auxiliary, post-exploitation
-- **22+ CVEs** implemented with working proof-of-concept exploits
+- **101 modules** across 6 categories: exploits, scanners, recon, DoS, auxiliary, post-exploitation
+- **40+ CVEs** implemented with working proof-of-concept exploits (2010 → 2026)
+- **Cross-platform install** — Linux (apt/dnf/yum/pacman/zypper/apk/xbps/emerge) + macOS (CoreBluetooth)
 - **Hardware support** for Ubertooth One, nRF52840, BTLEJack, HackRF One, YARD Stick One
 - **Interactive CLI** with Metasploit-style command interface (use/set/run/show)
 - **PCAP capture** for all module runs via btmon/tcpdump
@@ -26,14 +31,45 @@ A Metasploit-style Bluetooth security testing framework for Classic BR/EDR and B
 
 ## Installation
 
-### System Prerequisites (Debian/Ubuntu)
+### One-line install (recommended)
+
+`install.sh` auto-detects your distro / OS and installs everything:
 
 ```bash
-sudo apt install bluez bluetooth libbluetooth-dev python3-dev \
-                 libglib2.0-dev libboost-python-dev libboost-thread-dev
+git clone https://github.com/V33RU/bluesploit.git
+cd bluesploit
+./install.sh             # basic
+./install.sh --full      # all extras (rich, cmd2, scapy, classic BT)
+./install.sh --classic   # add Bluetooth Classic support (Linux only)
+./install.sh --dev       # add dev tooling (pytest, black, flake8)
+./install.sh --no-deps   # skip system packages (Python deps only)
 ```
 
-### Hardware-Specific Packages (Optional)
+Supported package managers: **apt, dnf, yum, pacman, zypper, apk, xbps, emerge** + macOS Homebrew.
+
+### Manual install
+
+```bash
+git clone https://github.com/V33RU/bluesploit.git
+cd bluesploit
+pip install -r requirements.txt
+# or as a package
+pip install .
+```
+
+### System prerequisites by distro
+
+| Distro | Command |
+|--------|---------|
+| Debian / Ubuntu / Kali | `sudo apt install bluez bluetooth libbluetooth-dev python3-dev libglib2.0-dev pkg-config build-essential` |
+| Fedora / RHEL / Rocky | `sudo dnf install bluez bluez-libs-devel python3-devel glib2-devel pkgconf-pkg-config gcc gcc-c++ make` |
+| Arch / Manjaro | `sudo pacman -S bluez bluez-utils glib2 pkgconf base-devel` |
+| openSUSE | `sudo zypper install bluez bluez-devel python3-devel glib2-devel pkg-config gcc gcc-c++ make` |
+| Alpine | `sudo apk add bluez bluez-dev python3-dev glib-dev pkgconfig build-base linux-headers` |
+| Void | `sudo xbps-install -Sy bluez bluez-devel python3-devel glib-devel pkg-config base-devel` |
+| macOS | nothing — CoreBluetooth is built-in (BLE only via `bleak`) |
+
+### Hardware-specific packages (optional)
 
 ```bash
 # Ubertooth One
@@ -43,25 +79,10 @@ sudo apt install ubertooth wireshark
 sudo apt install hackrf gr-bluetooth
 
 # nRF52840 — flash nRF Sniffer firmware, install Wireshark plugin
-
 # BTLEJack — flash BTLEJack firmware to micro:bit
 
 # YARD Stick One
 pip install git+https://github.com/atlas0fd00m/rfcat.git
-```
-
-### Python Setup
-
-```bash
-git clone https://github.com/v33ru/bluesploit.git
-cd bluesploit
-pip install -r requirements.txt
-```
-
-Or install as a package:
-
-```bash
-pip install -e .
 ```
 
 ---
@@ -107,9 +128,11 @@ bluesploit (keystroke_injection) > run
 
 ---
 
-## Modules (55)
+## Modules (101)
 
-### Exploits (33)
+> Counts by category: **exploits 69 · dos 10 · recon 6 · auxiliary 6 · scanners 5 · post 2** (run `python3 bluesploit.py --list` for the full live list).
+
+### Exploits (69)
 
 | Module | CVE | Description |
 |--------|-----|-------------|
@@ -168,7 +191,7 @@ bluesploit (keystroke_injection) > run
 | `recon/oui_lookup` | MAC address manufacturer identification |
 | `recon/version_fingerprint` | OS/firmware fingerprinting via Bluetooth |
 
-### DoS (5)
+### DoS (10)
 
 | Module | Description |
 |--------|-------------|
@@ -178,7 +201,7 @@ bluesploit (keystroke_injection) > run
 | `dos/rfcomm_flood` | RFCOMM connection exhaustion |
 | `dos/notify_flood` | BLE notification flood |
 
-### Auxiliary (5)
+### Auxiliary (6)
 
 | Module | Description |
 |--------|-------------|
@@ -253,11 +276,11 @@ bluesploit/
 │   └── ui/
 │       └── themes.py      # Color themes
 ├── modules/
-│   ├── exploits/          # 33 exploit modules
+│   ├── exploits/          # 69 exploit modules
 │   ├── scanners/          # 5 scanner modules
 │   ├── recon/             # 6 reconnaissance modules
-│   ├── dos/               # 5 denial-of-service modules
-│   ├── auxiliary/         # 5 auxiliary/hardware modules
+│   ├── dos/               # 10 denial-of-service modules
+│   ├── auxiliary/         # 6 auxiliary/hardware modules
 │   └── post/              # 2 post-exploitation modules
 └── data/
     ├── oui/               # MAC address OUI database
@@ -271,8 +294,8 @@ bluesploit/
 ## Requirements
 
 - **Python** 3.8+
-- **OS:** Linux with BlueZ stack (Debian/Ubuntu recommended)
-- **Privileges:** Root access required for most modules (raw HCI sockets)
+- **OS:** Linux with BlueZ stack (all major distros — see install table) or macOS (BLE only via CoreBluetooth)
+- **Privileges:** Root / sudo required for most Linux modules (raw HCI sockets)
 
 ### Core Dependencies
 
