@@ -1,0 +1,99 @@
+site_name: BlueSploit
+site_description: Bluetooth Exploitation Framework for Security Researchers
+site_url: https://v33ru.github.io/bluesploit/
+repo_url: https://github.com/v33ru/bluesploit
+repo_name: v33ru/bluesploit
+edit_uri: edit/main/docs/
+copyright: BlueSploit · MIT License · For authorized security research only
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.indexes
+    - search.highlight
+    - search.share
+    - search.suggest
+    - content.code.copy
+    - content.code.annotate
+    - content.action.edit
+    - toc.follow
+  palette:
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+  icon:
+    repo: fontawesome/brands/github
+    logo: material/bluetooth
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.emoji
+
+plugins:
+  - search
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/v33ru/bluesploit
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/
+
+nav:
+  - Project:
+    - Introduction: index.md
+    - Installation: installation.md
+    - Quick Start: quick-start.md
+    - Contributing: contributing.md
+    - Legal Disclaimer: legal-disclaimer.md
+  - Usage:
+    - Console Commands: console-commands.md
+    - Module Categories: module-categories.md
+  - Modules:
+    - Exploits: exploits.md
+    - DoS: dos.md
+    - Scanners: scanners.md
+    - Recon: recon.md
+    - Auxiliary: auxiliary.md
+    - Post-Exploitation: post-exploitation.md
+  - Hardware & Internals:
+    - Hardware Setup: hardware-setup.md
+    - Architecture: architecture.md
+    - Writing Modules: writing-modules.md
+  - Help:
+    - Troubleshooting: troubleshooting.md
+    - FAQ: faq.md
