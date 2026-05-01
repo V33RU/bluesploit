@@ -16,8 +16,8 @@ Sniffers, fuzzers, and hardware utilities. Path: `modules/auxiliary/`.
 ## Hardware-detect first
 
 ```text
-bsploit > use auxiliary/hw_detect
-bsploit (auxiliary/hw_detect) > run
+bluesploit > use auxiliary/hw_detect
+bluesploit(auxiliary/hw_detect) > run
 ```
 
 This reports which sniffer/SDR backends are available before you try to use them. See [Hardware Setup](hardware-setup.md) for vendor-specific install steps.
@@ -27,10 +27,10 @@ This reports which sniffer/SDR backends are available before you try to use them
 ## Sniffing example (nRF52840)
 
 ```text
-bsploit > use auxiliary/nrf_sniffer
-bsploit (auxiliary/nrf_sniffer) > set TARGET AA:BB:CC:DD:EE:FF
-bsploit (auxiliary/nrf_sniffer) > set OUTFILE captures/target.pcap
-bsploit (auxiliary/nrf_sniffer) > run
+bluesploit > use auxiliary/nrf_sniffer
+bluesploit(auxiliary/nrf_sniffer) > set TARGET AA:BB:CC:DD:EE:FF
+bluesploit(auxiliary/nrf_sniffer) > set OUTFILE captures/target.pcap
+bluesploit(auxiliary/nrf_sniffer) > run
 ```
 
 Open the resulting pcap in Wireshark with the nRF Sniffer plugin.
@@ -40,8 +40,8 @@ Open the resulting pcap in Wireshark with the nRF Sniffer plugin.
 ## RPA deanon
 
 ```text
-bsploit > use auxiliary/ble_rpa_deanon
-bsploit (auxiliary/ble_rpa_deanon) > set IRK <hex>
-bsploit (auxiliary/ble_rpa_deanon) > set CANDIDATES candidates.txt
-bsploit (auxiliary/ble_rpa_deanon) > run
+bluesploit > use auxiliary/ble_rpa_deanon
+bluesploit(auxiliary/ble_rpa_deanon) > set IRK <hex>
+bluesploit(auxiliary/ble_rpa_deanon) > set CANDIDATES candidates.txt
+bluesploit(auxiliary/ble_rpa_deanon) > run
 ```

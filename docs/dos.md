@@ -34,8 +34,8 @@ Denial-of-service / resource-exhaustion modules. Path: `modules/dos/`.
 ## Example
 
 ```text
-bsploit > use dos/bluesmack
-bsploit (dos/bluesmack) > set TARGET AA:BB:CC:DD:EE:FF
-bsploit (dos/bluesmack) > set SIZE 600
-bsploit (dos/bluesmack) > run
+bluesploit > use dos/bluesmack
+bluesploit(dos/bluesmack) > set TARGET AA:BB:CC:DD:EE:FF
+bluesploit(dos/bluesmack) > set SIZE 600
+bluesploit(dos/bluesmack) > run
 ```

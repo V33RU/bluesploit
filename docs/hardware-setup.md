@@ -84,8 +84,8 @@ rfcat -r                  # interactive
 ## Verify everything
 
 ```text
-bsploit > use auxiliary/hw_detect
-bsploit (auxiliary/hw_detect) > run
+bluesploit > use auxiliary/hw_detect
+bluesploit(auxiliary/hw_detect) > run
 ```
 
 Output lists every backend BlueSploit can talk to, plus version strings.

@@ -10,16 +10,16 @@ A 60-second tour: scan → pick a module → run it.
 sudo python3 bluesploit.py
 ```
 
-You'll see the banner and a `bsploit >` prompt.
+You'll see the banner and a `bluesploit >` prompt.
 
 ---
 
 ## 2. Discover nearby devices
 
 ```text
-bsploit > use recon/discovery
-bsploit (recon/discovery) > set DURATION 10
-bsploit (recon/discovery) > run
+bluesploit > use recon/discovery
+bluesploit(recon/discovery) > set DURATION 10
+bluesploit(recon/discovery) > run
 ```
 
 Output lists MAC, name, RSSI, and class-of-device for every responder.
@@ -29,9 +29,9 @@ Output lists MAC, name, RSSI, and class-of-device for every responder.
 ## 3. Fingerprint a target
 
 ```text
-bsploit > use recon/version_fingerprint
-bsploit (recon/version_fingerprint) > set TARGET AA:BB:CC:DD:EE:FF
-bsploit (recon/version_fingerprint) > run
+bluesploit > use recon/version_fingerprint
+bluesploit(recon/version_fingerprint) > set TARGET AA:BB:CC:DD:EE:FF
+bluesploit(recon/version_fingerprint) > run
 ```
 
 This identifies BT version, manufacturer, and likely chipset — useful for matching to known CVEs.
@@ -41,9 +41,9 @@ This identifies BT version, manufacturer, and likely chipset — useful for matc
 ## 4. Scan for known vulns
 
 ```text
-bsploit > use scanners/vuln_scanner
-bsploit (scanners/vuln_scanner) > set TARGET AA:BB:CC:DD:EE:FF
-bsploit (scanners/vuln_scanner) > run
+bluesploit > use scanners/vuln_scanner
+bluesploit(scanners/vuln_scanner) > set TARGET AA:BB:CC:DD:EE:FF
+bluesploit(scanners/vuln_scanner) > run
 ```
 
 The scanner cross-references discovered properties against signatures in `data/signatures/`.
@@ -53,11 +53,11 @@ The scanner cross-references discovered properties against signatures in `data/s
 ## 5. Run an exploit
 
 ```text
-bsploit > use exploits/knob
-bsploit (exploits/knob) > show options
-bsploit (exploits/knob) > set TARGET AA:BB:CC:DD:EE:FF
-bsploit (exploits/knob) > check     # safe pre-flight
-bsploit (exploits/knob) > run
+bluesploit > use exploits/knob
+bluesploit(exploits/knob) > show options
+bluesploit(exploits/knob) > set TARGET AA:BB:CC:DD:EE:FF
+bluesploit(exploits/knob) > check     # safe pre-flight
+bluesploit(exploits/knob) > run
 ```
 
 Use `back` to leave the module, `exit` to quit the console.

@@ -15,9 +15,9 @@ Passive/active vulnerability identification. Path: `modules/scanners/`.
 ## Example
 
 ```text
-bsploit > use scanners/vuln_scanner
-bsploit (scanners/vuln_scanner) > set TARGET AA:BB:CC:DD:EE:FF
-bsploit (scanners/vuln_scanner) > run
+bluesploit > use scanners/vuln_scanner
+bluesploit(scanners/vuln_scanner) > set TARGET AA:BB:CC:DD:EE:FF
+bluesploit(scanners/vuln_scanner) > run
 ```
 
 The scanner reports likely-applicable CVEs and recommends matching modules under `exploits/`.
@@ -29,7 +29,7 @@ The scanner reports likely-applicable CVEs and recommends matching modules under
 `hidden_scanner` performs an inquiry-less sweep — useful when a target has hidden mode enabled. Provide an OUI prefix or a MAC range to bound the search:
 
 ```text
-bsploit (scanners/hidden_scanner) > set OUI 00:1A:7D
-bsploit (scanners/hidden_scanner) > set DURATION 60
-bsploit (scanners/hidden_scanner) > run
+bluesploit(scanners/hidden_scanner) > set OUI 00:1A:7D
+bluesploit(scanners/hidden_scanner) > set DURATION 60
+bluesploit(scanners/hidden_scanner) > run
 ```

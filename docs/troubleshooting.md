@@ -89,8 +89,8 @@ WSL doesn't expose the host radio. Either:
 ## Sniffer dongle not detected
 
 ```text
-bsploit > use auxiliary/hw_detect
-bsploit (auxiliary/hw_detect) > run
+bluesploit > use auxiliary/hw_detect
+bluesploit(auxiliary/hw_detect) > run
 ```
 
 Check the output. If a backend is missing, see the matching section in [Hardware Setup](hardware-setup.md).

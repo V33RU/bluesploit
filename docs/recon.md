@@ -16,21 +16,21 @@ Discovery, fingerprinting, and protocol enumeration. Path: `modules/recon/`.
 ## Typical recon flow
 
 ```text
-bsploit > use recon/discovery
-bsploit (recon/discovery) > set DURATION 15
-bsploit (recon/discovery) > run
+bluesploit > use recon/discovery
+bluesploit(recon/discovery) > set DURATION 15
+bluesploit(recon/discovery) > run
 
-bsploit > use recon/oui_lookup
-bsploit (recon/oui_lookup) > set TARGET AA:BB:CC:DD:EE:FF
-bsploit (recon/oui_lookup) > run
+bluesploit > use recon/oui_lookup
+bluesploit(recon/oui_lookup) > set TARGET AA:BB:CC:DD:EE:FF
+bluesploit(recon/oui_lookup) > run
 
-bsploit > use recon/version_fingerprint
-bsploit (recon/version_fingerprint) > set TARGET AA:BB:CC:DD:EE:FF
-bsploit (recon/version_fingerprint) > run
+bluesploit > use recon/version_fingerprint
+bluesploit(recon/version_fingerprint) > set TARGET AA:BB:CC:DD:EE:FF
+bluesploit(recon/version_fingerprint) > run
 
-bsploit > use recon/gatt_enum
-bsploit (recon/gatt_enum) > set TARGET AA:BB:CC:DD:EE:FF
-bsploit (recon/gatt_enum) > run
+bluesploit > use recon/gatt_enum
+bluesploit(recon/gatt_enum) > set TARGET AA:BB:CC:DD:EE:FF
+bluesploit(recon/gatt_enum) > run
 ```
 
 The output of `version_fingerprint` + `gatt_enum`/`sdp_enum` is what `scanners/vuln_scanner` consumes.

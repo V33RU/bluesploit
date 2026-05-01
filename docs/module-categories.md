@@ -22,9 +22,9 @@ python3 bluesploit.py --list           # CLI: list every module
 In the console:
 
 ```text
-bsploit > show modules         # everything
-bsploit > show exploits        # one category
-bsploit > search rfcomm        # name/description search
+bluesploit > show modules         # everything
+bluesploit > show exploits        # one category
+bluesploit > search rfcomm        # name/description search
 ```
 
 ---

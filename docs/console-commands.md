@@ -44,15 +44,15 @@ The BlueSploit REPL is built on `cmd2` and follows Metasploit/RouterSploit conve
 ## Typical session
 
 ```text
-bsploit > search knob
-bsploit > use exploits/knob
-bsploit (exploits/knob) > show options
-bsploit (exploits/knob) > set TARGET AA:BB:CC:DD:EE:FF
-bsploit (exploits/knob) > set IFACE hci0
-bsploit (exploits/knob) > check
-bsploit (exploits/knob) > run
-bsploit (exploits/knob) > back
-bsploit > exit
+bluesploit > search knob
+bluesploit > use exploits/knob
+bluesploit(exploits/knob) > show options
+bluesploit(exploits/knob) > set TARGET AA:BB:CC:DD:EE:FF
+bluesploit(exploits/knob) > set IFACE hci0
+bluesploit(exploits/knob) > check
+bluesploit(exploits/knob) > run
+bluesploit(exploits/knob) > back
+bluesploit > exit
 ```
 
 ---
