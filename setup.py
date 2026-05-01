@@ -27,23 +27,25 @@ if readme_path.exists():
 #   BTLEJack       → flash BTLEJack firmware to micro:bit
 #   YARD Stick One → pip install git+https://github.com/atlas0fd00m/rfcat.git
 install_requires = [
+    # ── Cross-platform (Linux + macOS) ──────────────────────────────────
     # Core BLE
     "bleak>=0.21.0",               # BLE scanning + GATT (cross-platform)
-    # Bluetooth Classic (BR/EDR)
-    "pybluez2>=0.46",              # L2CAP / RFCOMM / HCI sockets
     # Packet crafting & crypto
     "scapy>=2.5.0",                # BT/BLE frame construction + injection
     "cryptography>=41.0.0",        # Key derivation (E0/E3), AES analysis
-    # BLE low-level
-    "bluepy>=1.3.0",               # Raw BLE + GATT handle access (Linux)
     # Hardware dongles
     "pyserial>=3.5",               # nRF Sniffer, BTLEJack, YARD Stick One
-    "btlejack>=1.2",               # BLE connection hijacking (micro:bit)
     # UI
     "rich>=13.0.0",                # Colour tables, progress bars
     "cmd2>=2.4.0",                 # Advanced REPL (history, scripting)
     # Async
     "asyncio-dgram>=2.1.1",        # Async UDP/datagram support
+
+    # ── Linux-only (HCI sockets, BlueZ) ─────────────────────────────────
+    # These wheels/sdists fail to build on macOS — gate on platform.
+    'pybluez2>=0.46;       sys_platform == "linux"',  # L2CAP/RFCOMM/HCI sockets
+    'bluepy>=1.3.0;        sys_platform == "linux"',  # Raw BLE + GATT (Linux)
+    'btlejack>=1.2;        sys_platform == "linux"',  # BLE conn hijacking (micro:bit)
 ]
 
 extras_require = {
