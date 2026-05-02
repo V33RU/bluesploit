@@ -51,14 +51,26 @@ else
     echo -e "${YELLOW}[!] sudo not found and not running as root — system-package installs may fail${NC}"
 fi
 
+# Check if Bluetooth dev headers are already present so we can skip apt
+deps_already_present() {
+    if [ -f /usr/include/bluetooth/bluetooth.h ] && command -v hcitool >/dev/null 2>&1; then
+        return 0
+    fi
+    return 1
+}
+
 # Install system dependencies based on OS / package manager
 install_system_deps() {
+    if deps_already_present; then
+        echo -e "${GREEN}[+] System Bluetooth deps already present — skipping apt${NC}"
+        return 0
+    fi
     echo -e "${YELLOW}[*] Installing system dependencies...${NC}"
 
     if [ "$OS" = "Linux" ]; then
         if command -v apt-get >/dev/null 2>&1; then
             # Debian / Ubuntu / Kali / Mint / Pop!_OS
-            $SUDO apt-get update
+            $SUDO apt-get update || true
             $SUDO apt-get install -y bluetooth bluez libbluetooth-dev python3-dev \
                 libglib2.0-dev pkg-config build-essential
         elif command -v dnf >/dev/null 2>&1; then
@@ -163,9 +175,58 @@ PIP="python3 -m pip"
 PIP_FLAGS=""
 if ! python3 -c 'import sys; sys.exit(0 if sys.prefix != sys.base_prefix else 1)' 2>/dev/null; then
     if python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3,11) else 1)' 2>/dev/null; then
-        PIP_FLAGS="--break-system-packages"
+        # --break-system-packages: bypass PEP 668 lock
+        # --ignore-installed:      skip uninstall of apt-managed packages that
+        #                          have no RECORD file (rich, scapy, cryptography
+        #                          on Debian/Ubuntu are commonly apt-installed)
+        # --user:                  install into ~/.local so we don't need to
+        #                          touch system dirs
+        PIP_FLAGS="--break-system-packages --ignore-installed --user"
     fi
 fi
+
+# Robust pybluez install — pybluez2 0.46 sdist on PyPI ships broken
+# (missing btmodule.h header → fails to build). Try sources in order.
+install_pybluez() {
+    if [ "$OS" != "Linux" ]; then
+        echo -e "${YELLOW}[!] Classic BT (pybluez) only supported on Linux${NC}"
+        return 0
+    fi
+    echo -e "${YELLOW}[*] Installing pybluez (Classic BT bindings)...${NC}"
+
+    # Source 1: maintained pybluez fork on GitHub (Python 3.12 compatible)
+    if $PIP install $PIP_FLAGS "git+https://github.com/pybluez/pybluez.git#egg=pybluez" 2>/dev/null; then
+        echo -e "${GREEN}[+] pybluez installed from GitHub fork${NC}"
+        return 0
+    fi
+
+    # Source 2: pinned older pybluez2 release (0.30 still builds cleanly)
+    if $PIP install $PIP_FLAGS "pybluez2==0.30" 2>/dev/null; then
+        echo -e "${GREEN}[+] pybluez2 0.30 installed (pinned working version)${NC}"
+        return 0
+    fi
+
+    # Source 3: latest pybluez2 (may fail on 0.46 — known broken)
+    if $PIP install $PIP_FLAGS pybluez2 2>/dev/null; then
+        echo -e "${GREEN}[+] pybluez2 latest installed${NC}"
+        return 0
+    fi
+
+    # Source 4: system package (apt) — install at OS level
+    if command -v apt-get >/dev/null 2>&1; then
+        echo -e "${YELLOW}[*] All pip sources failed — falling back to apt python3-bluez${NC}"
+        if $SUDO apt-get install -y python3-bluez 2>/dev/null; then
+            echo -e "${GREEN}[+] python3-bluez installed via apt${NC}"
+            echo -e "${YELLOW}[!] You may need 'python3 -m venv --system-site-packages env' to use it${NC}"
+            return 0
+        fi
+    fi
+
+    echo -e "${RED}[!] pybluez install failed via all sources${NC}"
+    echo -e "${YELLOW}    Classic BT modules (RFCOMM/L2CAP) will be unavailable${NC}"
+    echo -e "${YELLOW}    BLE modules will still work via bleak${NC}"
+    return 1
+}
 
 case $INSTALL_TYPE in
     basic)
@@ -174,10 +235,7 @@ case $INSTALL_TYPE in
     full)
         $PIP install $PIP_FLAGS -r requirements.txt
         $PIP install $PIP_FLAGS rich cmd2 scapy
-        if [ "$OS" = "Linux" ]; then
-            $PIP install $PIP_FLAGS pybluez2 || \
-                echo -e "${YELLOW}[!] pybluez2 install failed — Classic BT will be unavailable${NC}"
-        fi
+        install_pybluez
         ;;
     dev)
         $PIP install $PIP_FLAGS -r requirements.txt
@@ -185,12 +243,7 @@ case $INSTALL_TYPE in
         ;;
     classic)
         $PIP install $PIP_FLAGS -r requirements.txt
-        if [ "$OS" = "Linux" ]; then
-            $PIP install $PIP_FLAGS pybluez2 || \
-                echo -e "${YELLOW}[!] pybluez2 install failed${NC}"
-        else
-            echo -e "${YELLOW}[!] Classic BT (pybluez2) only supported on Linux${NC}"
-        fi
+        install_pybluez
         ;;
 esac
 
