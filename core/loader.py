@@ -93,7 +93,12 @@ class ModuleLoader:
         if module_path not in self._index:
             # Try partial match
             matches = [p for p in self._index.keys() if module_path in p]
-            if len(matches) == 1:
+
+            # Prefer exact basename match (e.g. "vuln_scan" → "scanners/vuln_scan")
+            exact_basename = [p for p in matches if p.split("/")[-1] == module_path]
+            if len(exact_basename) == 1:
+                module_path = exact_basename[0]
+            elif len(matches) == 1:
                 module_path = matches[0]
             elif len(matches) > 1:
                 print(f"[\033[93m!\033[0m] Ambiguous module path. Matches:")
