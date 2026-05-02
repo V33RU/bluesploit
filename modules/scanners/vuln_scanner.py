@@ -506,9 +506,9 @@ class Module(ScannerModule):
                 score += 20
                 matches.append(f"Missing protection: {feat}")
         
-        # Minimum score threshold
-        vulnerable = score >= 30 or (not target_os and not target_mfg and score > 0)
-        
+        # Score threshold — raised from 30→50 to suppress weak fingerprint matches
+        # that were producing false positives (single service match was firing alone).
+        vulnerable = score >= 50
         return vulnerable, score, matches
     
     def _print_results(self, target: str, device_info: Dict,
@@ -554,6 +554,9 @@ class Module(ScannerModule):
         if vulnerabilities:
             print(f"\n  {C.BOLD}POTENTIAL VULNERABILITIES{C.RESET}")
             print(f"  {C.CYAN}{'-'*75}{C.RESET}")
+            print(f"  {C.YELLOW}Note: findings below are FINGERPRINT-BASED predictions,{C.RESET}")
+            print(f"  {C.YELLOW}      not verified exploits. Run the suggested exploits/{C.RESET}")
+            print(f"  {C.YELLOW}      module to actively confirm before reporting.{C.RESET}")
             
             for vuln in sorted(vulnerabilities, key=lambda x: -x['score']):
                 cve = vuln['cve']
@@ -574,9 +577,17 @@ class Module(ScannerModule):
                     color = C.WHITE
                     icon = "⚪"
                 
+                # Map score → confidence tier so users don't treat 50% as proof
+                if score >= 80:
+                    tier = f"{C.RED}CONFIRMED{C.RESET}"
+                elif score >= 65:
+                    tier = f"{C.YELLOW}LIKELY{C.RESET}"
+                else:
+                    tier = f"{C.BLUE}POSSIBLE{C.RESET}"
+
                 print(f"\n  {icon} {color}{C.BOLD}{cve}{C.RESET} - {name}")
                 print(f"     Severity   : {color}{severity}{C.RESET} (CVSS: {vuln.get('cvss', 'N/A')})")
-                print(f"     Confidence : {score}%")
+                print(f"     Confidence : {tier} ({score}%)")
                 print(f"     Description: {vuln['description']}")
                 
                 if vuln['matches']:
