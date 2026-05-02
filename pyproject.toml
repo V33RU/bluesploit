@@ -9,10 +9,10 @@ description = "Bluetooth Exploitation Framework for Security Researchers"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
-    {name = "v33ru"}
+    {name = "Mr-IoT"}
 ]
 maintainers = [
-    {name = "v33ru"}
+    {name = "Mr-IoT"}
 ]
 requires-python = ">=3.8"
 keywords = [
@@ -77,10 +77,10 @@ bluesploit = "bluesploit:main"
 bsploit = "bluesploit:main"
 
 [project.urls]
-Homepage = "https://github.com/v33ru/bluesploit"
-Documentation = "https://github.com/v33ru/bluesploit/wiki"
-Repository = "https://github.com/v33ru/bluesploit"
-Issues = "https://github.com/v33ru/bluesploit/issues"
+Homepage = "https://github.com/Mr-IoT/bluesploit"
+Documentation = "https://github.com/Mr-IoT/bluesploit/wiki"
+Repository = "https://github.com/Mr-IoT/bluesploit"
+Issues = "https://github.com/Mr-IoT/bluesploit/issues"
 
 [tool.setuptools]
 packages = ["bluesploit", "bluesploit.core", "bluesploit.core.utils", "bluesploit.modules"]

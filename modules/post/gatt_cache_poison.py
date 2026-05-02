@@ -118,7 +118,7 @@ class Module(AuxiliaryModule):
             "Manipulate persistent GATT service cache on a bonded peer to "
             "redirect reads/writes to attacker-controlled handles"
         ),
-        author=["v33ru"],
+        author=["BlueSploit"],
         protocol=BTProtocol.BLE,
         severity=Severity.HIGH,
         cve=None,

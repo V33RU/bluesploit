@@ -1,8 +1,8 @@
 site_name: BlueSploit
 site_description: Bluetooth Exploitation Framework for Security Researchers
-site_url: https://v33ru.github.io/bluesploit/
-repo_url: https://github.com/v33ru/bluesploit
-repo_name: v33ru/bluesploit
+site_url: https://Mr-IoT.github.io/bluesploit/
+repo_url: https://github.com/Mr-IoT/bluesploit
+repo_name: Mr-IoT/bluesploit
 edit_uri: edit/main/docs/
 copyright: BlueSploit · MIT License · For authorized security research only
 
@@ -69,7 +69,7 @@ plugins:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/v33ru/bluesploit
+      link: https://github.com/Mr-IoT/bluesploit
     - icon: fontawesome/brands/twitter
       link: https://twitter.com/
 

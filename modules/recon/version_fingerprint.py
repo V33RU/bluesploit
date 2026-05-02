@@ -5,7 +5,6 @@ Bluetooth Device OS/Firmware Fingerprinting
 Identifies the operating system, firmware version, and device type
 through Bluetooth protocol analysis and feature enumeration.
 
-Author: v33ru
 """
 
 import subprocess
@@ -210,7 +209,7 @@ class Module(ScannerModule):
     info = ModuleInfo(
         name="scanners/version_fingerprint",
         description="Bluetooth Device OS/Firmware Fingerprinting",
-        author=["v33ru"],
+        author=["BlueSploit"],
         protocol=BTProtocol.BOTH,
         severity=Severity.INFO,
         references=[

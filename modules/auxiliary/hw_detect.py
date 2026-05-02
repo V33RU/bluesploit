@@ -86,7 +86,7 @@ class Module(AuxiliaryModule):
     info = ModuleInfo(
         name="auxiliary/hw_detect",
         description="Detect connected Bluetooth testing hardware and check dependencies",
-        author=["v33ru"],
+        author=["BlueSploit"],
         protocol=BTProtocol.DUAL,
         severity=Severity.INFO,
         references=[

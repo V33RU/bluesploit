@@ -5,7 +5,6 @@ Bluetooth denial of service via RFCOMM channel flooding
 Opens multiple RFCOMM connections to exhaust target's
 connection pool and resources.
 
-Author: v33ru
 """
 
 import time
@@ -43,7 +42,7 @@ class Module(ExploitModule):
     info = ModuleInfo(
         name="exploits/dos/classic/rfcomm_flood",
         description="RFCOMM Connection Exhaustion DoS Attack",
-        author=["v33ru"],
+        author=["BlueSploit"],
         protocol=BTProtocol.CLASSIC,
         severity=Severity.MEDIUM,
         references=[

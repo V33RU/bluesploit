@@ -3,7 +3,6 @@ BlueSploit Module: SDP Service Enumerator
 Advanced SDP (Service Discovery Protocol) enumeration for Bluetooth Classic devices
 Uses sdptool from BlueZ stack
 
-Author: v33ru
 """
 
 import subprocess
@@ -153,7 +152,7 @@ class Module(ScannerModule):
     info = ModuleInfo(
         name="scanners/classic/sdp_enum",
         description="Enumerate SDP services on Bluetooth Classic devices",
-        author=["v33ru"],
+        author=["BlueSploit"],
         protocol=BTProtocol.CLASSIC,
         severity=Severity.INFO,
         references=[

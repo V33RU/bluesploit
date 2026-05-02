@@ -5,7 +5,6 @@ Bluetooth denial of service via SDP query flooding
 Floods target with SDP service search requests to overwhelm
 the SDP server and cause resource exhaustion.
 
-Author: v33ru
 """
 
 import time
@@ -70,7 +69,7 @@ class Module(ExploitModule):
     info = ModuleInfo(
         name="exploits/dos/classic/sdp_flood",
         description="SDP Service Discovery Flood DoS Attack",
-        author=["v33ru"],
+        author=["BlueSploit"],
         protocol=BTProtocol.CLASSIC,
         severity=Severity.MEDIUM,
         references=[

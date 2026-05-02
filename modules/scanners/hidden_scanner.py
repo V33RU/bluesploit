@@ -6,7 +6,6 @@ Detects Bluetooth devices that have disabled discovery mode
 using various techniques including direct connection attempts,
 name requests, and BD_ADDR brute-forcing.
 
-Author: v33ru
 """
 
 import subprocess
@@ -107,7 +106,7 @@ class Module(ScannerModule):
     info = ModuleInfo(
         name="scanners/hidden_scanner",
         description="Find Non-Discoverable Bluetooth Devices",
-        author=["v33ru"],
+        author=["BlueSploit"],
         protocol=BTProtocol.BOTH,
         severity=Severity.INFO,
         cve=["CVE-2022-24695"],

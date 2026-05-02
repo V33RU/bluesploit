@@ -63,7 +63,7 @@ class Module(ScannerModule):
     info = ModuleInfo(
         name="scanners/ble/gatt_enum",
         description="Enumerate GATT services and characteristics",
-        author=["v33ru"],
+        author=["BlueSploit"],
         protocol=BTProtocol.BLE,
         severity=Severity.INFO,
         references=["https://www.bluetooth.com/specifications/gatt/"]

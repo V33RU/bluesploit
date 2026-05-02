@@ -63,7 +63,7 @@ class Module(ExploitModule):
     info = ModuleInfo(
         name="exploits/classic/l2ping_flood",
         description="L2CAP ping flood DoS attack (BlueSmack)",
-        author=["v33ru"],
+        author=["BlueSploit"],
         protocol=BTProtocol.CLASSIC,
         severity=Severity.HIGH,
         references=[

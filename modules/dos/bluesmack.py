@@ -5,7 +5,6 @@ Classic Bluetooth denial of service via L2CAP echo requests
 Sends large L2CAP echo requests to overwhelm target device's
 Bluetooth stack, causing high CPU usage, battery drain, or crashes.
 
-Author: v33ru
 """
 
 import struct
@@ -50,7 +49,7 @@ class Module(ExploitModule):
     info = ModuleInfo(
         name="exploits/dos/classic/bluesmack",
         description="BlueSmack - L2CAP Echo Flood DoS Attack",
-        author=["v33ru"],
+        author=["BlueSploit"],
         protocol=BTProtocol.CLASSIC,
         severity=Severity.MEDIUM,
         references=[

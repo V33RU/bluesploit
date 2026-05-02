@@ -12,7 +12,6 @@ By crafting concurrent, conflicting state-change events from the remote side,
 an attacker can freeze the RFCOMM worker thread, rendering all Bluetooth
 RFCOMM functionality unavailable (system-level DoS).
 
-Author: v33ru
 CVE: CVE-2024-50044
 CWE: CWE-833 (Deadlock)
 """
@@ -77,7 +76,7 @@ class Module(ExploitModule):
             "Triggers kernel RFCOMM worker thread deadlock via concurrent "
             "conflicting state-change events (CVE-2024-50044)"
         ),
-        author=["v33ru"],
+        author=["BlueSploit"],
         protocol=BTProtocol.CLASSIC,
         severity=Severity.HIGH,
         cve=["CVE-2024-50044"],

@@ -99,7 +99,7 @@ Check the output. If a backend is missing, see the matching section in [Hardware
 
 ## Still stuck?
 
-Open an issue: <https://github.com/v33ru/bluesploit/issues> with:
+Open an issue: <https://github.com/Mr-IoT/bluesploit/issues> with:
 - OS + version
 - `python3 --version`
 - `pip list | grep -E 'bleak|pybluez|bluepy|btlejack|scapy'`

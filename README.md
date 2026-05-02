@@ -315,7 +315,7 @@ bluesploit/
 
 ## Author
 
-**v33ru** / Mr-IoT
+**Mr-IoT** / Mr-IoT
 
 ---
 

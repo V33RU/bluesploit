@@ -1,7 +1,7 @@
 """
 BlueSploit UI: Themes System
 
-Author: v33ru
+Author: Mr-IoT
 """
 
 from dataclasses import dataclass

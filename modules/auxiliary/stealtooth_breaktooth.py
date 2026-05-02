@@ -104,7 +104,7 @@ class Module(AuxiliaryModule):
             "Infer BT session state via l2ping RTT timing without pairing; "
             "auto-trigger re-pair injection on state drop (arxiv 2507.00847)"
         ),
-        author=["v33ru"],
+        author=["BlueSploit"],
         protocol=BTProtocol.CLASSIC,
         severity=Severity.HIGH,
         cve=None,

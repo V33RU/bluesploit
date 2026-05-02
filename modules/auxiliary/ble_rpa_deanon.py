@@ -94,7 +94,7 @@ class Module(AuxiliaryModule):
             "Exploit BLE RPA response side-channel to track and de-anonymize "
             "devices across address rotations without knowing their IRK"
         ),
-        author=["v33ru"],
+        author=["BlueSploit"],
         protocol=BTProtocol.BLE,
         severity=Severity.MEDIUM,
         cve=["CVE-2020-35473"],

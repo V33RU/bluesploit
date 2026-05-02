@@ -38,7 +38,7 @@ class Module(ScannerModule):
     info = ModuleInfo(
         name="scanners/ble/discovery",
         description="Discover nearby BLE devices",
-        author=["v33ru"],
+        author=["BlueSploit"],
         protocol=BTProtocol.BLE,
         severity=Severity.INFO,
         references=[

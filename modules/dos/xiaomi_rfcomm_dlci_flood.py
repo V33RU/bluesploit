@@ -8,7 +8,6 @@ RFCOMM DLCI 0 (the multiplexer control channel) with connection requests
 faster than the firmware can process them. The firmware lacks proper rate
 limiting and connection queue management, causing a firmware crash and DoS.
 
-Author: v33ru
 CVE: CVE-2025-13328
 CWE: CWE-400 (Uncontrolled Resource Consumption)
 """
@@ -77,7 +76,7 @@ class Module(ExploitModule):
             "Firmware crash via RFCOMM DLCI 0 resource exhaustion "
             "on Xiaomi Redmi Buds (CVE-2025-13328)"
         ),
-        author=["v33ru"],
+        author=["BlueSploit"],
         protocol=BTProtocol.CLASSIC,
         severity=Severity.MEDIUM,
         cve=["CVE-2025-13328"],

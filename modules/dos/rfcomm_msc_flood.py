@@ -19,7 +19,6 @@ This is distinct from CVE-2024-50044 (ABBA deadlock) — it is a pure
 throughput / processing-overload attack not tied to any specific kernel
 version or Linux-only code path.
 
-Author: v33ru
 CWE: CWE-400 (Uncontrolled Resource Consumption)
 """
 
@@ -93,7 +92,7 @@ class Module(ExploitModule):
             "High-rate MSC frame flood across HFP and auxiliary RFCOMM channels "
             "causing resource exhaustion DoS (2025)"
         ),
-        author=["v33ru"],
+        author=["BlueSploit"],
         protocol=BTProtocol.CLASSIC,
         severity=Severity.MEDIUM,
         cve=[],

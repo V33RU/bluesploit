@@ -5,7 +5,6 @@ Automatic Bluetooth CVE Detection
 Automatically scans devices and identifies potential vulnerabilities
 based on device characteristics, OS fingerprint, and feature analysis.
 
-Author: v33ru
 """
 
 import subprocess
@@ -267,7 +266,7 @@ class Module(ScannerModule):
     info = ModuleInfo(
         name="scanners/vuln_scanner",
         description="Automatic Bluetooth Vulnerability Detection",
-        author=["v33ru"],
+        author=["BlueSploit"],
         protocol=BTProtocol.BOTH,
         severity=Severity.INFO,
         references=[

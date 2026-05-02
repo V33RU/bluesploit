@@ -72,7 +72,7 @@ class Module(DosModule):
             "Radio-layer denial of Bluetooth/BLE channels via Ubertooth, HackRF, "
             "or KillerBee — kills connections and prevents new pairings"
         ),
-        author=["v33ru"],
+        author=["BlueSploit"],
         protocol=BTProtocol.BOTH,
         severity=Severity.HIGH,
         cve=None,

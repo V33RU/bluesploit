@@ -3,7 +3,7 @@
 BlueSploit - Bluetooth Exploitation Framework
 A Metasploit/RouterSploit-style framework for Bluetooth security testing
 
-Author: v33ru (Mr-IoT)
+Author: Mr-IoT (Mr-IoT)
 License: MIT
 
 Usage:

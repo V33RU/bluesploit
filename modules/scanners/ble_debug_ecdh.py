@@ -86,7 +86,7 @@ class Module(ScannerModule):
             "Detect Bluetooth devices that use the published BT SIG debug "
             "ECDH key pair — production-broken Secure Connections"
         ),
-        author=["v33ru"],
+        author=["BlueSploit"],
         protocol=BTProtocol.BLE,
         severity=Severity.HIGH,
         cve=None,

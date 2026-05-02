@@ -3,7 +3,6 @@ BlueSploit Module: BLE Vulnerability Scanner
 Auto-detect BLE vulnerabilities including unauthenticated writes,
 weak pairing, information disclosure, and known CVEs
 
-Author: v33ru
 """
 
 import asyncio
@@ -124,7 +123,7 @@ class Module(ScannerModule):
     info = ModuleInfo(
         name="scanners/ble_vuln_scan",
         description="BLE GATT vulnerability scanner — unauth writes, info leaks, sensitive UUIDs",
-        author=["v33ru"],
+        author=["BlueSploit"],
         protocol=BTProtocol.BLE,
         severity=Severity.HIGH,
         references=[

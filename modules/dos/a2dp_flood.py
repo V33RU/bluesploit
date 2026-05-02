@@ -84,7 +84,7 @@ class Module(DosModule):
             "Flood Bluetooth audio devices by opening and abandoning "
             "AVDTP signaling connections, disrupting audio streaming"
         ),
-        author=["v33ru"],
+        author=["BlueSploit"],
         protocol=BTProtocol.CLASSIC,
         severity=Severity.HIGH,
         cve=None,

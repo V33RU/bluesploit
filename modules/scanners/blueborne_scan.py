@@ -10,7 +10,6 @@ CVE-2017-1000251 - Linux RCE (BlueZ)
 CVE-2017-1000250 - Linux Info Leak
 CVE-2017-8628 - Windows MitM
 
-Author: v33ru
 """
 
 import subprocess
@@ -384,7 +383,7 @@ class Module(ScannerModule):
     info = ModuleInfo(
         name="scanners/classic/blueborne_scan",
         description="Scan for BlueBorne vulnerable devices (CVE-2017-*)",
-        author=["v33ru"],
+        author=["BlueSploit"],
         protocol=BTProtocol.CLASSIC,
         severity=Severity.HIGH,
         references=[

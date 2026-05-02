@@ -124,7 +124,7 @@ class Module(ExploitModule):
             "Inject stolen link key, evict the legitimate peer, "
             "and hijack the RFCOMM session"
         ),
-        author=["v33ru"],
+        author=["BlueSploit"],
         protocol=BTProtocol.CLASSIC,
         severity=Severity.CRITICAL,
         cve=None,

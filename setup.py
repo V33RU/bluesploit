@@ -63,16 +63,16 @@ extras_require = {
 setup(
     name="bluesploit",
     version="1.0.0",
-    author="v33ru",
-    author_email="v33ru@mr-iot.dev",
+    author="Mr-IoT",
+    author_email="Mr-IoT@mr-iot.dev",
     description="Bluetooth Exploitation Framework for Security Researchers",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/v33ru/bluesploit",
+    url="https://github.com/Mr-IoT/bluesploit",
     project_urls={
-        "Bug Tracker":    "https://github.com/v33ru/bluesploit/issues",
-        "Documentation":  "https://github.com/v33ru/bluesploit/wiki",
-        "Source":         "https://github.com/v33ru/bluesploit",
+        "Bug Tracker":    "https://github.com/Mr-IoT/bluesploit/issues",
+        "Documentation":  "https://github.com/Mr-IoT/bluesploit/wiki",
+        "Source":         "https://github.com/Mr-IoT/bluesploit",
     },
 
     # Package discovery

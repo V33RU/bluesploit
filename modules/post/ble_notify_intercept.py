@@ -62,7 +62,7 @@ class Module(AuxiliaryModule):
             "Subscribe to all BLE notify/indicate characteristics "
             "and capture live data streams"
         ),
-        author=["v33ru"],
+        author=["BlueSploit"],
         protocol=BTProtocol.BLE,
         severity=Severity.HIGH,
         cve=None,

@@ -71,7 +71,7 @@ class Module(ScannerModule):
     info = ModuleInfo(
         name="scanners/ble/adv_parser",
         description="Deep BLE advertisement data analysis",
-        author=["v33ru"],
+        author=["BlueSploit"],
         protocol=BTProtocol.BLE,
         severity=Severity.INFO,
         references=["https://www.bluetooth.com/specifications/assigned-numbers/"]

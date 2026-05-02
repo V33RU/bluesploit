@@ -85,7 +85,7 @@ class Module(AuxiliaryModule):
     info = ModuleInfo(
         name="BLE GATT Data Exfiltration",
         description="Read all GATT characteristics from a BLE device and exfiltrate data",
-        author=["v33ru"],
+        author=["BlueSploit"],
         protocol=BTProtocol.BLE,
         severity=Severity.HIGH,
         cve=None,

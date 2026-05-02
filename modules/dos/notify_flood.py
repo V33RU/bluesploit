@@ -5,7 +5,6 @@ Bluetooth Low Energy denial of service via notification subscription spam
 Subscribes to all notify characteristics and floods the target
 with rapid read/write requests to exhaust resources.
 
-Author: v33ru
 """
 
 import asyncio
@@ -48,7 +47,7 @@ class Module(ExploitModule):
     info = ModuleInfo(
         name="exploits/dos/ble/notify_flood",
         description="BLE Notification/GATT Flood DoS Attack",
-        author=["v33ru"],
+        author=["BlueSploit"],
         protocol=BTProtocol.BLE,
         severity=Severity.MEDIUM,
         references=[

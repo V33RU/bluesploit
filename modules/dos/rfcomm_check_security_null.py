@@ -8,7 +8,6 @@ dereferences the sk->sk_state_change function pointer without verifying
 that the pointer is valid when called from an abnormal context (e.g.,
 during connection setup when the security callback is not yet initialized).
 
-Author: v33ru
 CVE: CVE-2024-26903
 CWE: CWE-476 (NULL Pointer Dereference)
 """
@@ -66,7 +65,7 @@ class Module(ExploitModule):
             "Remote kernel NULL pointer dereference in rfcomm_check_security() "
             "(CVE-2024-26903) — no authentication required"
         ),
-        author=["v33ru"],
+        author=["BlueSploit"],
         protocol=BTProtocol.CLASSIC,
         severity=Severity.HIGH,
         cve=["CVE-2024-26903"],

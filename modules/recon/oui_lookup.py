@@ -5,7 +5,6 @@ Bluetooth MAC Address Manufacturer Identification
 Looks up device manufacturer from BD_ADDR OUI (first 3 bytes)
 and provides detailed vendor information.
 
-Author: v33ru
 """
 
 import re
@@ -358,7 +357,7 @@ class Module(ScannerModule):
     info = ModuleInfo(
         name="scanners/oui_lookup",
         description="Bluetooth MAC Address OUI Manufacturer Lookup",
-        author=["v33ru"],
+        author=["BlueSploit"],
         protocol=BTProtocol.BOTH,
         severity=Severity.INFO,
         references=[
