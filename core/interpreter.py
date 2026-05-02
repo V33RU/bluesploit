@@ -50,6 +50,22 @@ class BlueSploitInterpreter(cmd.Cmd):
             readline.read_history_file(self.history_file)
         except FileNotFoundError:
             pass
+        # Bind tab to completion (libedit on macOS, GNU readline elsewhere)
+        try:
+            if "libedit" in readline.__doc__:
+                readline.parse_and_bind("bind ^I rl_complete")
+            else:
+                readline.parse_and_bind("tab: complete")
+        except Exception:
+            pass
+        # Treat '/' and '-' as part of words so module paths complete correctly
+        try:
+            delims = readline.get_completer_delims()
+            for ch in "/-":
+                delims = delims.replace(ch, "")
+            readline.set_completer_delims(delims)
+        except Exception:
+            pass
 
     def _save_history(self) -> None:
         """Save command history to file"""
@@ -126,11 +142,18 @@ class BlueSploitInterpreter(cmd.Cmd):
             print_error(f"Module not found: {module_path}")
 
     def complete_use(self, text: str, line: str, begidx: int, endidx: int) -> List[str]:
-        """Tab completion for use command"""
+        """Tab completion for use command — matches full path or basename."""
         modules = self.loader.list_all()
-        if text:
+        if not text:
+            return modules
+        # If text contains '/', match against full path prefix
+        if "/" in text:
             return [m for m in modules if m.startswith(text)]
-        return modules
+        # Otherwise match basename prefix OR substring anywhere
+        prefix_hits = [m for m in modules if m.split("/")[-1].startswith(text)]
+        if prefix_hits:
+            return prefix_hits
+        return [m for m in modules if text in m]
 
     def do_back(self, _: str) -> None:
         """Unload current module and return to main context"""

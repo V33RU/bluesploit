@@ -161,7 +161,7 @@ class Module(ExploitModule):
         # Print attack info
         C = Colors
         print(f"\n  {C.RED}╔{'═'*60}╗{C.RESET}")
-        print(f"  {C.RED}║{C.RESET} {C.BOLD}BlueSmack - L2CAP Echo Flood DoS{C.RESET}                        {C.RED}║{C.RESET}")
+        print(f"  {C.RED}║{C.RESET} {C.BOLD}BlueSmack - L2CAP Echo Flood DoS{C.RESET}                           {C.RED}║{C.RESET}")
         print(f"  {C.RED}╚{'═'*60}╝{C.RESET}\n")
         
         print_info(f"Target      : {target}")

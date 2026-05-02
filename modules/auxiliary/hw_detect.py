@@ -272,7 +272,7 @@ class Module(AuxiliaryModule):
 
         C = Colors
         print(f"\n  {C.CYAN}╔{'═'*68}╗{C.RESET}")
-        print(f"  {C.CYAN}║{C.RESET} {C.BOLD}BlueSploit Hardware Detector{C.RESET}                                    {C.CYAN}║{C.RESET}")
+        print(f"  {C.CYAN}║{C.RESET} {C.BOLD}BlueSploit Hardware Detector{C.RESET}                                       {C.CYAN}║{C.RESET}")
         print(f"  {C.CYAN}╚{'═'*68}╝{C.RESET}\n")
 
         print_info("Scanning for connected Bluetooth testing hardware...")

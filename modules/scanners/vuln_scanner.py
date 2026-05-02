@@ -629,7 +629,7 @@ class Module(ScannerModule):
         
         C = Colors
         print(f"\n  {C.RED}╔{'═'*60}╗{C.RESET}")
-        print(f"  {C.RED}║{C.RESET} {C.BOLD}Bluetooth Vulnerability Scanner{C.RESET}                         {C.RED}║{C.RESET}")
+        print(f"  {C.RED}║{C.RESET} {C.BOLD}Bluetooth Vulnerability Scanner{C.RESET}                            {C.RED}║{C.RESET}")
         print(f"  {C.RED}╚{'═'*60}╝{C.RESET}")
         
         print_info(f"Target: {target}")

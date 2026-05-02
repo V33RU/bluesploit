@@ -551,7 +551,7 @@ class Module(ScannerModule):
         
         C = Colors
         print(f"\n  {C.CYAN}╔{'═'*55}╗{C.RESET}")
-        print(f"  {C.CYAN}║{C.RESET} {C.BOLD}OUI Manufacturer Lookup{C.RESET}                              {C.CYAN}║{C.RESET}")
+        print(f"  {C.CYAN}║{C.RESET} {C.BOLD}OUI Manufacturer Lookup{C.RESET}                               {C.CYAN}║{C.RESET}")
         print(f"  {C.CYAN}╚{'═'*55}╝{C.RESET}")
         
         print_info(f"Looking up {len(valid_addresses)} address(es)...")

@@ -196,7 +196,7 @@ class Module(AuxiliaryModule):
 
         C = Colors
         print(f"\n  {C.RED}╔{'═'*58}╗{C.RESET}")
-        print(f"  {C.RED}║{C.RESET} {C.BOLD}GATT Service Cache Poisoning{C.RESET}                          {C.RED}║{C.RESET}")
+        print(f"  {C.RED}║{C.RESET} {C.BOLD}GATT Service Cache Poisoning{C.RESET}                             {C.RED}║{C.RESET}")
         print(f"  {C.RED}╚{'═'*58}╝{C.RESET}\n")
 
         print_info(f"Mode        : {mode}")
