@@ -23,7 +23,14 @@ bleak>=0.21.0                  # BLE scanning + GATT (cross-platform)
 # ── Bluetooth Classic (BR/EDR) ────────────────────────────────────────
 # Modules: bluebugging, bluesnarfing, bluefrag, knob, bias, badchoice,
 #          badkarma, blueborne_*, braktooth, bluffs, keystroke_injection
-pybluez2>=0.46                 # L2CAP / RFCOMM / HCI sockets
+#
+# NOTE: pybluez2 0.46 sdist on PyPI is broken (missing btmodule.h header).
+# If the line below fails, run ./install.sh --classic — it falls back to
+# the maintained pybluez GitHub fork or apt python3-bluez automatically.
+# Manual fix:
+#   sudo apt install libbluetooth-dev bluez build-essential
+#   pip install git+https://github.com/pybluez/pybluez.git#egg=pybluez
+# pybluez2>=0.46               # DISABLED — broken sdist; installed via install.sh
 
 # ── Packet Crafting & Crypto ──────────────────────────────────────────
 scapy>=2.5.0                   # BT/BLE frame construction + injection
