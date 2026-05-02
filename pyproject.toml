@@ -46,18 +46,18 @@ dependencies = [
     "cmd2>=2.4.0",
     "asyncio-dgram>=2.1.1",
     # Linux-only Classic BT / raw BLE — gated by platform marker
-    'pybluez2>=0.46; sys_platform == "linux"',
+    # 'pybluez2>=0.46; sys_platform == "linux"',  # broken sdist; install.sh handles it
     'bluepy>=1.3.0;  sys_platform == "linux"',
     'btlejack>=1.2;  sys_platform == "linux"',
 ]
 
 [project.optional-dependencies]
 classic = [
-    'pybluez2>=0.46; sys_platform == "linux"',
+    # 'pybluez2>=0.46; sys_platform == "linux"',  # broken sdist; install.sh handles it
     'bluepy>=1.3.0;  sys_platform == "linux"',
 ]
 full = [
-    'pybluez2>=0.46; sys_platform == "linux"',
+    # 'pybluez2>=0.46; sys_platform == "linux"',  # broken sdist; install.sh handles it
     'bluepy>=1.3.0;  sys_platform == "linux"',
     'btlejack>=1.2;  sys_platform == "linux"',
     "scapy>=2.5.0",
