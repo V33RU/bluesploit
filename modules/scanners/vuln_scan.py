@@ -57,31 +57,47 @@ class ScanResult:
     info_leak_count: int = 0
 
 
-# Known vulnerable service/char patterns
+# Known vulnerable service/char patterns (short 16-bit UUID keys)
 VULN_PATTERNS = {
-    # Service UUIDs known to have issues
-    "0000ffe0": {"name": "Common IoT Service", "risk": "Often has unauth writes"},
-    "0000fff0": {"name": "Vendor Service", "risk": "Custom protocol - check security"},
-    "0000ffd0": {"name": "Vendor Service 2", "risk": "Custom protocol"},
-    "0000fee0": {"name": "Xiaomi Service", "risk": "Known unauth write vulns"},
-    "0000180f": {"name": "Battery Service", "risk": "Info disclosure"},
+    "ffe0": {"name": "Common IoT Service", "risk": "Often has unauth writes"},
+    "fff0": {"name": "Vendor Service", "risk": "Custom protocol - check security"},
+    "ffd0": {"name": "Vendor Service 2", "risk": "Custom protocol"},
+    "fee0": {"name": "Xiaomi Service", "risk": "Known unauth write vulns"},
+    "180f": {"name": "Battery Service", "risk": "Info disclosure"},
+    "fe59": {"name": "Eddystone", "risk": "Unauth configuration"},
+    "fddf": {"name": "Mesh Provisioning", "risk": "Unauth device join"},
+    "fe0f": {"name": "Vendor Diagnostic", "risk": "Debug commands"},
+    "180a": {"name": "Device Info", "risk": "Information disclosure"},
+    "1812": {"name": "HID", "risk": "Keystroke injection"},
 }
 
 # Characteristics that should NOT be writable without auth
 SENSITIVE_WRITE_CHARS = {
-    "00002a06": "Alert Level",  # Should require auth
-    "00002a00": "Device Name",  # Should be read-only
-    "00002a26": "Firmware Rev",  # Should be read-only
+    "2a06": "Alert Level",
+    "2a00": "Device Name",
+    "2a26": "Firmware Rev",
+    "2a28": "Software Rev",
+    "2a29": "Manufacturer",
+    "2a24": "Model Number",
+    "2a25": "Serial Number",
+    "2a27": "Hardware Rev",
+    "2a50": "PnP ID",
+    "2a56": "Digital Output",
+    "2a57": "Digital Input",
 }
 
 # Known info-leak characteristics
 INFO_LEAK_CHARS = {
-    "00002a23": "System ID",
-    "00002a24": "Model Number",
-    "00002a25": "Serial Number",
-    "00002a27": "Hardware Revision",
-    "00002a29": "Manufacturer Name",
-    "00002a50": "PnP ID",
+    "2a23": "System ID",
+    "2a24": "Model Number",
+    "2a25": "Serial Number",
+    "2a27": "Hardware Revision",
+    "2a29": "Manufacturer Name",
+    "2a50": "PnP ID",
+    "2a28": "Software Revision",
+    "2a26": "Firmware Revision",
+    "2a00": "Device Name",
+    "2a01": "Appearance",
 }
 
 # Test payloads for write testing
@@ -106,8 +122,8 @@ class Module(ScannerModule):
     """
     
     info = ModuleInfo(
-        name="scanners/ble/vuln_scan",
-        description="BLE vulnerability scanner - detect unauth writes, info leaks",
+        name="scanners/ble_vuln_scan",
+        description="BLE GATT vulnerability scanner — unauth writes, info leaks, sensitive UUIDs",
         author=["v33ru"],
         protocol=BTProtocol.BLE,
         severity=Severity.HIGH,
