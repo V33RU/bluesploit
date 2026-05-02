@@ -1,5 +1,23 @@
 # Introduction
 
+!!! warning "Project status — scaffold, not battle-tested"
+    BlueSploit is currently a **scaffold-quality framework**. Most modules
+    are CVE-aware probes / fingerprint matchers, not fully working
+    end-to-end exploits. A small number (Marc Newlin's keystroke-injection
+    family, the recon/DoS/post-ex set, `csrk_signed_write`,
+    `smp_keysize_downgrade`, the tool wrappers) are genuinely functional
+    today.
+
+    I — **Mr-IoT (BlueSploit framework author)** — am rewriting modules
+    one at a time using real raw-HCI / raw-L2CAP / raw-SMP primitives so
+    that what each module claims to do is what it actually does on the
+    wire. No fake `print_success("Exploited!")`, no marketing CVE counts.
+
+    Treat current results as **indicative** until each module's page in
+    these docs explicitly says **"verified functional"**. Progress is
+    tracked module-by-module — soon this will be a much stronger
+    framework. Thanks for the patience.
+
 ## Overview
 
 **BlueSploit** is a Metasploit/RouterSploit-style framework for **Bluetooth & BLE security research**, written in Python. It offers security researchers, red teamers, and IoT pentesters an **all-in-one solution** for Bluetooth offense — Classic BT, BLE, BR/EDR, and vendor-specific stacks.
@@ -14,7 +32,7 @@ Perform reconnaissance, vulnerability scanning, and exploitation against:
 
 ## Main Features
 
-- **101 modules** covering **40+ public CVEs** (KNOB, BIAS, BLUFFS, BLURtooth, BlueBorne, SweynTooth, BrakTooth …)
+- **101 modules** covering **40+ public CVEs** (KNOB, BIAS, BLUFFS, BLURtooth, BlueBorne, SweynTooth, BrakTooth …) — coverage is broad, see the warning above for what's currently *verified working*
 - **Cross-platform**: Linux (full), macOS (BLE)
 - **Hardware backends**: Ubertooth One, HackRF One, nRF52840 sniffer, BTLEJack (micro:bit), YARD Stick One
 - **Metasploit-style REPL** with `use` / `set` / `run` / `check` / `back`
