@@ -1,0 +1,12 @@
+REM macOS — Cmd+Space → Terminal → run id
+DELAY 500
+COMMAND SPACE
+DELAY 500
+STRING Terminal
+ENTER
+DELAY 1500
+STRING id
+ENTER
+DELAY 500
+STRING sw_vers
+ENTER

@@ -1,0 +1,9 @@
+REM Windows — Win+R run dialog, open Notepad
+DELAY 500
+GUI r
+DELAY 500
+STRING notepad
+ENTER
+DELAY 1500
+STRING typed by BlueSploit blueducky over Bluetooth HID
+ENTER

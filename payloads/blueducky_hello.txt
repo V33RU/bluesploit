@@ -1,0 +1,4 @@
+REM Sanity-check payload — types "hello world" + Enter
+DELAY 500
+STRING hello world
+ENTER
