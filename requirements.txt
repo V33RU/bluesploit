@@ -15,6 +15,11 @@
 #   nRF52840       → flash nRF Sniffer firmware, install Wireshark plugin
 #   BTLEJack       → flash BTLEJack firmware to micro:bit
 #   YARD Stick One → pip install git+https://github.com/atlas0fd00m/rfcat.git
+#
+# macOS embedded-C / Objective-C exploit modules (modules/dos/macos_*):
+#   Require Xcode Command Line Tools (clang + IOKit / Foundation headers):
+#       xcode-select --install
+#   install.sh checks for this automatically on Darwin.
 # ═══════════════════════════════════════════════════════════════════════
 
 # ── Core BLE ──────────────────────────────────────────────────────────
