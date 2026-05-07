@@ -1,4 +1,4 @@
-# Scanners (5)
+# Scanners (4)
 
 Auto-generated from `modules/scanners/`.  
 Load any module with `use scanners/<name>`.
@@ -16,8 +16,7 @@ Load any module with `use scanners/<name>`.
 | [`scanners/ble_debug_ecdh`](#scannersble_debug_ecdh) | 🟠 **HIGH** | — | Detect Bluetooth devices that use the published BT SIG debug ECDH key pair — … |
 | [`scanners/blueborne_scan`](#scannersblueborne_scan) | 🟠 **HIGH** | — | Scan for BlueBorne vulnerable devices (CVE-2017-*) |
 | [`scanners/hidden_scanner`](#scannershidden_scanner) | ℹ️ INFO | CVE-2022-24695 | Find Non-Discoverable Bluetooth Devices |
-| [`scanners/vuln_scan`](#scannersvuln_scan) | 🟠 **HIGH** | — | BLE GATT vulnerability scanner — unauth writes, info leaks, sensitive UUIDs |
-| [`scanners/vuln_scanner`](#scannersvuln_scanner) | ℹ️ INFO | — | Automatic Bluetooth Vulnerability Detection |
+| [`scanners/vuln_scanner`](#scannersvuln_scanner) | 🟠 **HIGH** | — | Unified BLE+Classic vulnerability scanner — GATT deep analysis + CVE→module m… |
 
 ---
 
@@ -92,42 +91,26 @@ Find Non-Discoverable Bluetooth Devices
 
 ---
 
-### `scanners/vuln_scan`
-
-**scanners/ble_vuln_scan**
-
-BLE GATT vulnerability scanner — unauth writes, info leaks, sensitive UUIDs
-
-**Severity:** 🟠 **HIGH** · **Protocol:** BLE
-
-| Option | Required | Default | Description |
-|---|---|---|---|
-| `target` | ✓ |  | Target BD_ADDR (XX:XX:XX:XX:XX:XX) |
-| `timeout` |  | `15` | Connection timeout in seconds |
-| `test_writes` |  | `False` | Actually test write operations (may modify device state) |
-| `deep_scan` |  | `True` | Perform deep analysis including info disclosure reads (slower) |
-| `output_file` |  |  | Save results to JSON file |
-
-**References:**
-- <https://www.usenix.org/conference/usenixsecurity19/presentation/wu-jianliang>
-- <https://www.bluetooth.com/learn-about-bluetooth/key-attributes/bluetooth-security/>
-
----
-
 ### `scanners/vuln_scanner`
 
-Automatic Bluetooth Vulnerability Detection
+Unified BLE+Classic vulnerability scanner — GATT deep analysis + CVE→module matcher
 
-**Severity:** ℹ️ INFO · **Protocol:** BOTH
+**Severity:** 🟠 **HIGH** · **Protocol:** BOTH
 
 | Option | Required | Default | Description |
 |---|---|---|---|
 | `target` | ✓ |  | Target BD_ADDR (XX:XX:XX:XX:XX:XX) |
-| `thorough` |  | `True` | Perform thorough scan (slower) |
-| `timeout` |  | `60` | Scan timeout in seconds |
+| `protocol` |  | `auto` | Protocol: auto, ble, classic, both |
+| `gatt_scan` |  | `True` | Run BLE GATT deep analysis (services/characteristics) |
+| `test_writes` |  | `False` | Actively probe writable characteristics (modifies state!) |
+| `deep_scan` |  | `True` | Read sensitive readable characteristics (info-leak check) |
+| `timeout` |  | `20` | Per-phase timeout in seconds |
+| `min_score` |  | `35` | Hide CVE matches below this confidence score (0-100) |
+| `output_file` |  |  | Save full report to JSON |
 
 **References:**
 - <https://nvd.nist.gov/>
 - <https://www.bluetooth.com/security/>
+- <https://www.usenix.org/conference/usenixsecurity19/presentation/wu-jianliang>
 
 ---
