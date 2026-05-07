@@ -14,7 +14,7 @@ Load any module with `use recon/<name>`.
 | Module | Severity | CVE | Description |
 |---|---|---|---|
 | [`recon/adv_parser`](#reconadv_parser) | ℹ️ INFO | — | Deep BLE advertisement data analysis |
-| [`recon/discovery`](#recondiscovery) | ℹ️ INFO | — | Discover nearby BLE devices |
+| [`recon/discovery`](#recondiscovery) | ℹ️ INFO | — | Passive full-spectrum Bluetooth discovery — Classic + BLE |
 | [`recon/gatt_enum`](#recongatt_enum) | ℹ️ INFO | — | Enumerate GATT services and characteristics |
 | [`recon/oui_lookup`](#reconoui_lookup) | ℹ️ INFO | — | Bluetooth MAC Address OUI Manufacturer Lookup |
 | [`recon/sdp_enum`](#reconsdp_enum) | ℹ️ INFO | — | Enumerate SDP services on Bluetooth Classic devices |
@@ -47,23 +47,18 @@ Deep BLE advertisement data analysis
 
 ### `recon/discovery`
 
-**scanners/ble/discovery**
+Passive full-spectrum Bluetooth discovery — Classic + BLE
 
-Discover nearby BLE devices
-
-**Severity:** ℹ️ INFO · **Protocol:** BLE
+**Severity:** ℹ️ INFO · **Protocol:** BOTH
 
 | Option | Required | Default | Description |
 |---|---|---|---|
-| `timeout` |  | `10` | Scan duration in seconds |
-| `filter_name` |  |  | Filter devices by name (substring match) |
-| `filter_rssi` |  |  | Minimum RSSI threshold (e.g., -70) |
-| `show_duplicates` |  | `False` | Show duplicate advertisements |
-| `live_output` |  | `True` | Show devices as they are found |
-| `output_file` |  |  | Save results to file (JSON format) |
-
-**References:**
-- <https://www.bluetooth.com/specifications/specs/core-specification/>
+| `timeout` |  | `15` | Scan duration in seconds |
+| `mode` |  | `all` | Protocol: all \| ble \| classic |
+| `interface` |  | `hci0` | HCI adapter (e.g. hci0) |
+| `min_rssi` |  |  | Ignore BLE devices below this RSSI (e.g. -85) |
+| `live` |  | `True` | Print each new device as it is discovered |
+| `output_file` |  |  | Save results to JSON |
 
 ---
 

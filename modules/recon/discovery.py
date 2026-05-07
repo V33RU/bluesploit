@@ -686,19 +686,17 @@ class Module(ReconModule):
 
     # ── Summary table ─────────────────────────────────────────────────────────
 
-    def _print_table(self, devices: List[Device]) -> None:
+    def _print_table(self, devices: List[Device], rows_already_shown: bool = False) -> None:
+        """
+        Print the BLUETOOTH DISCOVERY summary.
+
+        If `rows_already_shown` is True (live mode), skip the redundant per-device
+        rows — they were already printed during scanning — and emit only the
+        banner + summary footer.
+        """
         C       = Colors
         total_w = sum(self._W.values())
         sep     = self._separator()
-
-        rows = sorted(
-            devices,
-            key=lambda d: (
-                {"CLASSIC": 0, "DUAL": 1, "BLE": 2}.get(d.protocol, 3),
-                0 if d.risky else 1,
-                -(d.rssi or -999),
-            ),
-        )
 
         risky_n   = sum(1 for d in devices if d.risky)
         classic_n = sum(1 for d in devices if d.protocol == "CLASSIC")
@@ -706,24 +704,32 @@ class Module(ReconModule):
         dual_n    = sum(1 for d in devices if d.protocol == "DUAL")
         named_n   = sum(1 for d in devices if d.name)
 
-        print(f"\n  {C.CYAN}{'═'*(total_w+2)}{C.RESET}")
-        print(
-            f"  {C.BOLD}{C.WHITE}BLUETOOTH DISCOVERY  —  {len(devices)} device(s) found"
-            + (f"  {C.RED}[ {risky_n} RISKY ]{C.WHITE}" if risky_n else "")
-            + C.RESET
-        )
-        print(f"  {C.CYAN}{'═'*(total_w+2)}{C.RESET}\n")
-        print(self._table_header())
-        print(sep)
+        if not rows_already_shown:
+            rows = sorted(
+                devices,
+                key=lambda d: (
+                    {"CLASSIC": 0, "DUAL": 1, "BLE": 2}.get(d.protocol, 3),
+                    0 if d.risky else 1,
+                    -(d.rssi or -999),
+                ),
+            )
+            print(f"\n  {C.CYAN}{'═'*(total_w+2)}{C.RESET}")
+            print(
+                f"  {C.BOLD}{C.WHITE}BLUETOOTH DISCOVERY  —  {len(devices)} device(s) found"
+                + (f"  {C.RED}[ {risky_n} RISKY ]{C.WHITE}" if risky_n else "")
+                + C.RESET
+            )
+            print(f"  {C.CYAN}{'═'*(total_w+2)}{C.RESET}\n")
+            print(self._table_header())
+            print(sep)
+            for idx, d in enumerate(rows, 1):
+                print(self._format_row(idx, d))
+                if d.extra_info:
+                    indent = " " * (self._W["#"] + self._W["PROTO"] + self._W["ADDRESS"] + 2)
+                    info   = d.extra_info[:88] + ".." if len(d.extra_info) > 90 else d.extra_info
+                    print(f"  {indent}{C.DARK_GREY}-> {info}{C.RESET}")
+            print(sep)
 
-        for idx, d in enumerate(rows, 1):
-            print(self._format_row(idx, d))
-            if d.extra_info:
-                indent = " " * (self._W["#"] + self._W["PROTO"] + self._W["ADDRESS"] + 2)
-                info   = d.extra_info[:88] + ".." if len(d.extra_info) > 90 else d.extra_info
-                print(f"  {indent}{C.DARK_GREY}-> {info}{C.RESET}")
-
-        print(sep)
         print(
             f"\n  {C.BOLD}SUMMARY{C.RESET}  "
             f"{C.BLUE}Classic: {classic_n}{C.RESET}  "
@@ -846,7 +852,10 @@ class Module(ReconModule):
             self.add_result(d)
 
         print()
-        self._print_table(all_devices)
+        # When live mode is on, the per-device rows were already streamed —
+        # avoid printing them again and only show the summary footer.
+        rows_already_shown = bool(live and mode in ("all", "ble"))
+        self._print_table(all_devices, rows_already_shown=rows_already_shown)
 
         out = self.get_option("output_file")
         if out:

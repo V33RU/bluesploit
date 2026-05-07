@@ -104,8 +104,8 @@ BLE GATT vulnerability scanner — unauth writes, info leaks, sensitive UUIDs
 |---|---|---|---|
 | `target` | ✓ |  | Target BD_ADDR (XX:XX:XX:XX:XX:XX) |
 | `timeout` |  | `15` | Connection timeout in seconds |
-| `test_writes` |  | `False` | Actually test write operations (may modify device) |
-| `deep_scan` |  | `True` | Perform deep analysis (slower) |
+| `test_writes` |  | `False` | Actually test write operations (may modify device state) |
+| `deep_scan` |  | `True` | Perform deep analysis including info disclosure reads (slower) |
 | `output_file` |  |  | Save results to JSON file |
 
 **References:**
