@@ -360,11 +360,237 @@ class GattReport:
     vulns:              List[GattVuln] = field(default_factory=list)
 
 
+# ── GAP analysis ──────────────────────────────────────────────────────────────
+
+# BLE adv "Flags" AD-type byte (Core Spec Vol 3 Part C 18.1)
+_FLAG_LE_LIMITED_DISC   = 0x01
+_FLAG_LE_GENERAL_DISC   = 0x02
+_FLAG_BREDR_NOT_SUPP    = 0x04
+_FLAG_SIMUL_LE_BREDR_C  = 0x08
+_FLAG_SIMUL_LE_BREDR_H  = 0x10
+
+# Resolvable Private Address: top two bits of byte 0 == 01 (binary)
+def _addr_kind(addr: str) -> str:
+    """Return one of: public | static | rpa | nrpa | unknown."""
+    try:
+        first = int(addr.split(":")[0], 16)
+    except (ValueError, IndexError):
+        return "unknown"
+    top = (first & 0xC0) >> 6
+    if top == 0b11: return "static"     # static random
+    if top == 0b01: return "rpa"        # resolvable private
+    if top == 0b00: return "nrpa"       # non-resolvable private (or public)
+    return "unknown"
+
+
+@dataclass
+class GapFinding:
+    name:           str
+    severity:       GattSeverity
+    description:    str
+    recommendation: str
+
+
+@dataclass
+class GapReport:
+    # captured fields
+    address_type:        Optional[str]      = None       # public | random
+    address_kind:        Optional[str]      = None       # public | static | rpa | nrpa
+    flags:               Optional[int]      = None       # raw flags byte
+    flags_decoded:       List[str]          = field(default_factory=list)
+    discoverable:        Optional[bool]     = None
+    connectable:         Optional[bool]     = None
+    bondable:            Optional[bool]     = None
+    paired:              Optional[bool]     = None
+    legacy_pairing:      Optional[bool]     = None
+    cross_transport:     bool               = False     # BR/EDR + LE both supported
+    appearance:          Optional[int]      = None
+    tx_power:            Optional[int]      = None
+    page_scan:           Optional[bool]     = None      # Classic
+    inquiry_scan:        Optional[bool]     = None      # Classic
+    cod:                 Optional[int]      = None      # Classic
+    cod_limited_disc:    Optional[bool]     = None      # CoD bit 13
+    findings:            List[GapFinding]   = field(default_factory=list)
+
+
+def _decode_flags(flags: int) -> List[str]:
+    out: List[str] = []
+    if flags & _FLAG_LE_LIMITED_DISC: out.append("LE Limited Discoverable")
+    if flags & _FLAG_LE_GENERAL_DISC: out.append("LE General Discoverable")
+    if flags & _FLAG_BREDR_NOT_SUPP:  out.append("BR/EDR Not Supported")
+    if flags & _FLAG_SIMUL_LE_BREDR_C: out.append("Simul. LE+BR/EDR (Controller)")
+    if flags & _FLAG_SIMUL_LE_BREDR_H: out.append("Simul. LE+BR/EDR (Host)")
+    return out
+
+
+def _analyze_gap(gap: GapReport, fp: Fingerprint) -> None:
+    """Generate GAP-layer findings from the captured fields."""
+    G = GattSeverity
+
+    # ── Privacy / trackability ─────────────────────────────────────────────
+    if gap.address_kind == "public":
+        gap.findings.append(GapFinding(
+            name="Public LE Address (Permanent Identifier)",
+            severity=G.HIGH,
+            description="Device advertises with a public BD_ADDR — globally unique and never rotates. Allows persistent tracking by any nearby observer.",
+            recommendation="Switch to Resolvable Private Address (RPA) and rotate every ≤ 15 min.",
+        ))
+    elif gap.address_kind == "static":
+        gap.findings.append(GapFinding(
+            name="Static Random LE Address (Boot-Persistent)",
+            severity=G.MEDIUM,
+            description="Static random address persists until the device is rebooted/re-paired — still trackable across short windows.",
+            recommendation="Use Resolvable Private Address (RPA) with periodic rotation.",
+        ))
+
+    # ── Cross-transport (BLUR / cross-transport key derivation) ─────────────
+    if gap.cross_transport or (gap.flags and not (gap.flags & _FLAG_BREDR_NOT_SUPP)):
+        gap.findings.append(GapFinding(
+            name="Cross-Transport (BR/EDR + LE) Surface",
+            severity=G.MEDIUM,
+            description="Device supports both Classic and LE — vulnerable to BLUR attacks (CVE-2020-15802) and cross-transport key derivation downgrade if a peer pairs over the weaker transport.",
+            recommendation="Disable the unused transport, or require Secure Connections on both.",
+        ))
+
+    # ── Always-discoverable ────────────────────────────────────────────────
+    if gap.flags and (gap.flags & _FLAG_LE_GENERAL_DISC):
+        gap.findings.append(GapFinding(
+            name="LE General Discoverable Mode Active",
+            severity=G.LOW,
+            description="Device continuously advertises in general discoverable mode — visible to any scanner indefinitely.",
+            recommendation="Use Limited Discoverable mode with a 60s timer, or directed advertising once paired.",
+        ))
+    if gap.cod_limited_disc is False and gap.inquiry_scan:
+        gap.findings.append(GapFinding(
+            name="Classic Inquiry Scan Always On",
+            severity=G.LOW,
+            description="Classic device responds to inquiries indefinitely (no Limited Discoverable timer).",
+            recommendation="Set CoD limited-discoverable bit and disable inquiry scan after pairing.",
+        ))
+
+    # ── Bondable + connectable without pairing → MITM/Just-Works risk ──────
+    if gap.connectable and gap.bondable and not gap.paired:
+        gap.findings.append(GapFinding(
+            name="Connectable + Bondable Without Prior Pairing",
+            severity=G.MEDIUM,
+            description="Any peer can initiate a bonding flow. Combined with NoInputNoOutput (Just Works) IO capability this enables MITM during initial pairing.",
+            recommendation="Require OOB or Numeric Comparison; reject Just Works on sensitive endpoints.",
+        ))
+
+    # ── Legacy pairing on BR/EDR ───────────────────────────────────────────
+    if gap.legacy_pairing:
+        gap.findings.append(GapFinding(
+            name="Legacy Pairing Enabled (Pre-SSP)",
+            severity=G.HIGH,
+            description="Device falls back to legacy PIN-based pairing — vulnerable to PIN cracking (Shaked-Wool 2005) and BIAS impersonation.",
+            recommendation="Disable legacy pairing; require Secure Simple Pairing (SSP) with Secure Connections.",
+        ))
+
+    # ── Manufacturer data leakage ──────────────────────────────────────────
+    if fp.mfr_ids:
+        # Specifically: Apple Continuity broadcasts contain handoff/nearby/handoff
+        # which is a known device-fingerprinting + activity-leak channel.
+        if 0x004C in fp.mfr_ids:
+            gap.findings.append(GapFinding(
+                name="Apple Continuity Manufacturer Data",
+                severity=G.LOW,
+                description="Device broadcasts Apple Continuity packets (Handoff, AirDrop, Nearby Info) revealing activity state and partial identifiers.",
+                recommendation="Disable Bluetooth when not in use; iOS/macOS users have no native disable for Continuity.",
+            ))
+
+    # ── Excessive TX power ─────────────────────────────────────────────────
+    if gap.tx_power is not None and gap.tx_power >= 4:
+        gap.findings.append(GapFinding(
+            name=f"High Advertising TX Power ({gap.tx_power:+d} dBm)",
+            severity=G.LOW,
+            description="Adv TX power above +4 dBm extends the device's tracking range well beyond intended room-scale use.",
+            recommendation="Reduce TX power for advertising packets; full power is only needed during connection.",
+        ))
+
+
+def _extract_gap_ble(adv, dev, fp: Fingerprint) -> GapReport:
+    """Pull GAP fields from a bleak AdvertisementData + BLEDevice (BlueZ-rich)."""
+    gap = GapReport()
+    gap.address_kind = _addr_kind(fp.address)
+
+    # bleak's AdvertisementData fields
+    gap.tx_power = getattr(adv, "tx_power", None)
+
+    # BlueZ backend exposes a rich props dict via dev.details
+    props: Dict[str, Any] = {}
+    try:
+        if isinstance(dev.details, dict):
+            props = dev.details.get("props", dev.details)
+    except Exception:
+        pass
+
+    if "AddressType" in props:
+        gap.address_type = props["AddressType"]
+        if gap.address_type == "public":
+            gap.address_kind = "public"
+
+    if "Connectable" in props:
+        gap.connectable = bool(props["Connectable"])
+    if "Bonded" in props:
+        gap.bondable = bool(props["Bonded"]) or gap.bondable
+    if "Paired" in props:
+        gap.paired = bool(props["Paired"])
+    if "LegacyPairing" in props:
+        gap.legacy_pairing = bool(props["LegacyPairing"])
+    if "Appearance" in props:
+        try:    gap.appearance = int(props["Appearance"])
+        except Exception: pass
+
+    # Adv flags byte — BlueZ surfaces it as AdvertisingFlags
+    raw_flags = props.get("AdvertisingFlags")
+    if isinstance(raw_flags, (bytes, bytearray)) and len(raw_flags) >= 1:
+        gap.flags = raw_flags[0]
+    elif isinstance(raw_flags, int):
+        gap.flags = raw_flags
+
+    if gap.flags is not None:
+        gap.flags_decoded = _decode_flags(gap.flags)
+        gap.discoverable = bool(gap.flags & (_FLAG_LE_LIMITED_DISC | _FLAG_LE_GENERAL_DISC))
+        gap.cross_transport = not bool(gap.flags & _FLAG_BREDR_NOT_SUPP)
+
+    return gap
+
+
+def _extract_gap_classic(target: str, gap: Optional[GapReport]) -> GapReport:
+    """Augment a GapReport with Classic-side fields via hcitool / hciconfig."""
+    if gap is None:
+        gap = GapReport()
+    try:
+        r = subprocess.run(["hcitool", "info", target],
+                           capture_output=True, text=True, timeout=15)
+        if r.returncode == 0:
+            for line in r.stdout.splitlines():
+                ls = line.strip()
+                if ls.startswith("Class:"):
+                    m = re.search(r"0x([0-9a-fA-F]+)", ls)
+                    if m:
+                        try:
+                            gap.cod = int(m.group(1), 16)
+                            # CoD bit 13 = Limited Discoverable Mode (Major Service Class)
+                            gap.cod_limited_disc = bool(gap.cod & (1 << 13))
+                        except Exception: pass
+                if "Page scan:" in ls.lower() or ls.lower().startswith("page scan"):
+                    gap.page_scan = "enabled" in ls.lower() or "true" in ls.lower()
+                if "inquiry scan" in ls.lower():
+                    gap.inquiry_scan = "enabled" in ls.lower() or "true" in ls.lower()
+    except Exception:
+        pass
+    return gap
+
+
 # ── Async helpers (BLE) ───────────────────────────────────────────────────────
 
-async def _ble_passive_adv(target: str, timeout: int) -> Optional[Fingerprint]:
-    """Listen for the target's advertisements; populate adv-derived fields."""
+async def _ble_passive_adv(
+    target: str, timeout: int,
+) -> Tuple[Optional[Fingerprint], Optional[GapReport]]:
+    """Listen for the target's adv; populate Fingerprint + GapReport."""
     fp = Fingerprint(address=target.upper(), protocol="BLE")
+    gap: Optional[GapReport] = None
     seen = False
     try:
         scanner = BleakScanner()
@@ -384,11 +610,12 @@ async def _ble_passive_adv(target: str, timeout: int) -> Optional[Fingerprint]:
                     fp.addr_type = d.details.get("AddressType", "?")
                 except Exception:
                     pass
+                gap = _extract_gap_ble(adv, d, fp)
                 seen = True
                 break
     except Exception:
         pass
-    return fp if seen else None
+    return (fp, gap) if seen else (None, None)
 
 
 async def _ble_gatt_deep(
@@ -770,17 +997,18 @@ class Module(ScannerModule):
     def _fingerprint(
         self, target: str, mode: str, timeout: int, gatt_scan: bool,
         test_writes: bool, deep_scan: bool,
-    ) -> Tuple[Fingerprint, GattReport]:
+    ) -> Tuple[Fingerprint, GattReport, GapReport]:
         fp_ble:     Optional[Fingerprint] = None
         fp_classic: Optional[Fingerprint] = None
         gatt_rep:   GattReport            = GattReport()
+        gap_rep:    Optional[GapReport]   = None
 
-        # Phase A — BLE
+        # Phase A — BLE adv + GAP capture
         if mode in ("auto", "ble", "both") and BLEAK_AVAILABLE:
             try:
-                fp_ble = self._run_async(_ble_passive_adv(target, timeout))
+                fp_ble, gap_rep = self._run_async(_ble_passive_adv(target, timeout))
             except Exception:
-                fp_ble = None
+                fp_ble, gap_rep = None, None
 
             if fp_ble and gatt_scan:
                 try:
@@ -805,6 +1033,8 @@ class Module(ScannerModule):
                     fp_classic = _classic_fingerprint(target)
                 except Exception:
                     fp_classic = None
+                # Augment GAP with Classic-side scan modes / CoD bits
+                gap_rep = _extract_gap_classic(target, gap_rep)
 
         if fp_ble and fp_classic:
             fp = fp_ble
@@ -825,7 +1055,16 @@ class Module(ScannerModule):
             )
 
         fp.os_guess = _classify_os(fp.name, fp.vendor, fp.address)
-        return fp, gatt_rep
+
+        # Ensure we always return a GapReport, even if no probe captured fields.
+        if gap_rep is None:
+            gap_rep = GapReport(address_kind=_addr_kind(fp.address))
+        # Cross-transport flag from BR/EDR + LE both succeeding
+        if fp_ble and fp_classic:
+            gap_rep.cross_transport = True
+        _analyze_gap(gap_rep, fp)
+
+        return fp, gatt_rep, gap_rep
 
     # ── Output ─────────────────────────────────────────────────────────────
 
@@ -854,6 +1093,71 @@ class Module(ScannerModule):
                   + (f"  +{len(fp.services)-10} more" if len(fp.services) > 10 else ""))
         if fp.mfr_ids:
             print(f"  MFR IDs     : " + ", ".join(f"0x{m:04X}" for m in fp.mfr_ids[:5]))
+
+    def _print_gap_report(self, gap: GapReport) -> None:
+        """Render captured GAP fields + analysis findings."""
+        C = Colors
+        # Skip the section entirely if we got nothing actionable
+        any_field = any([
+            gap.address_kind, gap.address_type, gap.flags is not None,
+            gap.connectable is not None, gap.bondable is not None,
+            gap.paired is not None, gap.legacy_pairing is not None,
+            gap.appearance is not None, gap.tx_power is not None,
+            gap.cod is not None, gap.findings,
+        ])
+        if not any_field:
+            return
+
+        print(f"\n  {C.BOLD}GAP ANALYSIS{C.RESET}")
+        print(f"  {C.CYAN}{'─'*75}{C.RESET}")
+
+        if gap.address_kind:
+            kind_col = {"public": C.RED, "static": C.YELLOW,
+                        "rpa": C.GREEN, "nrpa": C.GREEN}.get(gap.address_kind, C.WHITE)
+            print(f"  Address Kind     : {kind_col}{gap.address_kind.upper()}{C.RESET}"
+                  + (f"  ({gap.address_type})" if gap.address_type else ""))
+        if gap.flags is not None:
+            print(f"  Adv Flags        : 0x{gap.flags:02X}  "
+                  f"{C.DARK_GREY}[{', '.join(gap.flags_decoded) or '—'}]{C.RESET}")
+        if gap.connectable is not None or gap.bondable is not None or gap.paired is not None:
+            line = []
+            if gap.connectable is not None:
+                line.append(f"connectable={gap.connectable}")
+            if gap.bondable is not None:
+                line.append(f"bonded={gap.bondable}")
+            if gap.paired is not None:
+                line.append(f"paired={gap.paired}")
+            if gap.legacy_pairing is not None:
+                line.append(f"legacy_pairing={gap.legacy_pairing}")
+            print(f"  State            : {'  '.join(line)}")
+        if gap.cross_transport:
+            print(f"  Transport        : {C.YELLOW}BR/EDR + LE (cross-transport){C.RESET}")
+        if gap.appearance is not None:
+            print(f"  Appearance       : 0x{gap.appearance:04X}")
+        if gap.tx_power is not None:
+            print(f"  TX Power (adv)   : {gap.tx_power:+d} dBm")
+        if gap.cod is not None:
+            ldm = "  [Limited Discoverable]" if gap.cod_limited_disc else ""
+            print(f"  Class of Device  : 0x{gap.cod:06X}{ldm}")
+        if gap.page_scan is not None or gap.inquiry_scan is not None:
+            print(f"  Scan Modes       : "
+                  f"page={gap.page_scan}  inquiry={gap.inquiry_scan}")
+
+        if not gap.findings:
+            return
+
+        sev_col = {
+            GattSeverity.CRITICAL: C.RED + C.BOLD, GattSeverity.HIGH:   C.RED,
+            GattSeverity.MEDIUM:   C.YELLOW,        GattSeverity.LOW:    C.GREEN,
+            GattSeverity.INFO:     C.CYAN,
+        }
+        sev_ord = {GattSeverity.CRITICAL: 0, GattSeverity.HIGH: 1,
+                   GattSeverity.MEDIUM: 2, GattSeverity.LOW: 3, GattSeverity.INFO: 4}
+        print(f"\n  {C.BOLD}GAP Findings ({len(gap.findings)}){C.RESET}")
+        for f in sorted(gap.findings, key=lambda x: sev_ord[x.severity]):
+            print(f"\n  {sev_col[f.severity]}[{f.severity.value}] {f.name}{C.RESET}")
+            print(f"    Description  : {f.description}")
+            print(f"    Recommend    : {f.recommendation}")
 
     def _print_gatt_report(self, rep: GattReport) -> None:
         C = Colors
@@ -960,12 +1264,13 @@ class Module(ScannerModule):
                 print_warning("Cancelled")
                 return False
 
-        # Phase 1 — fingerprint + (optional) GATT deep analysis
+        # Phase 1 — fingerprint + GAP + (optional) GATT deep analysis
         print_info("\n[1/3] Fingerprinting target...")
-        fp, gatt_rep = self._fingerprint(
+        fp, gatt_rep, gap_rep = self._fingerprint(
             target, mode, timeout, gatt_scan, test_writes, deep_scan,
         )
         self._print_fingerprint(fp)
+        self._print_gap_report(gap_rep)
         self._print_gatt_report(gatt_rep)
 
         # Phase 2 — load module catalogue
@@ -1034,6 +1339,27 @@ class Module(ScannerModule):
             "lmp":      fp.lmp_version,
             "services": fp.services,
             "features": fp.features,
+            "gap": {
+                "address_kind":    gap_rep.address_kind,
+                "address_type":    gap_rep.address_type,
+                "flags":           gap_rep.flags,
+                "flags_decoded":   gap_rep.flags_decoded,
+                "connectable":     gap_rep.connectable,
+                "bondable":        gap_rep.bondable,
+                "paired":          gap_rep.paired,
+                "legacy_pairing":  gap_rep.legacy_pairing,
+                "cross_transport": gap_rep.cross_transport,
+                "appearance":      gap_rep.appearance,
+                "tx_power":        gap_rep.tx_power,
+                "cod":             gap_rep.cod,
+                "page_scan":       gap_rep.page_scan,
+                "inquiry_scan":    gap_rep.inquiry_scan,
+                "findings": [
+                    {"name": f.name, "severity": f.severity.value,
+                     "description": f.description, "recommendation": f.recommendation}
+                    for f in gap_rep.findings
+                ],
+            },
             "gatt": {
                 "services":         gatt_rep.services_count,
                 "characteristics":  gatt_rep.chars_count,
@@ -1065,4 +1391,5 @@ class Module(ScannerModule):
             except Exception as e:
                 print_error(f"Save failed: {e}")
 
-        return bool(findings) or bool(gatt_rep.vulns) or gatt_rep.services_count > 0
+        return (bool(findings) or bool(gatt_rep.vulns)
+                or bool(gap_rep.findings) or gatt_rep.services_count > 0)
