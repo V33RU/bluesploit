@@ -26,6 +26,12 @@ if readme_path.exists():
 #   nRF52840       → flash nRF Sniffer firmware, install Wireshark plugin
 #   BTLEJack       → flash BTLEJack firmware to micro:bit
 #   YARD Stick One → pip install git+https://github.com/atlas0fd00m/rfcat.git
+#
+# macOS-only (modules/dos/macos_*):
+#   Embedded-C / Objective-C exploits compile via clang at runtime.
+#   Requires Xcode Command Line Tools:
+#       xcode-select --install
+#   (install.sh detects + prompts automatically on Darwin)
 install_requires = [
     # ── Cross-platform (Linux + macOS) ──────────────────────────────────
     # Core BLE
