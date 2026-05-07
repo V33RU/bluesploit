@@ -17,7 +17,7 @@ Load any module with `use recon/<name>`.
 | [`recon/discovery`](#recondiscovery) | ℹ️ INFO | — | Passive full-spectrum Bluetooth discovery — Classic + BLE |
 | [`recon/gatt_enum`](#recongatt_enum) | ℹ️ INFO | — | Enumerate GATT services and characteristics |
 | [`recon/oui_lookup`](#reconoui_lookup) | ℹ️ INFO | — | Bluetooth MAC Address OUI Manufacturer Lookup |
-| [`recon/sdp_enum`](#reconsdp_enum) | ℹ️ INFO | — | Enumerate SDP services on Bluetooth Classic devices |
+| [`recon/sdp_enum`](#reconsdp_enum) | ℹ️ INFO | — | Advanced SDP enumerator — risk + CVE map, PnP decode, L2CAP probe |
 | [`recon/version_fingerprint`](#reconversion_fingerprint) | ℹ️ INFO | — | Bluetooth Device OS/Firmware Fingerprinting |
 
 ---
@@ -104,23 +104,24 @@ Bluetooth MAC Address OUI Manufacturer Lookup
 
 ### `recon/sdp_enum`
 
-**scanners/classic/sdp_enum**
-
-Enumerate SDP services on Bluetooth Classic devices
+Advanced SDP enumerator — risk + CVE map, PnP decode, L2CAP probe
 
 **Severity:** ℹ️ INFO · **Protocol:** CLASSIC
 
 | Option | Required | Default | Description |
 |---|---|---|---|
 | `target` | ✓ |  | Target BD_ADDR (XX:XX:XX:XX:XX:XX) |
-| `mode` |  | `browse` | Browse mode: browse, records, tree |
-| `search` |  |  | Search specific service (e.g., SP, DUN, FAX, OPP, FTP, HS, HF, NAP, GN) |
-| `timeout` |  | `30` | Command timeout in seconds |
-| `xml_output` |  | `False` | Get raw XML output |
-| `output_file` |  |  | Save results to JSON file |
+| `mode` |  | `full` | Mode: full \| browse \| records \| tree |
+| `search` |  |  | Search a specific service (SP, DUN, OPP, FTP, HID, NAP, …) |
+| `probe_l2cap` |  | `True` | Attempt L2CAP connect on each PSM to confirm reachability |
+| `decode_pnp` |  | `True` | Decode PnP Information record (UUID 0x1200) |
+| `xml_attrs` |  | `True` | Also fetch & parse XML attribute records |
+| `timeout` |  | `30` | Per-command timeout in seconds |
+| `output_file` |  |  | Save the full structured report to JSON |
 
 **References:**
 - <https://www.bluetooth.com/specifications/assigned-numbers/service-discovery/>
+- <https://www.bluetooth.com/specifications/specs/device-identification-profile-1-3/>
 - <https://www.bluez.org/>
 
 ---
