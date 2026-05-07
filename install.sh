@@ -108,6 +108,19 @@ install_system_deps() {
         echo -e "${GREEN}[+] System packages installed${NC}"
     elif [ "$OS" = "Darwin" ]; then
         echo -e "${YELLOW}[*] macOS detected — Bluetooth (CoreBluetooth) is built-in${NC}"
+
+        # Xcode CLI Tools — required for the modules/dos/macos_* embedded-C exploits.
+        # The c_runner helper compiles each module's C / ObjC source at runtime
+        # via clang and links against -framework IOKit / -framework Foundation.
+        if xcode-select -p >/dev/null 2>&1 && command -v clang >/dev/null 2>&1; then
+            echo -e "${GREEN}[+] Xcode CLI Tools present (clang available)${NC}"
+        else
+            echo -e "${YELLOW}[*] Xcode CLI Tools missing — required for macOS exploit modules${NC}"
+            echo -e "${YELLOW}    Triggering installer (this opens a GUI prompt — accept it)${NC}"
+            xcode-select --install 2>/dev/null || true
+            echo -e "${YELLOW}    After the GUI installer finishes, re-run this script${NC}"
+        fi
+
         if ! command -v brew >/dev/null 2>&1; then
             echo -e "${YELLOW}[!] Homebrew not found — skipping optional packages${NC}"
             echo -e "${YELLOW}    Install Homebrew from https://brew.sh if you need extras${NC}"
@@ -298,6 +311,15 @@ if [ "$OS" = "Linux" ]; then
     python3 -c "import bluetooth; print('PyBluez: OK')" 2>/dev/null && \
         echo -e "${GREEN}[+] Bluetooth Classic support available${NC}" || \
         echo -e "${YELLOW}[!] Classic BT not available (optional)${NC}"
+fi
+
+if [ "$OS" = "Darwin" ]; then
+    if command -v clang >/dev/null 2>&1; then
+        echo -e "${GREEN}[+] clang found — macOS embedded-C exploit modules ready${NC}"
+    else
+        echo -e "${YELLOW}[!] clang missing — modules/dos/macos_* will be unavailable${NC}"
+        echo -e "${YELLOW}    Run:  xcode-select --install${NC}"
+    fi
 fi
 
 # Done
