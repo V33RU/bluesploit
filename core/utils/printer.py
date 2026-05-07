@@ -88,12 +88,12 @@ def print_banner(version: str) -> None:
     ║                                                                                 ║
     ╠═════════════════════════════════════════════════════════════════════════════════╣
     ║                                                                                 ║
-    ║  {C.BOLD}{C.WHITE}Bluetooth Exploitation Framework{C.RESET}{C.CYAN}                            {C.DARK_GREY}v{version:<8}{C.RESET}{C.CYAN}          ║
+    ║  {C.BOLD}{C.WHITE}Bluetooth Penetration Testing Framework{C.RESET}{C.CYAN}{' ' * (37 - len(version))}{C.DARK_GREY}v{version}{C.RESET}{C.CYAN}  ║
     ║  {C.DARK_GREY}─────────────────────────────────────────────────────────────────────────────{C.RESET}{C.CYAN}  ║
     ║                                                                                 ║
-    ║  {C.YELLOW}◉{C.RESET}{C.CYAN} {C.WHITE}Author{C.RESET}{C.CYAN}    : {C.WHITE}Mr-IoT / Mr-IoT{C.RESET}{C.CYAN}                                                   ║
-    ║  {C.YELLOW}◉{C.RESET}{C.CYAN} {C.WHITE}Project{C.RESET}{C.CYAN}   : {C.WHITE}Mr-IoT{C.RESET}{C.CYAN}                                                           ║
-    ║  {C.YELLOW}◉{C.RESET}{C.CYAN} {C.WHITE}GitHub{C.RESET}{C.CYAN}    : {C.DARK_CYAN}https://github.com/Mr-IoT{C.RESET}{C.CYAN}                                         ║
+    ║  {C.YELLOW}◉{C.RESET}{C.CYAN} {C.WHITE}Author{C.RESET}{C.CYAN}    : {C.WHITE}Mr-IoT{C.RESET}{C.CYAN}{'':59}║
+    ║  {C.YELLOW}◉{C.RESET}{C.CYAN} {C.WHITE}Project{C.RESET}{C.CYAN}   : {C.WHITE}BlueSploit{C.RESET}{C.CYAN}{'':55}║
+    ║  {C.YELLOW}◉{C.RESET}{C.CYAN} {C.WHITE}GitHub{C.RESET}{C.CYAN}    : {C.DARK_CYAN}https://github.com/Mr-IoT{C.RESET}{C.CYAN}{'':40}║
     ║                                                                                 ║
     ╠═════════════════════════════════════════════════════════════════════════════════╣
     ║                                                                                 ║
@@ -116,8 +116,8 @@ def print_banner_minimal(version: str) -> None:
     
     banner = f"""
 {C.CYAN}╔═══════════════════════════════════════════════════════╗
-║  {C.BOLD}{C.WHITE}BLUESPLOIT{C.RESET}{C.CYAN} - Bluetooth Exploitation Framework     ║
-║  {C.DARK_GREY}v{version} | by Mr-IoT | Mr-IoT{C.RESET}{C.CYAN}                             ║
+║  {C.BOLD}{C.WHITE}BLUESPLOIT{C.RESET}{C.CYAN} - Bluetooth Pentest Framework        ║
+║  {C.DARK_GREY}v{version} | by Mr-IoT | BlueSploit{C.RESET}{C.CYAN}                        ║
 ╚═══════════════════════════════════════════════════════╝{C.RESET}
 """
     print(banner)
