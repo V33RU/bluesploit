@@ -1,26 +1,54 @@
 """
-BlueSploit Module: SDP Service Enumerator
-Advanced SDP (Service Discovery Protocol) enumeration for Bluetooth Classic devices
-Uses sdptool from BlueZ stack
+BlueSploit Module: SDP Service Enumerator (Advanced)
+=====================================================
 
+Deep enumeration + risk analysis of an SDP service catalogue on a Bluetooth
+Classic target. Beyond the basic `sdptool browse` listing, this module:
+
+  • **Risk-scores** every discovered service against a curated UUID → (severity,
+    description, CVEs, suggested modules) map. The catch list covers HID
+    (CVE-2023-45866), BNEP/PAN (BlueBorne CVE-2017-0781), OBEX FTP/OPP
+    (BlueSnarfing), HFP/HSP (RFCOMM AT-command RCE), PBAP/MAP/SIM Access
+    (privacy leak), A2DP/AVRCP (BlueFrag CVE-2020-0022), DUN, SDP itself
+    (CVE-2017-0785), and so on.
+  • **Decodes PnP Information (UUID 0x1200)** — vendor ID source, vendor ID,
+    product ID, firmware version — and resolves common Bluetooth-SIG / USB
+    vendor IDs to human names.
+  • **Probes L2CAP PSMs** discovered in the records to confirm they are
+    actually reachable (not just advertised) — concurrent, low-timeout.
+  • **Parses XML** (`sdptool browse --xml`) into structured attribute
+    records, extracting Security/Class attributes that the plain-text
+    parser misses.
+  • **ANSI-safe table output** so the final view stays aligned regardless
+    of the terminal width or color codes.
+
+Modes:
+    browse  — standard `sdptool browse` parse (legacy default behavior)
+    full    — browse + risk + pnp + l2cap-probe + xml-attrs (recommended)
+    records — raw `sdptool records` dump
+    tree    — raw `sdptool browse --tree` dump
 """
 
-import subprocess
+import json
 import re
+import socket
+import subprocess
+import threading
 import xml.etree.ElementTree as ET
-from typing import Dict, Any, List, Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, Tuple
+
 from core.base import (
-    ScannerModule, ModuleInfo, ModuleOption,
-    BTProtocol, Severity, Target
+    BTProtocol, ModuleInfo, ModuleOption, ScannerModule, Severity, Target,
 )
 from core.utils.printer import (
-    print_success, print_error, print_info, print_warning, Colors
+    Colors, print_error, print_info, print_success, print_warning,
 )
 
 
-# Well-known SDP Service Class UUIDs (16-bit)
-KNOWN_SERVICES = {
+# ── Reference tables ──────────────────────────────────────────────────────────
+
+KNOWN_SERVICES: Dict[str, str] = {
     "0x1000": "Service Discovery Server",
     "0x1001": "Browse Group Descriptor",
     "0x1002": "Public Browse Root",
@@ -42,625 +70,863 @@ KNOWN_SERVICES = {
     "0x1110": "Intercom",
     "0x1111": "Fax",
     "0x1112": "Headset Audio Gateway",
-    "0x1113": "WAP",
-    "0x1114": "WAP Client",
     "0x1115": "PANU",
     "0x1116": "NAP",
     "0x1117": "GN",
-    "0x1118": "Direct Printing",
-    "0x1119": "Reference Printing",
-    "0x111a": "Basic Imaging Profile",
-    "0x111b": "Imaging Responder",
-    "0x111c": "Imaging Automatic Archive",
-    "0x111d": "Imaging Referenced Objects",
+    "0x1124": "Human Interface Device (HID)",
     "0x111e": "Handsfree",
     "0x111f": "Handsfree Audio Gateway",
-    "0x1120": "Direct Printing Reference",
-    "0x1121": "Reflected UI",
-    "0x1122": "Basic Printing",
-    "0x1123": "Printing Status",
-    "0x1124": "Human Interface Device (HID)",
-    "0x1125": "Hardcopy Cable Replacement",
-    "0x1126": "HCR Print",
-    "0x1127": "HCR Scan",
-    "0x1128": "Common ISDN Access",
     "0x112d": "SIM Access",
     "0x112e": "Phonebook Access PCE",
     "0x112f": "Phonebook Access PSE",
     "0x1130": "Phonebook Access",
-    "0x1131": "Headset HS",
     "0x1132": "Message Access Server",
     "0x1133": "Message Notification Server",
     "0x1134": "Message Access Profile",
-    "0x1135": "GNSS",
-    "0x1136": "GNSS Server",
-    "0x1137": "3D Display",
-    "0x1138": "3D Glasses",
-    "0x1139": "3D Synchronization",
-    "0x113a": "MPS Profile",
-    "0x113b": "MPS SC",
     "0x1200": "PnP Information",
-    "0x1201": "Generic Networking",
-    "0x1202": "Generic File Transfer",
-    "0x1203": "Generic Audio",
-    "0x1204": "Generic Telephony",
-    "0x1205": "UPNP Service",
-    "0x1206": "UPNP IP Service",
     "0x1300": "ESDP UPNP IP PAN",
-    "0x1301": "ESDP UPNP IP LAP",
-    "0x1302": "ESDP UPNP L2CAP",
     "0x1303": "Video Source",
     "0x1304": "Video Sink",
     "0x1305": "Video Distribution",
     "0x1400": "HDP",
-    "0x1401": "HDP Source",
-    "0x1402": "HDP Sink",
 }
 
-# Protocol UUIDs
-KNOWN_PROTOCOLS = {
-    "0x0001": "SDP",
-    "0x0002": "UDP",
-    "0x0003": "RFCOMM",
-    "0x0004": "TCP",
-    "0x0005": "TCS-BIN",
-    "0x0006": "TCS-AT",
-    "0x0007": "ATT",
-    "0x0008": "OBEX",
-    "0x0009": "IP",
-    "0x000a": "FTP",
-    "0x000c": "HTTP",
-    "0x000e": "WSP",
-    "0x000f": "BNEP",
-    "0x0010": "UPNP",
-    "0x0011": "HIDP",
-    "0x0012": "HCRP-CTRL",
-    "0x0014": "HCRP-DATA",
-    "0x0016": "HCRP-NOTE",
-    "0x0017": "AVCTP",
-    "0x0019": "AVDTP",
-    "0x001b": "CMTP",
-    "0x001e": "MCAP-CTRL",
-    "0x001f": "MCAP-DATA",
-    "0x0100": "L2CAP",
+KNOWN_PROTOCOLS: Dict[str, str] = {
+    "0x0001": "SDP",       "0x0002": "UDP",        "0x0003": "RFCOMM",
+    "0x0004": "TCP",       "0x0005": "TCS-BIN",    "0x0006": "TCS-AT",
+    "0x0007": "ATT",       "0x0008": "OBEX",       "0x0009": "IP",
+    "0x000a": "FTP",       "0x000c": "HTTP",       "0x000e": "WSP",
+    "0x000f": "BNEP",      "0x0010": "UPNP",       "0x0011": "HIDP",
+    "0x0017": "AVCTP",     "0x0019": "AVDTP",      "0x001b": "CMTP",
+    "0x001e": "MCAP-CTRL", "0x001f": "MCAP-DATA",  "0x0100": "L2CAP",
+}
+
+
+# ── Risk database ─────────────────────────────────────────────────────────────
+
+@dataclass
+class Risk:
+    severity:   str            # CRITICAL | HIGH | MEDIUM | LOW
+    summary:    str
+    cves:       List[str] = field(default_factory=list)
+    modules:    List[str] = field(default_factory=list)
+
+
+RISK_MAP: Dict[str, Risk] = {
+    # HID — keystroke injection (BlueDucky / CVE-2023-45866)
+    "0x1124": Risk("CRITICAL",
+        "HID profile reachable — 0-click keystroke injection if peer accepts unauth HID reports.",
+        ["CVE-2023-45866"],
+        ["exploits/classic/keystroke_injection_android_linux",
+         "exploits/classic/keystroke_injection_apple",
+         "exploits/classic/keystroke_injection_windows"]),
+
+    # SIM Access — direct SIM commands → cloning surface
+    "0x112d": Risk("CRITICAL",
+        "SIM Access Profile — direct SIM/USIM commands, IMSI/Ki extraction surface.",
+        [], []),
+
+    # OBEX FTP — BlueSnarfing
+    "0x1106": Risk("HIGH",
+        "OBEX File Transfer — historically allows unauthenticated filesystem browse (BlueSnarfing).",
+        ["CVE-2004-1001"],
+        ["exploits/classic/bluesnarfing", "exploits/classic/obex_exploit"]),
+
+    # OBEX OPP — BlueJacking / vCard injection
+    "0x1105": Risk("HIGH",
+        "OBEX Object Push — accepts unauth object pushes (BlueJacking, vCard/vCal injection).",
+        [],
+        ["exploits/classic/obex_exploit", "exploits/classic/bluesnarfing"]),
+
+    # PAN family — BlueBorne BNEP overflow
+    "0x1115": Risk("HIGH",
+        "PANU — BNEP frames reachable; BlueBorne BNEP overflow code path.",
+        ["CVE-2017-0781"],
+        ["exploits/classic/blueborne_bnep_overflow",
+         "exploits/classic/bnep_heap_disclosure"]),
+    "0x1116": Risk("HIGH",
+        "NAP — BNEP + IP routing; larger attack surface than PANU.",
+        ["CVE-2017-0781"],
+        ["exploits/classic/blueborne_bnep_overflow"]),
+    "0x1117": Risk("MEDIUM",
+        "GN — BNEP-based, same BlueBorne surface.",
+        ["CVE-2017-0781"], []),
+
+    # HFP / HSP — AT-command RCE
+    "0x111e": Risk("HIGH",
+        "Hands-Free Profile — large RFCOMM AT-command attack surface; multiple recent Android RCE bugs.",
+        ["CVE-2023-21347", "CVE-2024-0039", "CVE-2025-22403"],
+        ["exploits/classic/hfp_rce_2023", "exploits/classic/android_hfp_uaf_2025"]),
+    "0x111f": Risk("HIGH",
+        "Handsfree Audio Gateway — same AT-command surface.",
+        [],
+        ["exploits/classic/hfp_rce_2023"]),
+    "0x1108": Risk("MEDIUM",
+        "Headset profile — RFCOMM AT-command channel reachable.",
+        ["CVE-2023-21347"], []),
+    "0x1112": Risk("MEDIUM",
+        "Headset Audio Gateway — AT command RFCOMM channel.",
+        [], []),
+
+    # Phonebook / messaging — privacy leak
+    "0x112e": Risk("MEDIUM",
+        "Phonebook Access Client — peer can be tricked into exposing contacts.",
+        [], []),
+    "0x112f": Risk("HIGH",
+        "Phonebook Access Server — contacts/call-log readable; auto-bond car-kits often expose this.",
+        [], ["exploits/classic/bluebugging"]),
+    "0x1130": Risk("HIGH",
+        "Phonebook Access — privacy leak of contacts and call history.",
+        [], []),
+    "0x1132": Risk("HIGH",
+        "Message Access Server — exposes SMS/MMS/IM messages.",
+        [], []),
+    "0x1133": Risk("MEDIUM",
+        "Message Notification Server — message metadata leak.",
+        [], []),
+    "0x1134": Risk("HIGH",
+        "Message Access Profile — historical privacy breach in car-kit pairings.",
+        [], []),
+
+    # A2DP / AVRCP — BlueFrag
+    "0x110d": Risk("HIGH",
+        "A2DP — AVDTP signalling reachable; BlueFrag heap overflow targets this on Android.",
+        ["CVE-2020-0022"],
+        ["exploits/classic/bluefrag", "dos/a2dp_flood"]),
+    "0x110a": Risk("MEDIUM",
+        "AVDTP audio source — same BlueFrag code path.",
+        ["CVE-2020-0022"], []),
+    "0x110b": Risk("MEDIUM",
+        "AVDTP audio sink — same code path.",
+        ["CVE-2020-0022"], []),
+    "0x110c": Risk("MEDIUM",
+        "AVRCP Target — older Android AVRCP RCEs.",
+        ["CVE-2017-13258"], []),
+    "0x110e": Risk("MEDIUM",
+        "AVRCP — same AVRCP RCE family.",
+        ["CVE-2017-13258"], []),
+
+    # Serial / Dialup — open data channels
+    "0x1101": Risk("MEDIUM",
+        "Serial Port (SPP) — raw RFCOMM channel; auth depends entirely on the application above.",
+        [], ["exploits/classic/rfcomm_shell"]),
+    "0x1103": Risk("HIGH",
+        "Dialup Networking — AT-command channel; modem command injection / PIN brute possible.",
+        [],
+        ["exploits/classic/helomoto", "exploits/classic/bluebugging"]),
+    "0x1102": Risk("MEDIUM",
+        "Legacy LAN Access PPP — outdated, often weak auth.",
+        [], []),
+
+    # SDP itself (BlueBorne info leak)
+    "0x0001": Risk("MEDIUM",
+        "SDP server reachable — BlueBorne SDP heap leak abuses continuation state.",
+        ["CVE-2017-0785"],
+        ["exploits/classic/blueborne_sdp_leak"]),
+
+    # IrMC Sync — old privacy leak
+    "0x1104": Risk("MEDIUM",
+        "Sync profile may expose phonebook/calendar without authentication on legacy stacks.",
+        [], []),
+    "0x1107": Risk("MEDIUM",
+        "IrMC Sync Command — same legacy disclosure risk.",
+        [], []),
+}
+
+_SEV_ORDER = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}
+
+
+# ── PnP Information (UUID 0x1200) decoder ─────────────────────────────────────
+#
+# Attribute IDs (Bluetooth SIG, Device ID Service):
+#   0x0200 SpecificationID, 0x0201 VendorID,    0x0202 ProductID,
+#   0x0203 Version,         0x0204 PrimaryRecord, 0x0205 VendorIDSource
+
+PNP_VENDOR_SOURCE = {1: "Bluetooth SIG", 2: "USB"}
+
+# Tiny subset of common USB vendors (vid → name). Keeps us from shipping a
+# 30k-row CSV; covers the vendors most likely to show up on a BT host stack.
+USB_VENDOR_DB: Dict[int, str] = {
+    0x004C: "Apple",            0x05AC: "Apple",
+    0x05E0: "Symbol",           0x046D: "Logitech",
+    0x047D: "Kensington",       0x04CA: "Lite-On",
+    0x04F2: "Chicony",          0x05C6: "Qualcomm",
+    0x0489: "Foxconn",          0x0B05: "ASUSTek",
+    0x0BDA: "Realtek",          0x0CF3: "Atheros / Qualcomm",
+    0x0E0F: "VMware",           0x13D3: "IMC Networks",
+    0x1A6E: "Global Unichip",   0x1D6B: "Linux Foundation",
+    0x8086: "Intel",            0x8087: "Intel",
+    0x004D: "Intel",            0x18D1: "Google",
+    0x22B8: "Motorola",         0x2717: "Xiaomi",
+    0x2A45: "Meizu",            0x2C26: "OnePlus",
+    0x05B5: "Dispan",           0x0930: "Toshiba",
+    0x0A12: "Cambridge Silicon Radio (CSR)",
+    0x0E8D: "MediaTek",         0x148F: "Ralink",
+    0x0BB4: "HTC",              0x12D1: "Huawei",
+    0x04E8: "Samsung",          0x054C: "Sony",
+    0x091E: "Garmin",           0x1532: "Razer",
+    0x05C8: "Cheng Uei",        0x174C: "ASMedia",
+}
+
+BT_SIG_VENDOR_DB: Dict[int, str] = {
+    0x000F: "Broadcom",         0x004C: "Apple",
+    0x0006: "Microsoft",        0x0075: "Samsung",
+    0x00E0: "Google",           0x038F: "Espressif",
+    0x0131: "Huawei",           0x0157: "Xiaomi",
+    0x001D: "Qualcomm",         0x0002: "Intel",
+    0x054C: "Sony",             0x0059: "Nordic",
+    0x000D: "Texas Instr.",     0x012D: "Jabra",
+    0x008A: "LG Elec.",         0x03DA: "Bose",
 }
 
 
 @dataclass
-class SDPService:
-    """Represents a discovered SDP service"""
-    name: str
-    service_classes: List[str]
-    protocols: List[Dict[str, Any]]
-    profiles: List[Dict[str, str]]
-    provider: str
-    description: str
-    record_handle: str
-    channel: Optional[int]
-    psm: Optional[int]
-    raw_record: str
+class PnPInfo:
+    vendor_id_source: Optional[int] = None
+    vendor_id:        Optional[int] = None
+    product_id:       Optional[int] = None
+    version:          Optional[str] = None
+    vendor_name:      Optional[str] = None
 
+
+def _decode_pnp_from_xml(record_xml: ET.Element) -> Optional[PnPInfo]:
+    """Pull PnP attributes out of a single SDP <record> element."""
+    attrs = {a.get("id", "").lower(): a for a in record_xml.findall("attribute")}
+    if "0x0201" not in attrs:                       # No VendorID → not a PnP record
+        return None
+
+    pnp = PnPInfo()
+
+    def _get_uint(node: ET.Element) -> Optional[int]:
+        val = (node.find("uint16") if node.find("uint16") is not None
+               else node.find("uint8"))
+        if val is None or val.get("value") is None:
+            return None
+        try:
+            return int(val.get("value"), 0)
+        except Exception:
+            return None
+
+    if "0x0205" in attrs:
+        pnp.vendor_id_source = _get_uint(attrs["0x0205"])
+    if "0x0201" in attrs:
+        pnp.vendor_id = _get_uint(attrs["0x0201"])
+    if "0x0202" in attrs:
+        pnp.product_id = _get_uint(attrs["0x0202"])
+    if "0x0203" in attrs:
+        v = _get_uint(attrs["0x0203"])
+        if v is not None:
+            # Version is BCD: high nibble of MSB = major, low nibble = minor, LSB = sub
+            major = (v >> 8) & 0xFF
+            minor = (v >> 4) & 0x0F
+            sub   =  v       & 0x0F
+            pnp.version = f"{major}.{minor}.{sub}"
+
+    # Resolve vendor
+    if pnp.vendor_id is not None:
+        if pnp.vendor_id_source == 1:
+            pnp.vendor_name = BT_SIG_VENDOR_DB.get(pnp.vendor_id)
+        elif pnp.vendor_id_source == 2:
+            pnp.vendor_name = USB_VENDOR_DB.get(pnp.vendor_id)
+
+    return pnp
+
+
+def _decode_pnp_from_text(raw_record: str) -> Optional[PnPInfo]:
+    """Best-effort PnP extraction from `sdptool browse` plain output."""
+    if "PnP Information" not in raw_record and "0x1200" not in raw_record:
+        return None
+    pnp = PnPInfo()
+    # sdptool emits hexadecimal attribute values inline — match them
+    m = re.search(r"VendorIDSource[^0-9a-fx]*0x([0-9a-fA-F]+)", raw_record)
+    if m: pnp.vendor_id_source = int(m.group(1), 16)
+    m = re.search(r"VendorID[^0-9a-fx]*0x([0-9a-fA-F]+)", raw_record)
+    if m: pnp.vendor_id = int(m.group(1), 16)
+    m = re.search(r"ProductID[^0-9a-fx]*0x([0-9a-fA-F]+)", raw_record)
+    if m: pnp.product_id = int(m.group(1), 16)
+    m = re.search(r"Version[^0-9a-fx]*0x([0-9a-fA-F]+)", raw_record)
+    if m:
+        v = int(m.group(1), 16)
+        pnp.version = f"{(v>>8)&0xFF}.{(v>>4)&0x0F}.{v&0x0F}"
+    if pnp.vendor_id is None:
+        return None
+    if pnp.vendor_id_source == 1:
+        pnp.vendor_name = BT_SIG_VENDOR_DB.get(pnp.vendor_id)
+    elif pnp.vendor_id_source == 2:
+        pnp.vendor_name = USB_VENDOR_DB.get(pnp.vendor_id)
+    return pnp
+
+
+# ── L2CAP PSM probe ───────────────────────────────────────────────────────────
+
+def _probe_l2cap(target: str, psm: int, timeout: float = 1.5) -> bool:
+    """
+    Try a non-blocking L2CAP connect to (target, psm). Returns True on
+    successful TCP-style handshake (connection accepted).
+    """
+    BTPROTO_L2CAP = 0
+    AF_BLUETOOTH  = 31
+    s = None
+    try:
+        s = socket.socket(AF_BLUETOOTH, socket.SOCK_SEQPACKET, BTPROTO_L2CAP)
+        s.settimeout(timeout)
+        s.connect((target, psm))
+        return True
+    except (OSError, socket.timeout, ConnectionRefusedError):
+        return False
+    except Exception:
+        return False
+    finally:
+        try:
+            if s: s.close()
+        except Exception:
+            pass
+
+
+# ── Data model ────────────────────────────────────────────────────────────────
+
+@dataclass
+class SDPService:
+    name:            str
+    service_classes: List[Dict[str, str]] = field(default_factory=list)
+    protocols:       List[Dict[str, str]] = field(default_factory=list)
+    profiles:        List[Dict[str, str]] = field(default_factory=list)
+    provider:        str               = ""
+    description:     str               = ""
+    record_handle:   str               = ""
+    channel:         Optional[int]     = None    # RFCOMM
+    psm:             Optional[int]     = None    # L2CAP
+    psm_reachable:   Optional[bool]    = None    # filled by probe
+    raw:             str               = ""
+    # Risk
+    risk:            Optional[Risk]    = None
+    risk_uuid:       Optional[str]     = None
+
+
+# ── ANSI-safe padding (mirror discovery.py) ───────────────────────────────────
+
+_ANSI_RE = re.compile(r"\033\[[0-9;]*m")
+def _vis(s: str) -> int:    return len(_ANSI_RE.sub("", s))
+def _cpad(s: str, w: int) -> str: return s + " " * max(0, w - _vis(s))
+
+
+# ── Module ────────────────────────────────────────────────────────────────────
 
 class Module(ScannerModule):
     """
-    SDP Service Enumerator
-    
-    Advanced enumeration of Bluetooth Classic services using sdptool.
-    Supports multiple browse modes, service search, and detailed output.
+    Advanced SDP enumerator with risk analysis, PnP decoding, and L2CAP
+    reachability probes.
     """
-    
+
     info = ModuleInfo(
-        name="scanners/classic/sdp_enum",
-        description="Enumerate SDP services on Bluetooth Classic devices",
+        name="recon/sdp_enum",
+        description="Advanced SDP enumerator — risk + CVE map, PnP decode, L2CAP probe",
         author=["BlueSploit"],
         protocol=BTProtocol.CLASSIC,
         severity=Severity.INFO,
         references=[
             "https://www.bluetooth.com/specifications/assigned-numbers/service-discovery/",
-            "https://www.bluez.org/"
-        ]
+            "https://www.bluetooth.com/specifications/specs/device-identification-profile-1-3/",
+            "https://www.bluez.org/",
+        ],
     )
-    
+
     def _setup_options(self) -> None:
         self.options = {
             "target": ModuleOption(
-                name="target",
-                required=True,
-                description="Target BD_ADDR (XX:XX:XX:XX:XX:XX)"
+                name="target", required=True,
+                description="Target BD_ADDR (XX:XX:XX:XX:XX:XX)",
             ),
             "mode": ModuleOption(
-                name="mode",
-                required=False,
-                description="Browse mode: browse, records, tree",
-                default="browse"
+                name="mode", required=False, default="full",
+                description="Mode: full | browse | records | tree",
             ),
             "search": ModuleOption(
-                name="search",
-                required=False,
-                description="Search specific service (e.g., SP, DUN, FAX, OPP, FTP, HS, HF, NAP, GN)",
-                default=None
+                name="search", required=False, default=None,
+                description="Search a specific service (SP, DUN, OPP, FTP, HID, NAP, …)",
+            ),
+            "probe_l2cap": ModuleOption(
+                name="probe_l2cap", required=False, default=True,
+                description="Attempt L2CAP connect on each PSM to confirm reachability",
+            ),
+            "decode_pnp": ModuleOption(
+                name="decode_pnp", required=False, default=True,
+                description="Decode PnP Information record (UUID 0x1200)",
+            ),
+            "xml_attrs": ModuleOption(
+                name="xml_attrs", required=False, default=True,
+                description="Also fetch & parse XML attribute records",
             ),
             "timeout": ModuleOption(
-                name="timeout",
-                required=False,
-                description="Command timeout in seconds",
-                default=30
-            ),
-            "xml_output": ModuleOption(
-                name="xml_output",
-                required=False,
-                description="Get raw XML output",
-                default=False
+                name="timeout", required=False, default=30,
+                description="Per-command timeout in seconds",
             ),
             "output_file": ModuleOption(
-                name="output_file",
-                required=False,
-                description="Save results to JSON file",
-                default=None
-            )
+                name="output_file", required=False, default=None,
+                description="Save the full structured report to JSON",
+            ),
         }
-    
-    def _check_sdptool(self) -> bool:
-        """Check if sdptool is available"""
+
+    # ── sdptool helpers ─────────────────────────────────────────────────────
+
+    @staticmethod
+    def _have_sdptool() -> bool:
         try:
-            result = subprocess.run(
-                ["which", "sdptool"],
-                capture_output=True,
-                timeout=5
-            )
-            return result.returncode == 0
-        except:
+            r = subprocess.run(["which", "sdptool"], capture_output=True, timeout=5)
+            return r.returncode == 0
+        except Exception:
             return False
-    
-    def _get_service_name(self, uuid: str) -> str:
-        """Get human-readable service name from UUID"""
-        uuid_upper = uuid.upper()
-        if not uuid_upper.startswith("0X"):
-            uuid_upper = "0x" + uuid_upper
-        uuid_lower = uuid_upper.lower()
-        return KNOWN_SERVICES.get(uuid_lower, f"Unknown ({uuid})")
-    
-    def _get_protocol_name(self, uuid: str) -> str:
-        """Get protocol name from UUID"""
-        uuid_lower = uuid.lower()
-        if not uuid_lower.startswith("0x"):
-            uuid_lower = "0x" + uuid_lower
-        return KNOWN_PROTOCOLS.get(uuid_lower, uuid)
-    
+
     def _run_sdptool(self, args: List[str], timeout: int) -> Optional[str]:
-        """Run sdptool command and return output"""
         try:
-            cmd = ["sdptool"] + args
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=timeout
-            )
-            if result.returncode != 0 and result.stderr:
-                print_warning(f"sdptool warning: {result.stderr.strip()}")
-            return result.stdout
+            r = subprocess.run(["sdptool"] + args,
+                               capture_output=True, text=True, timeout=timeout)
+            if r.returncode != 0 and r.stderr:
+                print_warning(f"sdptool: {r.stderr.strip().splitlines()[-1]}")
+            return r.stdout
         except subprocess.TimeoutExpired:
-            print_error(f"Command timed out after {timeout}s")
-            return None
+            print_error(f"sdptool timed out after {timeout}s")
         except Exception as e:
             print_error(f"sdptool error: {e}")
-            return None
-    
-    def _parse_browse_output(self, output: str) -> List[SDPService]:
-        """Parse sdptool browse output into structured data"""
-        services = []
-        current_service = None
-        current_section = None
-        raw_record = []
-        
-        lines = output.split('\n')
-        
-        for line in lines:
-            # New service record
+        return None
+
+    @staticmethod
+    def _service_name(uuid: str) -> str:
+        u = uuid.lower()
+        if not u.startswith("0x"):
+            u = "0x" + u
+        return KNOWN_SERVICES.get(u, f"Unknown ({uuid})")
+
+    @staticmethod
+    def _normalize_uuid(s: str) -> str:
+        s = s.lower()
+        if s.startswith("0x") and len(s) >= 6:
+            return f"0x{s[-4:]}"
+        if re.fullmatch(r"[0-9a-f]{4}", s):
+            return f"0x{s}"
+        return s
+
+    # ── Plain-text parser ───────────────────────────────────────────────────
+
+    def _parse_browse(self, output: str) -> List[SDPService]:
+        """Parse the human-readable `sdptool browse` output."""
+        services: List[SDPService] = []
+        cur:      Optional[SDPService] = None
+        section:  Optional[str] = None
+        raw:      List[str] = []
+
+        for line in output.split("\n"):
+            stripped = line.rstrip()
             if line.startswith("Service Name:"):
-                if current_service:
-                    current_service["raw"] = '\n'.join(raw_record)
-                    services.append(current_service)
-                    raw_record = []
-                
-                current_service = {
-                    "name": line.split(":", 1)[1].strip(),
-                    "service_classes": [],
-                    "protocols": [],
-                    "profiles": [],
-                    "provider": "",
-                    "description": "",
-                    "record_handle": "",
-                    "channel": None,
-                    "psm": None,
-                }
-                current_section = None
-            
-            elif current_service is not None:
-                raw_record.append(line)
-                
-                if line.startswith("Service RecHandle:"):
-                    current_service["record_handle"] = line.split(":", 1)[1].strip()
-                
-                elif line.startswith("Service Provider:"):
-                    current_service["provider"] = line.split(":", 1)[1].strip()
-                
-                elif line.startswith("Service Description:"):
-                    current_service["description"] = line.split(":", 1)[1].strip()
-                
-                elif "Service Class ID List:" in line:
-                    current_section = "classes"
-                
-                elif "Protocol Descriptor List:" in line:
-                    current_section = "protocols"
-                
-                elif "Profile Descriptor List:" in line:
-                    current_section = "profiles"
-                
-                elif "Language Base Attr List:" in line:
-                    current_section = None
-                
-                elif current_section == "classes" and '"' in line:
-                    # Extract service class UUID
-                    match = re.search(r'"([^"]+)".*\((0x[0-9a-fA-F]+)\)', line)
-                    if match:
-                        current_service["service_classes"].append({
-                            "name": match.group(1),
-                            "uuid": match.group(2)
-                        })
-                    else:
-                        # Try alternative format
-                        match = re.search(r'UUID:\s*(0x[0-9a-fA-F]+)', line)
-                        if match:
-                            uuid = match.group(1)
-                            current_service["service_classes"].append({
-                                "name": self._get_service_name(uuid),
-                                "uuid": uuid
-                            })
-                
-                elif current_section == "protocols":
-                    # Extract protocol info
-                    if '"' in line or 'UUID' in line:
-                        proto_match = re.search(r'"([^"]+)".*\((0x[0-9a-fA-F]+)\)', line)
-                        if proto_match:
-                            proto = {
-                                "name": proto_match.group(1),
-                                "uuid": proto_match.group(2)
-                            }
-                            current_service["protocols"].append(proto)
-                    
-                    # Extract channel number
-                    channel_match = re.search(r'Channel:\s*(\d+)', line)
-                    if channel_match:
-                        current_service["channel"] = int(channel_match.group(1))
-                    
-                    # Extract PSM
-                    psm_match = re.search(r'PSM:\s*(\d+)', line)
-                    if psm_match:
-                        current_service["psm"] = int(psm_match.group(1))
-                
-                elif current_section == "profiles":
-                    # Extract profile info
-                    profile_match = re.search(r'"([^"]+)".*\((0x[0-9a-fA-F]+)\).*Version:\s*(0x[0-9a-fA-F]+)', line)
-                    if profile_match:
-                        current_service["profiles"].append({
-                            "name": profile_match.group(1),
-                            "uuid": profile_match.group(2),
-                            "version": profile_match.group(3)
-                        })
-        
-        # Don't forget the last service
-        if current_service:
-            current_service["raw"] = '\n'.join(raw_record)
-            services.append(current_service)
-        
+                if cur:
+                    cur.raw = "\n".join(raw)
+                    services.append(cur)
+                    raw = []
+                cur = SDPService(name=stripped.split(":", 1)[1].strip() or "Unknown")
+                section = None
+                continue
+
+            if cur is None:
+                continue
+            raw.append(stripped)
+
+            if stripped.startswith("Service RecHandle:"):
+                cur.record_handle = stripped.split(":", 1)[1].strip()
+            elif stripped.startswith("Service Provider:"):
+                cur.provider = stripped.split(":", 1)[1].strip()
+            elif stripped.startswith("Service Description:"):
+                cur.description = stripped.split(":", 1)[1].strip()
+            elif "Service Class ID List:" in stripped:
+                section = "classes"
+            elif "Protocol Descriptor List:" in stripped:
+                section = "protocols"
+            elif "Profile Descriptor List:" in stripped:
+                section = "profiles"
+            elif "Language Base Attr List:" in stripped:
+                section = None
+
+            elif section == "classes":
+                m = re.search(r'"([^"]+)".*?\((0x[0-9a-fA-F]+)\)', stripped)
+                if m:
+                    cur.service_classes.append({"name": m.group(1), "uuid": m.group(2)})
+                else:
+                    m = re.search(r"UUID:\s*(0x[0-9a-fA-F]+)", stripped)
+                    if m:
+                        u = m.group(1)
+                        cur.service_classes.append(
+                            {"name": self._service_name(u), "uuid": u})
+
+            elif section == "protocols":
+                m = re.search(r'"([^"]+)".*?\((0x[0-9a-fA-F]+)\)', stripped)
+                if m:
+                    cur.protocols.append({"name": m.group(1), "uuid": m.group(2)})
+                m = re.search(r"Channel:\s*(\d+)", stripped)
+                if m: cur.channel = int(m.group(1))
+                m = re.search(r"PSM:\s*(\d+)", stripped)
+                if m: cur.psm = int(m.group(1))
+
+            elif section == "profiles":
+                m = re.search(
+                    r'"([^"]+)".*?\((0x[0-9a-fA-F]+)\).*?Version:\s*(0x[0-9a-fA-F]+)',
+                    stripped)
+                if m:
+                    cur.profiles.append({"name": m.group(1),
+                                         "uuid": m.group(2),
+                                         "version": m.group(3)})
+
+        if cur:
+            cur.raw = "\n".join(raw)
+            services.append(cur)
         return services
-    
-    def _browse_services(self, target: str, timeout: int) -> List[SDPService]:
-        """Browse all SDP services on target"""
-        print_info(f"Browsing SDP services on {target}...")
-        
-        output = self._run_sdptool(["browse", target], timeout)
-        if not output:
-            return []
-        
-        return self._parse_browse_output(output)
-    
-    def _search_service(self, target: str, service: str, timeout: int) -> List[SDPService]:
-        """Search for specific service on target"""
-        print_info(f"Searching for {service} service on {target}...")
-        
-        output = self._run_sdptool(["search", "--bdaddr", target, service], timeout)
-        if not output:
-            return []
-        
-        return self._parse_browse_output(output)
-    
-    def _get_records(self, target: str, timeout: int) -> str:
-        """Get all service records"""
-        print_info(f"Getting service records from {target}...")
-        
-        output = self._run_sdptool(["records", target], timeout)
-        return output or ""
-    
-    def _get_tree(self, target: str, timeout: int) -> str:
-        """Get service tree view"""
-        print_info(f"Getting service tree from {target}...")
-        
-        output = self._run_sdptool(["browse", "--tree", target], timeout)
-        return output or ""
-    
-    def _get_xml(self, target: str, timeout: int) -> str:
-        """Get XML output"""
-        print_info(f"Getting XML records from {target}...")
-        
-        output = self._run_sdptool(["browse", "--xml", target], timeout)
-        return output or ""
-    
-    def _print_results_table(self, services: List[Dict], target: str) -> None:
-        """Print enumeration results in table format"""
+
+    # ── XML attribute parser (sdptool browse --xml) ─────────────────────────
+
+    def _parse_xml_records(self, xml_text: str) -> Dict[str, Dict[str, str]]:
+        """
+        Return a dict keyed by record handle → { attr_id_hex: text_value }.
+        Wraps the sdptool XML in a synthetic root since it emits a stream
+        of <record> siblings.
+        """
+        out: Dict[str, Dict[str, str]] = {}
+        if not xml_text.strip():
+            return out
+        try:
+            root = ET.fromstring(f"<root>{xml_text}</root>")
+        except ET.ParseError:
+            return out
+        for rec in root.findall("record"):
+            rec_attrs: Dict[str, str] = {}
+            for attr in rec.findall("attribute"):
+                aid = (attr.get("id") or "").lower()
+                # Capture first scalar child
+                for child in attr:
+                    val = child.get("value", "")
+                    if val:
+                        rec_attrs[aid] = val
+                        break
+            handle = rec_attrs.get("0x0000", "")
+            out[handle] = rec_attrs
+        return out
+
+    # ── L2CAP PSM probing (concurrent) ──────────────────────────────────────
+
+    def _probe_psms(self, target: str, services: List[SDPService]) -> None:
+        psms = [s for s in services if s.psm]
+        if not psms:
+            return
+        print_info(f"Probing {len(psms)} L2CAP PSM(s)...")
+        threads: List[threading.Thread] = []
+        results: Dict[int, bool] = {}
+
+        def _worker(psm: int) -> None:
+            results[psm] = _probe_l2cap(target, psm, timeout=1.5)
+
+        for s in psms:
+            t = threading.Thread(target=_worker, args=(s.psm,), daemon=True)
+            t.start()
+            threads.append(t)
+        for t in threads:
+            t.join(timeout=3)
+
+        for s in services:
+            if s.psm is not None:
+                s.psm_reachable = results.get(s.psm, False)
+
+    # ── Risk annotation ─────────────────────────────────────────────────────
+
+    def _annotate_risk(self, services: List[SDPService]) -> None:
+        for s in services:
+            for c in s.service_classes:
+                u = self._normalize_uuid(c.get("uuid", ""))
+                if u in RISK_MAP:
+                    s.risk = RISK_MAP[u]
+                    s.risk_uuid = u
+                    break
+
+    # ── Output ──────────────────────────────────────────────────────────────
+
+    def _print_table(self, target: str, services: List[SDPService]) -> None:
         C = Colors
-        
         if not services:
             print_warning("No services found")
             return
-        
-        # ========== HEADER ==========
-        print(f"\n  {C.CYAN}{'='*110}{C.RESET}")
-        print(f"  {C.BOLD}{C.WHITE}SDP SERVICE ENUMERATION RESULTS{C.RESET}")
-        print(f"  {C.CYAN}{'='*110}{C.RESET}")
-        print(f"  Target: {C.WHITE}{target}{C.RESET}")
-        print(f"  Services Found: {C.WHITE}{len(services)}{C.RESET}\n")
-        
-        # ========== SERVICES TABLE ==========
-        print(f"  {C.BOLD}DISCOVERED SERVICES{C.RESET}\n")
-        print(f"  {C.DARK_GREY}+-----+--------------------------------+--------------------+----------+---------+------------------+{C.RESET}")
-        print(f"  {C.DARK_GREY}|{C.RESET} {C.BOLD}{'#':<3}{C.RESET} {C.DARK_GREY}|{C.RESET} {C.BOLD}{'SERVICE NAME':<30}{C.RESET} {C.DARK_GREY}|{C.RESET} {C.BOLD}{'CLASS UUID':<18}{C.RESET} {C.DARK_GREY}|{C.RESET} {C.BOLD}{'CHANNEL':<8}{C.RESET} {C.DARK_GREY}|{C.RESET} {C.BOLD}{'PSM':<7}{C.RESET} {C.DARK_GREY}|{C.RESET} {C.BOLD}{'PROTOCOL':<16}{C.RESET} {C.DARK_GREY}|{C.RESET}")
-        print(f"  {C.DARK_GREY}+-----+--------------------------------+--------------------+----------+---------+------------------+{C.RESET}")
-        
-        for idx, svc in enumerate(services, 1):
-            name = svc["name"][:30] if svc["name"] else "Unknown"
-            
-            # Get primary class UUID
-            class_uuid = "-"
-            if svc["service_classes"]:
-                class_uuid = svc["service_classes"][0].get("uuid", "-")[:18]
-            
-            # Channel and PSM
-            channel = str(svc["channel"]) if svc["channel"] else "-"
-            psm = str(svc["psm"]) if svc["psm"] else "-"
-            
-            # Primary protocol
-            protocol = "-"
-            if svc["protocols"]:
-                protocol = svc["protocols"][0].get("name", "-")[:16]
-            
-            # Color code based on service type
-            if "serial" in name.lower() or "spp" in name.lower() or svc["channel"]:
-                name_color = C.YELLOW
-            elif "obex" in name.lower() or "ftp" in name.lower() or "opp" in name.lower():
-                name_color = C.GREEN
-            elif "audio" in name.lower() or "a2dp" in name.lower():
-                name_color = C.MAGENTA
-            elif "hid" in name.lower() or "keyboard" in name.lower() or "mouse" in name.lower():
-                name_color = C.RED
+
+        # Sort: risky first (CRITICAL → HIGH → MEDIUM → LOW → none)
+        def _key(s: SDPService) -> int:
+            if s.risk is None: return 99
+            return _SEV_ORDER.get(s.risk.severity, 99)
+        services = sorted(services, key=_key)
+
+        W = {"#": 4, "NAME": 30, "UUID": 9, "CHAN": 6, "PSM": 7, "REACH": 7, "PROTO": 12, "RISK": 12}
+        total = sum(W.values())
+
+        print(f"\n  {C.CYAN}{'═'*(total+2)}{C.RESET}")
+        print(f"  {C.BOLD}{C.WHITE}SDP ENUMERATION  —  {target}  ·  {len(services)} service(s){C.RESET}")
+        print(f"  {C.CYAN}{'═'*(total+2)}{C.RESET}")
+
+        # Header
+        hdr = (f"  {C.BOLD}{'#':<{W['#']}}{'SERVICE':<{W['NAME']}}{'UUID':<{W['UUID']}}"
+               f"{'CHAN':<{W['CHAN']}}{'PSM':<{W['PSM']}}{'REACH':<{W['REACH']}}"
+               f"{'PROTO':<{W['PROTO']}}{'RISK':<{W['RISK']}}{C.RESET}")
+        print(hdr)
+        print("  " + "─" * total)
+
+        for idx, s in enumerate(services, 1):
+            name = (s.name[:W["NAME"]-2] + "..") if len(s.name) > W["NAME"] else s.name
+            uuid = s.service_classes[0]["uuid"] if s.service_classes else "—"
+            chan = str(s.channel) if s.channel else "—"
+            psm  = str(s.psm)     if s.psm     else "—"
+
+            if s.psm is None:
+                reach = "—"
+            elif s.psm_reachable is True:
+                reach = f"{C.GREEN}OPEN{C.RESET}"
+            elif s.psm_reachable is False:
+                reach = f"{C.DARK_GREY}closed{C.RESET}"
             else:
-                name_color = C.CYAN
-            
-            print(f"  {C.DARK_GREY}|{C.RESET} {idx:<3} {C.DARK_GREY}|{C.RESET} {name_color}{name:<30}{C.RESET} {C.DARK_GREY}|{C.RESET} {class_uuid:<18} {C.DARK_GREY}|{C.RESET} {channel:<8} {C.DARK_GREY}|{C.RESET} {psm:<7} {C.DARK_GREY}|{C.RESET} {protocol:<16} {C.DARK_GREY}|{C.RESET}")
-        
-        print(f"  {C.DARK_GREY}+-----+--------------------------------+--------------------+----------+---------+------------------+{C.RESET}")
-        
-        # ========== DETAILED SERVICE INFO ==========
-        print(f"\n  {C.BOLD}SERVICE DETAILS{C.RESET}\n")
-        
-        for idx, svc in enumerate(services, 1):
-            name = svc["name"] if svc["name"] else "Unknown Service"
-            
-            print(f"  {C.CYAN}[{idx}] {name}{C.RESET}")
-            print(f"  {C.DARK_GREY}{'─'*70}{C.RESET}")
-            
-            # Record handle
-            if svc["record_handle"]:
-                print(f"      Record Handle : {svc['record_handle']}")
-            
-            # Provider
-            if svc["provider"]:
-                print(f"      Provider      : {svc['provider']}")
-            
-            # Description
-            if svc["description"]:
-                print(f"      Description   : {svc['description']}")
-            
-            # Service Classes
-            if svc["service_classes"]:
-                print(f"      Service Classes:")
-                for sc in svc["service_classes"]:
-                    print(f"        - {sc.get('name', 'Unknown')} ({sc.get('uuid', '-')})")
-            
-            # Protocols
-            if svc["protocols"]:
-                print(f"      Protocols:")
-                for proto in svc["protocols"]:
-                    print(f"        - {proto.get('name', 'Unknown')} ({proto.get('uuid', '-')})")
-            
-            # Channel/PSM
-            if svc["channel"]:
-                print(f"      {C.YELLOW}RFCOMM Channel : {svc['channel']}{C.RESET}")
-            if svc["psm"]:
-                print(f"      {C.YELLOW}L2CAP PSM      : {svc['psm']}{C.RESET}")
-            
-            # Profiles
-            if svc["profiles"]:
-                print(f"      Profiles:")
-                for prof in svc["profiles"]:
-                    ver = prof.get('version', '-')
-                    print(f"        - {prof.get('name', 'Unknown')} v{ver}")
-            
-            print()
-        
-        # ========== ATTACK SURFACE ==========
-        rfcomm_services = [s for s in services if s["channel"]]
-        obex_services = [s for s in services if any("obex" in p.get("name", "").lower() for p in s["protocols"])]
-        hid_services = [s for s in services if any("hid" in c.get("name", "").lower() for c in s["service_classes"])]
-        
-        print(f"  {C.CYAN}{'-'*110}{C.RESET}")
-        print(f"  {C.BOLD}ATTACK SURFACE ANALYSIS{C.RESET}")
-        print(f"  {C.CYAN}{'-'*110}{C.RESET}")
-        
-        if rfcomm_services:
-            print(f"\n  {C.YELLOW}RFCOMM Services (potential serial access):{C.RESET}")
-            for svc in rfcomm_services:
-                print(f"    {C.YELLOW}>{C.RESET} {svc['name']} - Channel {svc['channel']}")
-        
-        if obex_services:
-            print(f"\n  {C.GREEN}OBEX Services (file transfer):{C.RESET}")
-            for svc in obex_services:
-                print(f"    {C.GREEN}>{C.RESET} {svc['name']}")
-        
-        if hid_services:
-            print(f"\n  {C.RED}HID Services (input devices - HIGH RISK):{C.RESET}")
-            for svc in hid_services:
-                print(f"    {C.RED}>{C.RESET} {svc['name']}")
-        
-        # ========== SUMMARY ==========
-        print(f"\n  {C.CYAN}{'-'*110}{C.RESET}")
-        print(f"  {C.BOLD}SUMMARY{C.RESET}")
-        print(f"  {C.CYAN}{'-'*110}{C.RESET}")
-        print(f"  Total Services: {len(services)}   RFCOMM: {len(rfcomm_services)}   OBEX: {len(obex_services)}   HID: {len(hid_services)}")
-        
-        # Quick exploitation hints
-        if rfcomm_services:
-            print(f"\n  {C.DARK_GREY}Hint: Try 'rfcomm connect' to channel {rfcomm_services[0]['channel']} for serial access{C.RESET}")
-        if obex_services:
-            print(f"  {C.DARK_GREY}Hint: Try 'obexftp' or 'ussp-push' for file operations{C.RESET}")
-        
-        print(f"\n  {C.CYAN}{'='*110}{C.RESET}\n")
-    
-    def _save_results(self, results: Dict[str, Any], filename: str) -> None:
-        """Save results to JSON file"""
-        import json
+                reach = "?"
+
+            proto = s.protocols[0]["name"][:W["PROTO"]-1] if s.protocols else "—"
+
+            if s.risk is None:
+                risk_cell = f"{C.DARK_GREY}—{C.RESET}"
+            else:
+                col = {"CRITICAL": C.RED + C.BOLD, "HIGH": C.RED,
+                       "MEDIUM": C.YELLOW,         "LOW": C.GREEN}.get(s.risk.severity, C.WHITE)
+                risk_cell = f"{col}{s.risk.severity}{C.RESET}"
+
+            row = (
+                f"  {idx:<{W['#']}}"
+                f"{name:<{W['NAME']}}"
+                f"{uuid:<{W['UUID']}}"
+                f"{chan:<{W['CHAN']}}"
+                f"{psm:<{W['PSM']}}"
+                f"{_cpad(reach, W['REACH'])}"
+                f"{proto:<{W['PROTO']}}"
+                f"{_cpad(risk_cell, W['RISK'])}"
+            )
+            print(row)
+
+        print("  " + "─" * total)
+
+    def _print_risk(self, services: List[SDPService]) -> None:
+        risky = [s for s in services if s.risk is not None]
+        if not risky:
+            return
+        C = Colors
+        print(f"\n  {C.BOLD}RISK FINDINGS{C.RESET}")
+        print(f"  {C.CYAN}{'─'*78}{C.RESET}")
+
+        for s in sorted(risky, key=lambda x: _SEV_ORDER.get(x.risk.severity, 99)):
+            r = s.risk
+            sev_col = {"CRITICAL": C.RED + C.BOLD, "HIGH": C.RED,
+                       "MEDIUM": C.YELLOW,         "LOW": C.GREEN}.get(r.severity, C.WHITE)
+            print(f"\n  {sev_col}[{r.severity}] {s.name}{C.RESET}  "
+                  f"{C.DARK_GREY}({s.risk_uuid}){C.RESET}")
+            print(f"    {r.summary}")
+            if r.cves:
+                print(f"    {C.YELLOW}CVEs       :{C.RESET} {', '.join(r.cves)}")
+            if r.modules:
+                for m in r.modules:
+                    print(f"    {C.GREEN}► use {m}{C.RESET}")
+            if s.channel:
+                print(f"    {C.DARK_GREY}RFCOMM channel:{C.RESET} {s.channel}")
+            if s.psm:
+                tag = ("open" if s.psm_reachable
+                       else "closed" if s.psm_reachable is False
+                       else "untested")
+                print(f"    {C.DARK_GREY}L2CAP PSM    :{C.RESET} {s.psm}  ({tag})")
+
+    def _print_pnp(self, pnp: Optional[PnPInfo]) -> None:
+        if pnp is None:
+            return
+        C = Colors
+        print(f"\n  {C.BOLD}DEVICE IDENTIFICATION (PnP){C.RESET}")
+        print(f"  {C.CYAN}{'─'*78}{C.RESET}")
+        if pnp.vendor_id is not None:
+            src = (PNP_VENDOR_SOURCE.get(pnp.vendor_id_source, f"src={pnp.vendor_id_source}")
+                   if pnp.vendor_id_source else "src=?")
+            vname = pnp.vendor_name or f"Unknown vendor"
+            print(f"  Vendor      : {C.WHITE}0x{pnp.vendor_id:04X}{C.RESET}  ({src})  → {vname}")
+        if pnp.product_id is not None:
+            print(f"  Product     : 0x{pnp.product_id:04X}")
+        if pnp.version:
+            print(f"  Version     : {pnp.version}")
+
+    def _print_summary(self, services: List[SDPService]) -> None:
+        C = Colors
+        rfcomm = [s for s in services if s.channel]
+        l2cap  = [s for s in services if s.psm]
+        risky  = [s for s in services if s.risk is not None]
+        criti  = sum(1 for s in risky if s.risk.severity == "CRITICAL")
+        high   = sum(1 for s in risky if s.risk.severity == "HIGH")
+
+        print(f"\n  {C.BOLD}SUMMARY{C.RESET}  "
+              f"Total: {len(services)}   RFCOMM: {len(rfcomm)}   L2CAP-PSM: {len(l2cap)}   "
+              f"{C.RED}CRIT: {criti}{C.RESET}  {C.YELLOW}HIGH: {high}{C.RESET}  "
+              f"Risk: {len(risky)}")
+        print(f"  {C.CYAN}{'═'*80}{C.RESET}\n")
+
+    # ── Save ────────────────────────────────────────────────────────────────
+
+    def _save(self, target: str, services: List[SDPService],
+              pnp: Optional[PnPInfo], xml_attrs: Dict[str, Dict[str, str]],
+              path: str) -> None:
+        report: Dict[str, Any] = {
+            "target":          target,
+            "service_count":   len(services),
+            "pnp": (
+                {"vendor_id_source": pnp.vendor_id_source,
+                 "vendor_id":   pnp.vendor_id,
+                 "product_id":  pnp.product_id,
+                 "version":     pnp.version,
+                 "vendor_name": pnp.vendor_name}
+                if pnp else None
+            ),
+            "xml_attribute_records": xml_attrs,
+            "services": [
+                {"name":             s.name,
+                 "record_handle":    s.record_handle,
+                 "provider":         s.provider,
+                 "description":      s.description,
+                 "channel":          s.channel,
+                 "psm":              s.psm,
+                 "psm_reachable":    s.psm_reachable,
+                 "service_classes":  s.service_classes,
+                 "protocols":        s.protocols,
+                 "profiles":         s.profiles,
+                 "risk": (
+                     {"severity":  s.risk.severity,
+                      "uuid":      s.risk_uuid,
+                      "summary":   s.risk.summary,
+                      "cves":      s.risk.cves,
+                      "modules":   s.risk.modules}
+                     if s.risk else None),
+                 }
+                for s in services
+            ],
+        }
         try:
-            # Convert to serializable format
-            output = {
-                "target": results["target"],
-                "service_count": len(results["services"]),
-                "services": []
-            }
-            
-            for svc in results["services"]:
-                output["services"].append({
-                    "name": svc["name"],
-                    "record_handle": svc["record_handle"],
-                    "provider": svc["provider"],
-                    "description": svc["description"],
-                    "channel": svc["channel"],
-                    "psm": svc["psm"],
-                    "service_classes": svc["service_classes"],
-                    "protocols": svc["protocols"],
-                    "profiles": svc["profiles"]
-                })
-            
-            with open(filename, 'w') as f:
-                json.dump(output, f, indent=2)
-            print_success(f"Saved: {filename}")
+            with open(path, "w") as f:
+                json.dump(report, f, indent=2)
+            print_success(f"Saved report → {path}")
         except Exception as e:
             print_error(f"Save failed: {e}")
-    
+
+    # ── Main ────────────────────────────────────────────────────────────────
+
     def run(self) -> bool:
-        """Execute SDP enumeration"""
-        
-        # Check sdptool availability
-        if not self._check_sdptool():
-            print_error("sdptool not found!")
-            print_info("Install BlueZ: sudo apt install bluez")
-            return False
-        
         target = self.target
-        mode = self.get_option("mode")
-        search = self.get_option("search")
-        timeout = int(self.get_option("timeout"))
-        xml_output = self.get_option("xml_output")
-        output_file = self.get_option("output_file")
-        
-        # Validate BD_ADDR
+        if not target:
+            print_error("Target not set")
+            return False
         if not self.validate_bd_addr(target):
             print_error(f"Invalid BD_ADDR: {target}")
             return False
-        
-        print_info(f"SDP Enumeration - Target: {target}")
-        print_info(f"Mode: {mode}\n")
-        
-        services = []
-        
-        try:
-            # Handle different modes
-            if search:
-                # Search specific service
-                services = self._search_service(target, search, timeout)
-            elif mode == "browse":
-                # Standard browse
-                services = self._browse_services(target, timeout)
-            elif mode == "records":
-                # Get raw records
-                output = self._get_records(target, timeout)
-                if output:
-                    print(output)
-                return bool(output)
-            elif mode == "tree":
-                # Get tree view
-                output = self._get_tree(target, timeout)
-                if output:
-                    print(output)
-                return bool(output)
-            
-            # XML output if requested
-            if xml_output:
-                xml = self._get_xml(target, timeout)
-                if xml:
-                    print_info("XML Output:")
-                    print(xml)
-            
-            if not services:
-                print_warning("No SDP services found")
-                print_info("Device may be out of range or not discoverable")
-                return False
-            
-            print_success(f"Found {len(services)} service(s)")
-            
-            # Store results
-            results = {
-                "target": target,
-                "services": services
-            }
-            self.add_result(results)
-            
-            # Print table output
-            self._print_results_table(services, target)
-            
-            # Save if requested
-            if output_file:
-                self._save_results(results, output_file)
-            
-            # Add discovered services as targets
-            for svc in services:
-                self.add_device(Target(
-                    address=target,
-                    name=svc["name"],
-                    device_type="Bluetooth Classic",
-                    metadata={
-                        "channel": svc["channel"],
-                        "psm": svc["psm"],
-                        "service_classes": svc["service_classes"]
-                    }
-                ))
-            
-            return True
-            
-        except KeyboardInterrupt:
-            print_warning("\nInterrupted")
+
+        if not self._have_sdptool():
+            print_error("sdptool not found — install BlueZ (`sudo apt install bluez`)")
             return False
-        except Exception as e:
-            print_error(f"Enumeration failed: {e}")
+
+        mode        = (self.get_option("mode") or "full").lower()
+        search      = self.get_option("search")
+        timeout     = int(self.get_option("timeout"))
+        do_probe    = bool(self.get_option("probe_l2cap"))
+        do_pnp      = bool(self.get_option("decode_pnp"))
+        do_xml      = bool(self.get_option("xml_attrs"))
+        out_file    = self.get_option("output_file")
+
+        print_info(f"SDP Enumeration  Target: {target}  Mode: {mode}")
+
+        # Pass-through legacy modes
+        if mode == "records":
+            output = self._run_sdptool(["records", target], timeout)
+            if output:
+                print(output)
+            return bool(output)
+        if mode == "tree":
+            output = self._run_sdptool(["browse", "--tree", target], timeout)
+            if output:
+                print(output)
+            return bool(output)
+
+        # Browse / search
+        if search:
+            print_info(f"Searching '{search}'...")
+            output = self._run_sdptool(["search", "--bdaddr", target, search], timeout)
+        else:
+            output = self._run_sdptool(["browse", target], timeout)
+
+        if not output:
+            print_warning("No SDP response — device out of range, paired-only, or stack patched")
             return False
+
+        services = self._parse_browse(output)
+        if not services:
+            print_warning("Browse returned data but no services parsed")
+            return False
+        print_success(f"Parsed {len(services)} service record(s)")
+
+        # Risk annotation
+        self._annotate_risk(services)
+
+        # PnP decoding (try XML first for accuracy, fall back to text)
+        pnp:        Optional[PnPInfo] = None
+        xml_attrs:  Dict[str, Dict[str, str]] = {}
+
+        if mode == "full":
+            if do_xml:
+                xml = self._run_sdptool(["browse", "--xml", target], timeout) or ""
+                xml_attrs = self._parse_xml_records(xml)
+                if do_pnp and xml.strip():
+                    try:
+                        root = ET.fromstring(f"<root>{xml}</root>")
+                        for rec in root.findall("record"):
+                            pnp = _decode_pnp_from_xml(rec)
+                            if pnp: break
+                    except ET.ParseError:
+                        pass
+
+            if do_pnp and pnp is None:
+                # text fallback
+                for s in services:
+                    if "PnP" in s.name or "0x1200" in s.raw:
+                        pnp = _decode_pnp_from_text(s.raw)
+                        if pnp: break
+
+            if do_probe:
+                self._probe_psms(target, services)
+
+        # ── Render ────────────────────────────────────────────────────────
+        self._print_table(target, services)
+        if pnp:
+            self._print_pnp(pnp)
+        self._print_risk(services)
+        self._print_summary(services)
+
+        # ── Persist ──────────────────────────────────────────────────────
+        result = {
+            "target":   target,
+            "services": services,
+            "pnp":      pnp,
+            "xml":      xml_attrs,
+        }
+        self.add_result(result)
+        for s in services:
+            self.add_device(Target(
+                address=target,
+                name=s.name,
+                device_type="Bluetooth Classic",
+                metadata={
+                    "channel":         s.channel,
+                    "psm":             s.psm,
+                    "psm_reachable":   s.psm_reachable,
+                    "service_classes": s.service_classes,
+                    "risk":            s.risk.severity if s.risk else None,
+                },
+            ))
+
+        if out_file:
+            self._save(target, services, pnp, xml_attrs, out_file)
+
+        return True
