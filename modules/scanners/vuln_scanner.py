@@ -593,7 +593,7 @@ async def _ble_passive_adv(
     gap: Optional[GapReport] = None
     seen = False
     try:
-        scanner = BleakScanner()
+        scanner = BleakScanner() # type: ignore
         await scanner.start()
         await asyncio.sleep(min(timeout, 8))
         await scanner.stop()
@@ -631,7 +631,7 @@ async def _ble_gatt_deep(
         return fp_extra, rep
 
     try:
-        async with BleakClient(target, timeout=timeout) as client:
+        async with BleakClient(target, timeout=timeout) as client: # type: ignore
             if not client.is_connected:
                 return None, rep
 
