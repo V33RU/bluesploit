@@ -16,7 +16,6 @@ import asyncio
 import json
 import re
 import subprocess
-import threading
 import uuid as _uuid_mod
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set, Tuple
@@ -791,36 +790,31 @@ class Module(ReconModule):
             return False
 
         C = Colors
+        phases = 2 if mode == "all" else 1
         print(f"\n  {C.CYAN}╔{'═'*52}╗{C.RESET}")
         print(f"  {C.CYAN}║{C.RESET}  {C.BOLD}Bluetooth Discovery Scanner{C.RESET}                      {C.CYAN}║{C.RESET}")
         print(f"  {C.CYAN}╚{'═'*52}╝{C.RESET}")
-        print_info(f"Mode: {mode.upper()}  |  Interface: {iface}  |  Duration: {timeout}s")
+        print_info(f"Mode: {mode.upper()}  |  Interface: {iface}  |  Duration: {timeout}s/phase")
         if min_rssi is not None:
             print_info(f"Min RSSI: {min_rssi} dBm")
-        print()
-
-        if live and mode in ("all", "ble"):
-            print_info("Live feed — new devices as discovered:\n")
-            print(self._table_header())
-            print(self._separator())
+        if mode == "all":
+            print_info("BLE and Classic run sequentially to avoid adapter conflicts")
 
         classic_devices: List[Device] = []
         ble_devices:     List[Device] = []
-        _classic_result: List[List[Device]] = [[]]
 
         try:
-            if mode in ("all", "classic"):
-                def _classic_worker() -> None:
-                    print_info(f"{C.BLUE}[BR/EDR]{C.RESET} Inquiry on {iface}...")
-                    _classic_result[0] = self._scan_classic(iface, timeout)
-
-                classic_thread = threading.Thread(target=_classic_worker, daemon=True)
-                classic_thread.start()
-
+            # ── Phase 1: BLE scan ─────────────────────────────────────────────
             if mode in ("all", "ble"):
+                phase_label = f"[1/{phases}]" if phases > 1 else "[1/1]"
+                print_info(f"\n{phase_label} BLE scan ({timeout}s)...")
                 if not BLEAK_AVAILABLE:
                     print_warning("BLE scan skipped — pip install bleak")
                 else:
+                    if live:
+                        print_info("Live feed — new devices as discovered:\n")
+                        print(self._table_header())
+                        print(self._separator())
                     try:
                         ble_devices = asyncio.run(
                             self._scan_ble_async(timeout, min_rssi, live)
@@ -832,11 +826,13 @@ class Module(ReconModule):
                         ble_devices = loop.run_until_complete(
                             self._scan_ble_async(timeout, min_rssi, live)
                         )
-                    print_success(f"\nBLE done — {len(ble_devices)} device(s)")
+                    print_success(f"BLE done — {len(ble_devices)} device(s)")
 
+            # ── Phase 2: Classic BR/EDR inquiry (adapter free after BLE) ─────
             if mode in ("all", "classic"):
-                classic_thread.join(timeout=timeout + 15)
-                classic_devices = _classic_result[0]
+                phase_label = f"[2/{phases}]" if phases > 1 else "[1/1]"
+                print_info(f"\n{phase_label} BR/EDR inquiry on {iface} ({timeout}s)...")
+                classic_devices = self._scan_classic(iface, timeout)
                 print_success(f"BR/EDR done — {len(classic_devices)} device(s)")
 
         except KeyboardInterrupt:
