@@ -1141,11 +1141,6 @@ class Module(ScannerModule):
                 {"target": fp.address, "timeout": str(timeout), "mode": "full"},
                 "SDP Service Enumeration",
             ))
-            plan.append((
-                "modules.recon.version_fingerprint",
-                {"target": fp.address, "timeout": str(timeout), "protocol": "classic"},
-                "Version / Firmware Fingerprint",
-            ))
 
         if fp.os_guess in ("Linux", "Android"):
             plan.append((
@@ -1199,18 +1194,6 @@ class Module(ScannerModule):
                 pnp = r.get("pnp")
                 if pnp and not fp.vendor:
                     fp.vendor = getattr(pnp, "vendor_name", None) or fp.vendor
-
-        elif "Version" in label or "Firmware" in label:
-            for r in results:
-                if not isinstance(r, dict):
-                    continue
-                if not fp.vendor and r.get("manufacturer"):
-                    fp.vendor = r["manufacturer"]
-                if not fp.lmp_version and r.get("version"):
-                    fp.lmp_version = r["version"]
-                for feat in r.get("features", []):
-                    if feat not in fp.features:
-                        fp.features.append(feat)
 
         elif "BlueBorne" in label:
             for r in results:
