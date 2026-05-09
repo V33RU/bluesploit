@@ -254,6 +254,8 @@ def discover_ibeacons_bleak(duration: float,
     Parses Apple manufacturer data (company ID 0x004C, type 0x02, len 0x15).
     addr_type is returned as 0 (public) or 1 (random) from BlueZ props.
     """
+    if not BLEAK_AVAILABLE:
+        raise RuntimeError("bleak not installed — pip install bleak")
     seen: Dict[str, Dict[str, Any]] = {}
 
     async def _scan() -> None:
@@ -846,14 +848,27 @@ class Module(ScannerModule):
         print(f"  {C.CYAN}╚{'═' * 55}╝{C.RESET}")
 
         # --------- Phase 1 ---------
+        hci_available = True
         print_info(f"\n[Phase 1] Discovery — scanning hci{hci_dev} for "
                    f"{discovery_duration:.0f}s")
         try:
             cands = discover_ibeacons(hci_dev, discovery_duration, min_rssi)
         except OSError as e:
-            print_error(f"HCI bind failed on hci{hci_dev}: "
-                        f"{os.strerror(e.errno)} — need CAP_NET_RAW or root")
-            return False
+            if e.errno in (errno.EPERM, errno.EACCES):
+                print_warning(
+                    f"Raw HCI unavailable (need CAP_NET_RAW or root) — "
+                    f"falling back to BleakScanner"
+                )
+                hci_available = False
+                try:
+                    cands = discover_ibeacons_bleak(discovery_duration, min_rssi)
+                except Exception as be:
+                    print_error(f"BleakScanner fallback failed: {be}")
+                    return False
+            else:
+                print_error(f"HCI bind failed on hci{hci_dev}: "
+                            f"{os.strerror(e.errno or 0)}")
+                return False
 
         if not cands:
             print_warning("no iBeacons found")
@@ -885,19 +900,25 @@ class Module(ScannerModule):
         # 3.3 Collision / spoofing in current sweep
         test_collision(target, cands, findings)
 
-        # 3.4 Persistence + timing + event types
-        try:
-            test_results["persistence_timing"] = test_persistence_and_timing(
-                target["addr"], target, hci_dev, test_duration, findings)
-        except OSError as e:
-            print_error(f"persistence test failed: {e}")
+        # 3.4 Persistence + timing + event types  (needs raw HCI)
+        if not hci_available:
+            print_warning("persistence/timing test skipped — raw HCI not available")
+        else:
+            try:
+                test_results["persistence_timing"] = test_persistence_and_timing(
+                    target["addr"], target, hci_dev, test_duration, findings)
+            except OSError as e:
+                print_error(f"persistence test failed: {e}")
 
-        # 3.5 Scan response
-        try:
-            test_results["scan_response"] = test_scan_response(
-                target["addr"], hci_dev, findings)
-        except OSError as e:
-            print_error(f"scan-response test failed: {e}")
+        # 3.5 Scan response  (needs raw HCI)
+        if not hci_available:
+            print_warning("scan-response test skipped — raw HCI not available")
+        else:
+            try:
+                test_results["scan_response"] = test_scan_response(
+                    target["addr"], hci_dev, findings)
+            except OSError as e:
+                print_error(f"scan-response test failed: {e}")
 
         # 3.6 GATT
         if skip_gatt:
