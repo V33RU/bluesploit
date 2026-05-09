@@ -1,16 +1,21 @@
 """
 BlueSploit Module: GATT Enumerator
-Connects to a BLE device and enumerates all GATT services and characteristics
+Connects to a BLE device, prints a device-identity header (BD_ADDR, name,
+manufacturer, chipset, LL version), then enumerates all GATT services and
+characteristics.
 """
 
 import asyncio
-from typing import Dict, Any, List
+import re
+import struct
+import subprocess
+from typing import Any, Dict, List, Optional
+
 from core.base import (
-    ScannerModule, ModuleInfo, ModuleOption,
-    BTProtocol, Severity
+    BTProtocol, ModuleInfo, ModuleOption, ScannerModule, Severity,
 )
 from core.utils.printer import (
-    print_success, print_error, print_info, print_warning, Colors
+    Colors, print_error, print_info, print_success, print_warning,
 )
 
 try:
@@ -21,8 +26,9 @@ except ImportError:
     BLEAK_AVAILABLE = False
 
 
-# Well-known GATT service UUIDs
-KNOWN_SERVICES = {
+# ── Well-known GATT service UUIDs ─────────────────────────────────────────────
+
+KNOWN_SERVICES: Dict[str, str] = {
     "00001800-0000-1000-8000-00805f9b34fb": "Generic Access",
     "00001801-0000-1000-8000-00805f9b34fb": "Generic Attribute",
     "0000180a-0000-1000-8000-00805f9b34fb": "Device Information",
@@ -35,10 +41,12 @@ KNOWN_SERVICES = {
     "0000180d-0000-1000-8000-00805f9b34fb": "Heart Rate",
     "00001812-0000-1000-8000-00805f9b34fb": "HID Service",
     "00001813-0000-1000-8000-00805f9b34fb": "Scan Parameters",
+    "6e400001-b5a3-f393-e0a9-e50e24dcca9e": "Nordic UART (NUS)",
 }
 
-# Well-known characteristic UUIDs
-KNOWN_CHARACTERISTICS = {
+# ── Well-known characteristic UUIDs ───────────────────────────────────────────
+
+KNOWN_CHARACTERISTICS: Dict[str, str] = {
     "00002a00-0000-1000-8000-00805f9b34fb": "Device Name",
     "00002a01-0000-1000-8000-00805f9b34fb": "Appearance",
     "00002a04-0000-1000-8000-00805f9b34fb": "Periph Pref Conn",
@@ -54,289 +62,460 @@ KNOWN_CHARACTERISTICS = {
     "00002a28-0000-1000-8000-00805f9b34fb": "Software Rev",
     "00002a29-0000-1000-8000-00805f9b34fb": "Manufacturer",
     "00002a2b-0000-1000-8000-00805f9b34fb": "Current Time",
+    "00002a50-0000-1000-8000-00805f9b34fb": "PnP ID",
+}
+
+# Short UUIDs that feed the device identity block
+_IDENTITY_CHARS: Dict[str, str] = {
+    "2a00": "device_name",
+    "2a23": "system_id",
+    "2a24": "model",
+    "2a25": "serial",
+    "2a26": "firmware",
+    "2a27": "hardware",
+    "2a28": "software",
+    "2a29": "manufacturer",
+    "2a50": "pnp_id_raw",
+}
+
+# Bluetooth SIG company IDs used as chipset vendor lookup
+_CHIPSET_VENDORS: Dict[int, str] = {
+    0x0059: "Nordic Semiconductor",
+    0x000F: "Broadcom",
+    0x000D: "Texas Instruments",
+    0x0002: "Intel",
+    0x001D: "Qualcomm Atheros",
+    0x0822: "Espressif",
+    0x038F: "Espressif Systems",
+    0x0131: "Huawei Technologies",
+    0x0157: "Xiaomi / LYWSD",
+    0x004C: "Apple",
+    0x0006: "Microsoft",
+    0x0075: "Samsung",
+    0x00E0: "Google",
+    0x054C: "Sony",
+    0x0087: "Garmin",
+    0x03DA: "Bose",
+    0x012D: "GN Audio (Jabra)",
+    0x012E: "MediaTek",
+    0x0310: "Wyze Labs",
+    0x0499: "Ruuvi Innovations",
+    0x0603: "Sonos",
 }
 
 
+def _short_uuid(uuid: str) -> str:
+    u = uuid.lower()
+    if u.startswith("0000") and u.endswith("-0000-1000-8000-00805f9b34fb"):
+        return u[4:8]
+    return u[:4] if len(u) == 4 else ""
+
+
+def _decode_pnp_id(raw: bytes) -> Dict[str, Any]:
+    """
+    PnP ID (0x2A50): 7 bytes
+      B0    vendor_id_source  1=BT SIG  2=USB
+      B1-2  vendor_id         little-endian
+      B3-4  product_id        little-endian
+      B5-6  product_version   little-endian  BCD 0xJJMN → J.M.N
+    """
+    if len(raw) < 7:
+        return {}
+    src, vid, pid, ver = struct.unpack_from("<BHHH", raw)
+    src_label = "BT SIG" if src == 1 else "USB" if src == 2 else f"src={src}"
+    vendor    = _CHIPSET_VENDORS.get(vid, f"0x{vid:04X}")
+    major, minor, patch = (ver >> 8) & 0xFF, (ver >> 4) & 0x0F, ver & 0x0F
+    return {
+        "vendor_id_source": src_label,
+        "vendor_id":        vid,
+        "vendor_name":      vendor,
+        "product_id":       pid,
+        "version":          f"{major}.{minor}.{patch}",
+        "chipset":          vendor,
+    }
+
+
+def _get_ll_info(addr: str) -> Dict[str, Optional[str]]:
+    """
+    Best-effort LL/LMP version from hcitool info.
+    Works reliably for Classic and Dual devices; may return nothing for
+    BLE-only devices that don't respond to HCI Read Remote Version.
+    """
+    info: Dict[str, Optional[str]] = {
+        "lmp_version": None, "lmp_subversion": None,
+        "manufacturer": None, "features": None,
+    }
+    try:
+        r = subprocess.run(
+            ["hcitool", "info", addr],
+            capture_output=True, text=True, timeout=8,
+        )
+        for line in r.stdout.splitlines():
+            ls = line.strip()
+            if ls.startswith("LMP Version:"):
+                m = re.search(r"(\d+\.\d+).*?0x([0-9a-fA-F]+)", ls)
+                if m:
+                    info["lmp_version"]    = m.group(1)
+                    info["lmp_subversion"] = f"0x{m.group(2).upper()}"
+            elif ls.startswith("Manufacturer:"):
+                info["manufacturer"] = ls.split(":", 1)[1].strip()
+            elif ls.startswith("Features:"):
+                info["features"] = ls.split(":", 1)[1].strip()
+    except Exception:
+        pass
+    return info
+
+
+def _read_str(raw: bytes) -> str:
+    try:
+        return raw.decode("utf-8").strip("\x00").strip()
+    except Exception:
+        return raw.hex()
+
+
+# ── Module ────────────────────────────────────────────────────────────────────
+
 class Module(ScannerModule):
-    """GATT Service/Characteristic Enumerator"""
-    
+    """GATT Service/Characteristic Enumerator with device identity header"""
+
     info = ModuleInfo(
         name="scanners/ble/gatt_enum",
-        description="Enumerate GATT services and characteristics",
+        description="Enumerate GATT services and characteristics + device identity",
         author=["BlueSploit"],
         protocol=BTProtocol.BLE,
         severity=Severity.INFO,
-        references=["https://www.bluetooth.com/specifications/gatt/"]
+        references=["https://www.bluetooth.com/specifications/gatt/"],
     )
-    
+
     def _setup_options(self) -> None:
         self.options = {
             "target": ModuleOption(
-                name="target",
-                required=True,
-                description="Target BD_ADDR (XX:XX:XX:XX:XX:XX)"
+                name="target", required=True,
+                description="Target BD_ADDR (XX:XX:XX:XX:XX:XX)",
             ),
             "timeout": ModuleOption(
-                name="timeout",
-                required=False,
-                description="Connection timeout in seconds",
-                default=15
+                name="timeout", required=False,
+                description="Connection timeout in seconds", default=15,
             ),
             "read_values": ModuleOption(
-                name="read_values",
-                required=False,
-                description="Attempt to read characteristic values",
-                default=True
+                name="read_values", required=False,
+                description="Attempt to read characteristic values", default=True,
             ),
             "output_file": ModuleOption(
-                name="output_file",
-                required=False,
-                description="Save results to JSON file",
-                default=None
-            )
+                name="output_file", required=False,
+                description="Save results to JSON file", default=None,
+            ),
         }
-    
+
+    # ── Helpers ───────────────────────────────────────────────────────────────
+
     def _get_service_name(self, uuid: str) -> str:
-        uuid_lower = uuid.lower()
-        if uuid_lower in KNOWN_SERVICES:
-            return KNOWN_SERVICES[uuid_lower]
-        return f"Vendor 0x{uuid[4:8].upper()}"
-    
+        u = uuid.lower()
+        return KNOWN_SERVICES.get(u, f"Vendor 0x{uuid[4:8].upper()}")
+
     def _get_char_name(self, uuid: str) -> str:
-        uuid_lower = uuid.lower()
-        if uuid_lower in KNOWN_CHARACTERISTICS:
-            return KNOWN_CHARACTERISTICS[uuid_lower]
-        return f"0x{uuid[4:8].upper()}"
-    
+        u = uuid.lower()
+        return KNOWN_CHARACTERISTICS.get(u, f"0x{uuid[4:8].upper()}")
+
     def _format_props(self, props: List[str]) -> str:
-        p = []
-        if "read" in props:
-            p.append("R")
-        if "write" in props:
-            p.append("W")
-        if "write-without-response" in props:
-            p.append("WNR")
-        if "notify" in props:
-            p.append("N")
-        if "indicate" in props:
-            p.append("I")
-        return " ".join(p) if p else "-"
-    
+        parts = []
+        if "read"                  in props: parts.append("R")
+        if "write"                 in props: parts.append("W")
+        if "write-without-response" in props: parts.append("WNR")
+        if "notify"                in props: parts.append("N")
+        if "indicate"              in props: parts.append("I")
+        return " ".join(parts) if parts else "-"
+
     def _format_value(self, value: Any, max_len: int = 18) -> str:
         if value is None:
             return "-"
         if isinstance(value, bytes):
             try:
-                decoded = value.decode('utf-8').strip('\x00')
+                decoded = value.decode("utf-8").strip("\x00")
                 if decoded.isprintable() and decoded:
-                    if len(decoded) > max_len:
-                        return decoded[:max_len-2] + ".."
-                    return decoded
-            except:
+                    return (decoded[:max_len - 2] + "..") if len(decoded) > max_len else decoded
+            except Exception:
                 pass
-            hex_str = value.hex()
-            if len(hex_str) > max_len - 2:
-                return "0x" + hex_str[:max_len-4] + ".."
-            return "0x" + hex_str
+            h = value.hex()
+            return ("0x" + h[:max_len - 4] + "..") if len(h) > max_len - 2 else "0x" + h
         return str(value)[:max_len]
-    
+
+    # ── Async enumeration ─────────────────────────────────────────────────────
+
     async def _enumerate_async(self, address: str) -> Dict[str, Any]:
-        timeout = self.get_option("timeout")
+        timeout     = self.get_option("timeout")
         read_values = self.get_option("read_values")
-        
-        results = {
-            "target": address,
-            "services": [],
-            "characteristics": [],
-            "stats": {
-                "total_services": 0,
-                "total_chars": 0,
-                "readable": 0,
-                "writable": 0,
-                "notify": 0
-            }
+
+        identity: Dict[str, Any] = {
+            "bd_addr": address.upper(),
+            "device_name": None, "manufacturer": None,
+            "model": None,       "serial": None,
+            "firmware": None,    "hardware": None,
+            "software": None,    "system_id": None,
+            "pnp":     None,     "chipset":  None,
+            "addr_type": None,
+            "ll_version": None,  "ll_subversion": None,
+            "ll_manufacturer": None,
         }
-        
+
+        results: Dict[str, Any] = {
+            "target": address, "identity": identity,
+            "services": [], "characteristics": [],
+            "stats": {
+                "total_services": 0, "total_chars": 0,
+                "readable": 0, "writable": 0, "notify": 0,
+            },
+        }
+
         print_info(f"Connecting to {address}...")
-        
+
         try:
             async with BleakClient(address, timeout=timeout) as client:
                 if not client.is_connected:
                     print_error("Failed to connect")
                     return results
-                
+
                 print_success(f"Connected to {address}")
+
+                # Address type from BlueZ backend
+                try:
+                    props = client._backend._device_info  # type: ignore
+                    identity["addr_type"] = props.get("AddressType")
+                except Exception:
+                    pass
+
                 print_info("Enumerating GATT services...\n")
-                
+
                 for service in client.services:
                     svc_uuid = str(service.uuid)
                     svc_name = self._get_service_name(svc_uuid)
-                    
+
                     results["stats"]["total_services"] += 1
                     results["services"].append({
-                        "uuid": svc_uuid,
-                        "name": svc_name,
+                        "uuid": svc_uuid, "name": svc_name,
                         "handle": service.handle,
-                        "chars": len(service.characteristics)
+                        "chars": len(service.characteristics),
                     })
-                    
+
                     for char in service.characteristics:
                         char_uuid = str(char.uuid)
                         char_name = self._get_char_name(char_uuid)
-                        props = list(char.properties)
-                        
+                        props_list = list(char.properties)
+                        short      = _short_uuid(char_uuid)
+
                         results["stats"]["total_chars"] += 1
-                        
-                        is_read = "read" in props
-                        is_write = "write" in props or "write-without-response" in props
-                        is_notify = "notify" in props or "indicate" in props
-                        
-                        if is_read:
-                            results["stats"]["readable"] += 1
-                        if is_write:
-                            results["stats"]["writable"] += 1
-                        if is_notify:
-                            results["stats"]["notify"] += 1
-                        
+
+                        is_read   = "read" in props_list
+                        is_write  = "write" in props_list or "write-without-response" in props_list
+                        is_notify = "notify" in props_list or "indicate" in props_list
+
+                        if is_read:   results["stats"]["readable"] += 1
+                        if is_write:  results["stats"]["writable"] += 1
+                        if is_notify: results["stats"]["notify"]   += 1
+
+                        raw_bytes: Optional[bytes] = None
                         value = "-"
                         if read_values and is_read:
                             try:
-                                raw = await client.read_gatt_char(char.uuid)
-                                value = self._format_value(raw)
-                            except:
+                                raw_bytes = await client.read_gatt_char(char.uuid)
+                                value     = self._format_value(raw_bytes)
+                            except Exception:
                                 value = "(error)"
-                        
+
+                        # ── Capture identity fields ───────────────────────
+                        if raw_bytes and short in _IDENTITY_CHARS:
+                            field = _IDENTITY_CHARS[short]
+                            if field == "pnp_id_raw":
+                                pnp = _decode_pnp_id(raw_bytes)
+                                if pnp:
+                                    identity["pnp"]     = pnp
+                                    identity["chipset"] = pnp.get("chipset")
+                            else:
+                                identity[field] = _read_str(raw_bytes)
+
                         results["characteristics"].append({
-                            "svc_uuid": svc_uuid,
-                            "svc_name": svc_name,
-                            "uuid": char_uuid,
-                            "name": char_name,
-                            "handle": char.handle,
-                            "props": props,
-                            "is_read": is_read,
-                            "is_write": is_write,
-                            "is_notify": is_notify,
-                            "value": value
+                            "svc_uuid": svc_uuid, "svc_name": svc_name,
+                            "uuid": char_uuid,    "name": char_name,
+                            "handle": char.handle, "props": props_list,
+                            "is_read": is_read,    "is_write": is_write,
+                            "is_notify": is_notify, "value": value,
                         })
-                
+
                 print_success("Enumeration complete")
-                
+
         except asyncio.TimeoutError:
             print_error(f"Timeout after {timeout}s")
         except BleakError as e:
             print_error(f"BLE error: {e}")
         except Exception as e:
             print_error(f"Error: {e}")
-        
+
+        # ── Best-effort LL/LMP version via hcitool ────────────────────────
+        ll = _get_ll_info(address)
+        if ll.get("lmp_version"):
+            identity["ll_version"]     = ll["lmp_version"]
+            identity["ll_subversion"]  = ll.get("lmp_subversion")
+            identity["ll_manufacturer"] = ll.get("manufacturer")
+            # Prefer chipset from hcitool if PnP didn't give us one
+            if not identity["chipset"] and ll.get("manufacturer"):
+                identity["chipset"] = ll["manufacturer"]
+
         return results
-    
+
+    # ── Output ────────────────────────────────────────────────────────────────
+
+    def _print_identity(self, identity: Dict[str, Any]) -> None:
+        C = Colors
+        print(f"\n  {C.BOLD}DEVICE IDENTITY{C.RESET}")
+        print(f"  {C.CYAN}{'─'*75}{C.RESET}")
+
+        def row(label: str, value: Any, color: str = "") -> None:
+            if value is None or value == "":
+                return
+            v = str(value)
+            print(f"  {label:<16}: {color}{v}{C.RESET if color else ''}")
+
+        row("BD_ADDR",      identity["bd_addr"],      C.WHITE)
+        row("Address Type", identity.get("addr_type"))
+        row("Device Name",  identity.get("device_name"), C.GREEN)
+        row("Manufacturer", identity.get("manufacturer"))
+        row("Model",        identity.get("model"))
+        row("Serial",       identity.get("serial"))
+        row("Firmware",     identity.get("firmware"),  C.YELLOW)
+        row("Hardware",     identity.get("hardware"))
+        row("Software",     identity.get("software"))
+
+        sys_id = identity.get("system_id")
+        if sys_id:
+            row("System ID", sys_id)
+
+        pnp = identity.get("pnp")
+        if pnp:
+            pnp_str = (
+                f"VID={pnp['vendor_id_source']} 0x{pnp['vendor_id']:04X} "
+                f"({pnp['vendor_name']})  "
+                f"PID=0x{pnp['product_id']:04X}  "
+                f"Ver={pnp['version']}"
+            )
+            row("PnP ID", pnp_str)
+
+        chipset = identity.get("chipset")
+        if chipset:
+            row("Chipset",  chipset, C.CYAN)
+
+        if identity.get("ll_version"):
+            ver_str = identity["ll_version"]
+            if identity.get("ll_subversion"):
+                ver_str += f"  (subver {identity['ll_subversion']})"
+            if identity.get("ll_manufacturer"):
+                ver_str += f"  — {identity['ll_manufacturer']}"
+            row("LL/LMP Ver", ver_str, C.CYAN)
+
+        print(f"  {C.CYAN}{'─'*75}{C.RESET}")
+
     def _print_table(self, results: Dict[str, Any]) -> None:
         C = Colors
-        
+
+        self._print_identity(results.get("identity", {}))
+
         if not results["characteristics"]:
             print_warning("No characteristics found")
             return
-        
+
         stats = results["stats"]
-        
-        # ========== HEADER ==========
+
         print(f"\n  {C.CYAN}{'='*105}{C.RESET}")
         print(f"  {C.BOLD}{C.WHITE}GATT ENUMERATION RESULTS{C.RESET}")
         print(f"  {C.CYAN}{'='*105}{C.RESET}")
         print(f"  Target: {C.WHITE}{results['target']}{C.RESET}\n")
-        
-        # ========== SERVICES TABLE ==========
+
+        # Services table
         print(f"  {C.BOLD}SERVICES ({stats['total_services']}){C.RESET}\n")
         print(f"  {C.DARK_GREY}+------+------------------------------------------+----------------------------+--------+{C.RESET}")
         print(f"  {C.DARK_GREY}|{C.RESET} {C.BOLD}{'#':<4}{C.RESET} {C.DARK_GREY}|{C.RESET} {C.BOLD}{'UUID':<40}{C.RESET} {C.DARK_GREY}|{C.RESET} {C.BOLD}{'NAME':<26}{C.RESET} {C.DARK_GREY}|{C.RESET} {C.BOLD}{'CHARS':<6}{C.RESET} {C.DARK_GREY}|{C.RESET}")
         print(f"  {C.DARK_GREY}+------+------------------------------------------+----------------------------+--------+{C.RESET}")
-        
         for i, s in enumerate(results["services"], 1):
-            name = s["name"][:26]
-            print(f"  {C.DARK_GREY}|{C.RESET} {i:<4} {C.DARK_GREY}|{C.RESET} {C.CYAN}{s['uuid']:<40}{C.RESET} {C.DARK_GREY}|{C.RESET} {name:<26} {C.DARK_GREY}|{C.RESET} {s['chars']:<6} {C.DARK_GREY}|{C.RESET}")
-        
+            print(f"  {C.DARK_GREY}|{C.RESET} {i:<4} {C.DARK_GREY}|{C.RESET} {C.CYAN}{s['uuid']:<40}{C.RESET} {C.DARK_GREY}|{C.RESET} {s['name'][:26]:<26} {C.DARK_GREY}|{C.RESET} {s['chars']:<6} {C.DARK_GREY}|{C.RESET}")
         print(f"  {C.DARK_GREY}+------+------------------------------------------+----------------------------+--------+{C.RESET}")
-        
-        # ========== CHARACTERISTICS TABLE ==========
+
+        # Characteristics table
         print(f"\n  {C.BOLD}CHARACTERISTICS ({stats['total_chars']}){C.RESET}\n")
         print(f"  {C.DARK_GREY}+-----+------------------------------------------+------------------+----------+--------+--------------------+{C.RESET}")
         print(f"  {C.DARK_GREY}|{C.RESET} {C.BOLD}{'#':<3}{C.RESET} {C.DARK_GREY}|{C.RESET} {C.BOLD}{'UUID':<40}{C.RESET} {C.DARK_GREY}|{C.RESET} {C.BOLD}{'NAME':<16}{C.RESET} {C.DARK_GREY}|{C.RESET} {C.BOLD}{'PROPS':<8}{C.RESET} {C.DARK_GREY}|{C.RESET} {C.BOLD}{'HANDLE':<6}{C.RESET} {C.DARK_GREY}|{C.RESET} {C.BOLD}{'VALUE':<18}{C.RESET} {C.DARK_GREY}|{C.RESET}")
         print(f"  {C.DARK_GREY}+-----+------------------------------------------+------------------+----------+--------+--------------------+{C.RESET}")
-        
         for i, c in enumerate(results["characteristics"], 1):
-            name = c["name"][:16]
-            props = self._format_props(c["props"])[:8]
+            props  = self._format_props(c["props"])[:8]
             handle = f"0x{c['handle']:04X}"
-            value = c["value"][:18]
-            
-            if c["is_write"]:
-                pc = C.YELLOW
-            elif c["is_notify"]:
-                pc = C.MAGENTA
-            else:
-                pc = ""
-            
-            print(f"  {C.DARK_GREY}|{C.RESET} {i:<3} {C.DARK_GREY}|{C.RESET} {C.CYAN}{c['uuid']:<40}{C.RESET} {C.DARK_GREY}|{C.RESET} {name:<16} {C.DARK_GREY}|{C.RESET} {pc}{props:<8}{C.RESET} {C.DARK_GREY}|{C.RESET} {handle:<6} {C.DARK_GREY}|{C.RESET} {C.GREEN}{value:<18}{C.RESET} {C.DARK_GREY}|{C.RESET}")
-        
+            value  = c["value"][:18]
+            pc     = C.YELLOW if c["is_write"] else (C.MAGENTA if c["is_notify"] else "")
+            print(
+                f"  {C.DARK_GREY}|{C.RESET} {i:<3} {C.DARK_GREY}|{C.RESET} "
+                f"{C.CYAN}{c['uuid']:<40}{C.RESET} {C.DARK_GREY}|{C.RESET} "
+                f"{c['name'][:16]:<16} {C.DARK_GREY}|{C.RESET} "
+                f"{pc}{props:<8}{C.RESET} {C.DARK_GREY}|{C.RESET} "
+                f"{handle:<6} {C.DARK_GREY}|{C.RESET} "
+                f"{C.GREEN}{value:<18}{C.RESET} {C.DARK_GREY}|{C.RESET}"
+            )
         print(f"  {C.DARK_GREY}+-----+------------------------------------------+------------------+----------+--------+--------------------+{C.RESET}")
-        
-        # Legend
+
         print(f"\n  {C.DARK_GREY}Props: R=Read  W=Write  WNR=Write-No-Response  N=Notify  I=Indicate{C.RESET}")
-        
-        # ========== SUMMARY ==========
+
+        # Summary
         print(f"\n  {C.CYAN}{'-'*105}{C.RESET}")
         print(f"  {C.BOLD}SUMMARY{C.RESET}")
         print(f"  {C.CYAN}{'-'*105}{C.RESET}")
-        print(f"  Services: {stats['total_services']}   Characteristics: {stats['total_chars']}   {C.GREEN}Readable: {stats['readable']}{C.RESET}   {C.YELLOW}Writable: {stats['writable']}{C.RESET}   {C.MAGENTA}Notify: {stats['notify']}{C.RESET}")
-        
-        # ========== WRITABLE LIST ==========
+        print(
+            f"  Services: {stats['total_services']}   "
+            f"Characteristics: {stats['total_chars']}   "
+            f"{C.GREEN}Readable: {stats['readable']}{C.RESET}   "
+            f"{C.YELLOW}Writable: {stats['writable']}{C.RESET}   "
+            f"{C.MAGENTA}Notify: {stats['notify']}{C.RESET}"
+        )
+
         writable = [c for c in results["characteristics"] if c["is_write"]]
         if writable:
             print(f"\n  {C.YELLOW}WRITABLE CHARACTERISTICS (Attack Surface):{C.RESET}")
             for c in writable:
-                p = self._format_props(c["props"])
-                print(f"    {C.YELLOW}>{C.RESET} {c['uuid']}  [{p}]")
-        
-        # ========== NOTIFY LIST ==========
+                print(f"    {C.YELLOW}>{C.RESET} {c['uuid']}  [{self._format_props(c['props'])}]  {c['name']}")
+
         notify = [c for c in results["characteristics"] if c["is_notify"]]
         if notify:
             print(f"\n  {C.MAGENTA}NOTIFY/INDICATE CHARACTERISTICS:{C.RESET}")
             for c in notify:
-                p = self._format_props(c["props"])
-                print(f"    {C.MAGENTA}>{C.RESET} {c['uuid']}  [{p}]")
-        
+                print(f"    {C.MAGENTA}>{C.RESET} {c['uuid']}  [{self._format_props(c['props'])}]  {c['name']}")
+
         print(f"\n  {C.CYAN}{'='*105}{C.RESET}\n")
-    
+
     def _save_results(self, results: Dict[str, Any], filename: str) -> None:
         import json
         try:
-            with open(filename, 'w') as f:
-                json.dump(results, f, indent=2)
+            with open(filename, "w") as f:
+                json.dump(results, f, indent=2, default=str)
             print_success(f"Saved: {filename}")
         except Exception as e:
             print_error(f"Save failed: {e}")
-    
+
     def run(self) -> bool:
         if not BLEAK_AVAILABLE:
             print_error("Install bleak: pip install bleak")
             return False
-        
+
         target = self.target
         if not self.validate_bd_addr(target):
             print_error(f"Invalid BD_ADDR: {target}")
             return False
-        
+
         try:
             results = asyncio.run(self._enumerate_async(target))
             self.add_result(results)
             self._print_table(results)
-            
+
             out = self.get_option("output_file")
             if out:
                 self._save_results(results, out)
-            
+
             return results["stats"]["total_services"] > 0
-            
+
         except KeyboardInterrupt:
             print_warning("\nInterrupted")
             return False
