@@ -135,34 +135,148 @@ def _decode_pnp_id(raw: bytes) -> Dict[str, Any]:
     }
 
 
-def _get_ll_info(addr: str) -> Dict[str, Optional[str]]:
+# Manufacturer name substrings → probable chipset vendor
+_MFR_CHIPSET_HINTS: Dict[str, str] = {
+    "nordic":       "Nordic Semiconductor nRF5x",
+    "dialog":       "Dialog Semiconductor DA14xxx",
+    "texas":        "Texas Instruments CC264x",
+    "ti ":          "Texas Instruments CC264x",
+    "silicon labs": "Silicon Labs EFR32",
+    "silabs":       "Silicon Labs EFR32",
+    "telink":       "Telink TLSR",
+    "realtek":      "Realtek RTL8762",
+    "beken":        "Beken BK36xx",
+    "mediatek":     "MediaTek MT25xx",
+    "qualcomm":     "Qualcomm QCC",
+    "cypress":      "Infineon/Cypress CYW43xxx",
+    "broadcom":     "Broadcom BCM",
+    "espressif":    "Espressif ESP32",
+    "esp":          "Espressif ESP32",
+    "nxp":          "NXP KW4x",
+    "kaha":         "Realtek RTL8762 (KaHa platform)",
+    "huawei":       "HiSilicon BLE SoC",
+    "xiaomi":       "Beken / MediaTek platform",
+}
+
+# LMP Subversion → exact chipset model
+_LMP_SUBVER_CHIPSET: Dict[int, str] = {
+    0x8762: "Realtek RTL8762",
+    0x8763: "Realtek RTL8763",
+    0x8761: "Realtek RTL8761",
+    0x1000: "Nordic nRF51xxx",
+    0x0001: "Nordic nRF52xxx",
+    0x000D: "Nordic nRF52840",
+    0x0048: "Texas Instruments CC2640",
+    0x0051: "Texas Instruments CC2642",
+    0x6109: "Qualcomm QCC512x",
+    0x9908: "Dialog DA14531",
+    0x22BB: "Silicon Labs EFR32BG22",
+}
+
+# OUI prefix → chipset / SoC vendor (first 6 hex chars, uppercase, no colons)
+_OUI_CHIPSET: Dict[str, str] = {
+    "D436390": "Nordic Semiconductor",
+    "F4CE36":  "Nordic Semiconductor",
+    "5091F7":  "Nordic Semiconductor",
+    "240AC4":  "Espressif ESP32",
+    "246FAB":  "Espressif ESP32",
+    "30AEA4":  "Espressif ESP32",
+    "3C71BF":  "Espressif ESP32",
+    "5CCF7F":  "Espressif ESP32",
+    "84CCA8":  "Espressif ESP32",
+    "001A8A":  "Samsung Electro-Mechanics",
+    "001E10":  "Huawei Technologies",
+    "000F00":  "Broadcom",
+    "001B10":  "Nokia / MediaTek",
+}
+
+
+def _infer_chipset(manufacturer: Optional[str], addr: str) -> Optional[str]:
+    """Infer BLE chipset from manufacturer name string or OUI."""
+    if manufacturer:
+        mlow = manufacturer.lower()
+        for hint, label in _MFR_CHIPSET_HINTS.items():
+            if hint in mlow:
+                return label
+    oui = addr.replace(":", "").upper()[:6]
+    return _OUI_CHIPSET.get(oui)
+
+
+def _parse_hci_version_lines(lines: List[str], info: Dict[str, Any]) -> None:
+    """Parse LMP Version / Manufacturer lines from hcitool info or leinfo."""
+    for line in lines:
+        ls = line.strip()
+        if ls.startswith("LMP Version:"):
+            m = re.search(r"(\d+\.\d+)\s+\(0x[0-9a-fA-F]+\)\s+LMP Subversion:\s+0x([0-9a-fA-F]+)", ls)
+            if m:
+                info["lmp_version"]    = m.group(1)
+                raw_subver             = int(m.group(2), 16)
+                info["lmp_subversion"] = f"0x{raw_subver:04X}"
+                # Exact chipset from subversion table
+                if raw_subver in _LMP_SUBVER_CHIPSET:
+                    info["chipset_exact"] = _LMP_SUBVER_CHIPSET[raw_subver]
+        elif ls.startswith("Manufacturer:"):
+            info["manufacturer"] = ls.split(":", 1)[1].strip()
+        elif ls.startswith("Features:"):
+            info["le_features"] = ls.split(":", 1)[1].strip()
+
+
+def _get_ll_info(addr: str) -> Dict[str, Any]:
     """
-    Best-effort LL/LMP version from hcitool info.
-    Works reliably for Classic and Dual devices; may return nothing for
-    BLE-only devices that don't respond to HCI Read Remote Version.
+    Collect LL/LMP version, manufacturer, device name.
+
+    Priority:
+      1. hcitool leinfo  — BLE LE connection, reads remote version (needs sudo)
+      2. hcitool info    — Classic BR/EDR inquiry (works for Dual devices)
+      3. bluetoothctl    — BlueZ cached record (works for any known device)
     """
-    info: Dict[str, Optional[str]] = {
+    info: Dict[str, Any] = {
         "lmp_version": None, "lmp_subversion": None,
-        "manufacturer": None, "features": None,
+        "manufacturer": None, "bt_name": None,
+        "appearance": None,   "le_features": None,
+        "chipset_exact": None,
     }
+
+    # 1 — hcitool leinfo (BLE LE connection)
     try:
         r = subprocess.run(
-            ["hcitool", "info", addr],
-            capture_output=True, text=True, timeout=8,
+            ["hcitool", "leinfo", addr],
+            capture_output=True, text=True, timeout=10,
+        )
+        if r.returncode == 0 and "LMP Version" in r.stdout:
+            _parse_hci_version_lines(r.stdout.splitlines(), info)
+    except Exception:
+        pass
+
+    # 2 — hcitool info (Classic inquiry, fallback for Dual devices)
+    if not info["lmp_version"]:
+        try:
+            r = subprocess.run(
+                ["hcitool", "info", addr],
+                capture_output=True, text=True, timeout=8,
+            )
+            if r.returncode == 0 and "LMP Version" in r.stdout:
+                _parse_hci_version_lines(r.stdout.splitlines(), info)
+        except Exception:
+            pass
+
+    # 3 — bluetoothctl info (reads BlueZ cached record, no root needed)
+    try:
+        r = subprocess.run(
+            ["bluetoothctl", "info", addr],
+            capture_output=True, text=True, timeout=6,
         )
         for line in r.stdout.splitlines():
             ls = line.strip()
-            if ls.startswith("LMP Version:"):
-                m = re.search(r"(\d+\.\d+).*?0x([0-9a-fA-F]+)", ls)
-                if m:
-                    info["lmp_version"]    = m.group(1)
-                    info["lmp_subversion"] = f"0x{m.group(2).upper()}"
-            elif ls.startswith("Manufacturer:"):
-                info["manufacturer"] = ls.split(":", 1)[1].strip()
-            elif ls.startswith("Features:"):
-                info["features"] = ls.split(":", 1)[1].strip()
+            if ls.startswith("Name:") and not info["bt_name"]:
+                info["bt_name"] = ls.split(":", 1)[1].strip()
+            elif ls.startswith("Alias:") and not info["bt_name"]:
+                info["bt_name"] = ls.split(":", 1)[1].strip()
+            elif ls.startswith("Appearance:"):
+                info["appearance"] = ls.split(":", 1)[1].strip()
     except Exception:
         pass
+
     return info
 
 
@@ -267,6 +381,28 @@ class Module(ScannerModule):
             },
         }
 
+        # ── Pre-connect: grab adv name + BlueZ cached info ───────────────────
+        print_info(f"Scanning for {address} (5s)...")
+        try:
+            from bleak import BleakScanner as _BS
+            adv_dev = await _BS.find_device_by_address(address, timeout=5.0)
+            if adv_dev and adv_dev.name:
+                identity["device_name"] = adv_dev.name
+        except Exception:
+            pass
+
+        ll = _get_ll_info(address)
+        if ll.get("bt_name") and not identity["device_name"]:
+            identity["device_name"] = ll["bt_name"]
+        if ll.get("lmp_version"):
+            identity["ll_version"]      = ll["lmp_version"]
+            identity["ll_subversion"]   = ll.get("lmp_subversion")
+            identity["ll_manufacturer"] = ll.get("manufacturer")
+        if ll.get("chipset_exact"):
+            identity["chipset"] = ll["chipset_exact"]
+        if ll.get("appearance"):
+            identity.setdefault("appearance", ll["appearance"])
+
         print_info(f"Connecting to {address}...")
 
         try:
@@ -350,15 +486,14 @@ class Module(ScannerModule):
         except Exception as e:
             print_error(f"Error: {e}")
 
-        # ── Best-effort LL/LMP version via hcitool ────────────────────────
-        ll = _get_ll_info(address)
-        if ll.get("lmp_version"):
-            identity["ll_version"]     = ll["lmp_version"]
-            identity["ll_subversion"]  = ll.get("lmp_subversion")
-            identity["ll_manufacturer"] = ll.get("manufacturer")
-            # Prefer chipset from hcitool if PnP didn't give us one
-            if not identity["chipset"] and ll.get("manufacturer"):
-                identity["chipset"] = ll["manufacturer"]
+        # ── Chipset inference (fallback when no PnP ID) ───────────────────
+        if not identity["chipset"]:
+            identity["chipset"] = _infer_chipset(
+                identity.get("manufacturer"), address
+            )
+        # Prefer chipset from ll_manufacturer if still nothing
+        if not identity["chipset"] and identity.get("ll_manufacturer"):
+            identity["chipset"] = identity["ll_manufacturer"]
 
         return results
 
@@ -375,9 +510,10 @@ class Module(ScannerModule):
             v = str(value)
             print(f"  {label:<16}: {color}{v}{C.RESET if color else ''}")
 
-        row("BD_ADDR",      identity["bd_addr"],      C.WHITE)
+        row("BD_ADDR",      identity["bd_addr"],         C.WHITE)
         row("Address Type", identity.get("addr_type"))
         row("Device Name",  identity.get("device_name"), C.GREEN)
+        row("Appearance",   identity.get("appearance"))
         row("Manufacturer", identity.get("manufacturer"))
         row("Model",        identity.get("model"))
         row("Serial",       identity.get("serial"))
