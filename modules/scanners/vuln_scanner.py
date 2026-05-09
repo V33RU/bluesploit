@@ -28,6 +28,7 @@ the wrong protocol; this one handles both transparently.
 """
 
 import asyncio
+import importlib
 import importlib.util
 import json
 import os
@@ -324,6 +325,52 @@ VULN_PATTERNS: Dict[str, Dict] = {
     "1812": {"name": "HID over GATT",           "risk": "Keystroke injection if writes are unauthenticated",  "severity": GattSeverity.HIGH},
     "1826": {"name": "Fitness Machine",         "risk": "Unauthenticated control commands",                  "severity": GattSeverity.MEDIUM},
     "181c": {"name": "User Data",               "risk": "Personal data exposure",                            "severity": GattSeverity.HIGH},
+    "180d": {"name": "Heart Rate",              "risk": "Biometric data (HR/RR-interval) readable without auth", "severity": GattSeverity.MEDIUM},
+    "1818": {"name": "Cycling Power",           "risk": "Sensor data readable without auth",                 "severity": GattSeverity.LOW},
+    "1816": {"name": "Cycling Speed & Cadence", "risk": "Sensor data readable without auth",                 "severity": GattSeverity.LOW},
+    "181d": {"name": "Weight Scale",            "risk": "Health data readable without auth",                 "severity": GattSeverity.MEDIUM},
+    "181e": {"name": "Bond Management",         "risk": "Bond deletion possible without auth",               "severity": GattSeverity.HIGH},
+    "1822": {"name": "PLX (Pulse Oximeter)",    "risk": "Medical biometric data without auth",               "severity": GattSeverity.HIGH},
+}
+
+# Well-known 128-bit vendor service UUIDs that _short_uuid() won't catch.
+# Key = full lowercase UUID string.
+VULN_PATTERNS_128: Dict[str, Dict] = {
+    "6e400001-b5a3-f393-e0a9-e50e24dcca9e": {
+        "name": "Nordic UART Service (NUS)",
+        "risk": "Bidirectional serial-like UART channel — TX/RX data without authentication",
+        "severity": GattSeverity.HIGH,
+    },
+    "0000fe59-0000-1000-8000-00805f9b34fb": {
+        "name": "Nordic DFU (FE59 full)",
+        "risk": "Unauthenticated firmware update via DFU",
+        "severity": GattSeverity.CRITICAL,
+    },
+    "a3c87500-8ed3-4bdf-8a39-a01bebede295": {
+        "name": "Eddystone Config Service",
+        "risk": "Beacon URL/parameters writable without auth",
+        "severity": GattSeverity.HIGH,
+    },
+    "7905f431-b5ce-4e99-a40f-4b1e122d00d0": {
+        "name": "Apple Notification Center (ANCS)",
+        "risk": "Notification data accessible — iOS notification content leak",
+        "severity": GattSeverity.MEDIUM,
+    },
+    "89d3502b-0f36-433a-8ef4-c502ad55f8dc": {
+        "name": "Apple Media Service (AMS)",
+        "risk": "Media control commands without auth",
+        "severity": GattSeverity.MEDIUM,
+    },
+    "0000fef5-0000-1000-8000-00805f9b34fb": {
+        "name": "Dialog (Renesas) SUOTA DFU",
+        "risk": "Unauthenticated over-the-air firmware update",
+        "severity": GattSeverity.CRITICAL,
+    },
+    "00001530-1212-efde-1523-785feabcd123": {
+        "name": "Nordic Legacy DFU",
+        "risk": "Legacy unauthenticated DFU — no signing required",
+        "severity": GattSeverity.CRITICAL,
+    },
 }
 
 SENSITIVE_WRITE_CHARS: Dict[str, str] = {
@@ -671,6 +718,16 @@ async def _ble_gatt_deep(
                         details=f"Service {short_svc.upper()} has documented security concerns",
                         recommendation="Verify all characteristics require authentication",
                     ))
+                elif svc_uuid in VULN_PATTERNS_128:
+                    pat = VULN_PATTERNS_128[svc_uuid]
+                    rep.vulns.append(GattVuln(
+                        name=f"Risk Service: {pat['name']}",
+                        severity=pat["severity"],
+                        description=pat["risk"],
+                        affected=svc_uuid,
+                        details=f"128-bit vendor UUID — {pat['name']}",
+                        recommendation="Verify all characteristics require authentication",
+                    ))
 
                 for char in service.characteristics:
                     char_uuid  = str(char.uuid).lower()
@@ -743,6 +800,11 @@ async def _ble_gatt_deep(
                                     details=f"Value: {val[:60]}{'...' if len(val) > 60 else ''}",
                                     recommendation="Restrict reads to bonded peers",
                                 ))
+                                # Feed key characteristics back into the fingerprint
+                                if short_char == "2a29" and fp_extra and not fp_extra.vendor:
+                                    fp_extra.vendor = val
+                                elif short_char == "2a26" and fp_extra and not fp_extra.lmp_version:
+                                    fp_extra.lmp_version = val  # reuse lmp_version field for firmware
                         except Exception:
                             pass
 
@@ -837,23 +899,6 @@ def _classic_fingerprint(target: str) -> Optional[Fingerprint]:
                             fp.features.append(tag)
     except FileNotFoundError:
         return None
-    except Exception:
-        pass
-
-    try:
-        r = subprocess.run(["sdptool", "browse", target],
-                           capture_output=True, text=True, timeout=20)
-        if r.returncode == 0 and r.stdout:
-            text = r.stdout
-            for proto in ("SDP", "RFCOMM", "L2CAP", "BNEP", "AVDTP", "A2DP",
-                          "AVRCP", "HFP", "HSP", "HID", "PAN", "OBEX",
-                          "PBAP", "MAP"):
-                if proto.lower() in text.lower():
-                    fp.services.append(proto)
-            for m in re.findall(r"0x([0-9a-fA-F]{4})", text):
-                fp.services.append(f"0x{m.upper()}")
-            if fp.services:
-                saw = True
     except Exception:
         pass
 
@@ -1066,6 +1111,128 @@ class Module(ScannerModule):
 
         return fp, gatt_rep, gap_rep
 
+    # ── Phase-2 dispatch engine ─────────────────────────────────────────────
+
+    def _build_dispatch_plan(
+        self, fp: Fingerprint, timeout: int, gatt_scan: bool,
+    ) -> List[Tuple[str, Dict[str, str], str]]:
+        """
+        Return ordered list of (module_import_path, options, label) to run
+        after the base fingerprint, keyed on what the fingerprint revealed.
+        """
+        plan: List[Tuple[str, Dict[str, str], str]] = []
+
+        if fp.protocol in ("BLE", "BOTH"):
+            plan.append((
+                "modules.recon.adv_parser",
+                {"target": fp.address, "timeout": str(min(timeout, 10))},
+                "BLE Advertisement Deep Parse",
+            ))
+            if not gatt_scan:
+                plan.append((
+                    "modules.recon.gatt_enum",
+                    {"target": fp.address, "timeout": str(timeout)},
+                    "GATT Service Enumeration",
+                ))
+
+        if fp.protocol in ("CLASSIC", "BOTH"):
+            plan.append((
+                "modules.recon.sdp_enum",
+                {"target": fp.address, "timeout": str(timeout), "mode": "full"},
+                "SDP Service Enumeration",
+            ))
+            plan.append((
+                "modules.recon.version_fingerprint",
+                {"target": fp.address, "timeout": str(timeout), "protocol": "classic"},
+                "Version / Firmware Fingerprint",
+            ))
+
+        if fp.os_guess in ("Linux", "Android"):
+            plan.append((
+                "modules.scanners.blueborne_scan",
+                {"target": fp.address, "timeout": str(timeout)},
+                "BlueBorne Vulnerability Check",
+            ))
+
+        return plan
+
+    def _dispatch_module(
+        self, import_path: str, options: Dict[str, str], label: str,
+    ) -> List[Any]:
+        """Import, configure, and run one sub-module. Returns its result list."""
+        C = Colors
+        print(f"\n  {C.BOLD}[ {label} ]{C.RESET}")
+        print(f"  {C.CYAN}{'─'*75}{C.RESET}")
+        try:
+            mod = importlib.import_module(import_path)
+            instance = mod.Module()
+            for k, v in options.items():
+                instance.set_option(k, v)
+            ok = instance.run()
+            return instance.results if ok else []
+        except ImportError as e:
+            print_warning(f"Module not found ({import_path}): {e}")
+            return []
+        except Exception as e:
+            print_warning(f"{label} failed: {e}")
+            return []
+
+    def _enrich_fp_from_dispatch(
+        self, fp: Fingerprint, label: str, results: List[Any],
+    ) -> None:
+        """Merge sub-module result data back into fp to improve CVE scoring."""
+        if not results:
+            return
+
+        if "SDP" in label:
+            for r in results:
+                if not isinstance(r, dict):
+                    continue
+                for svc in r.get("services", []):
+                    name = getattr(svc, "name", None)
+                    if name and name not in fp.services:
+                        fp.services.append(name)
+                    for sc in getattr(svc, "service_classes", []):
+                        uuid = sc.get("uuid", "")
+                        if uuid and uuid not in fp.services:
+                            fp.services.append(uuid)
+                pnp = r.get("pnp")
+                if pnp and not fp.vendor:
+                    fp.vendor = getattr(pnp, "vendor_name", None) or fp.vendor
+
+        elif "Version" in label or "Firmware" in label:
+            for r in results:
+                if not isinstance(r, dict):
+                    continue
+                if not fp.vendor and r.get("manufacturer"):
+                    fp.vendor = r["manufacturer"]
+                if not fp.lmp_version and r.get("version"):
+                    fp.lmp_version = r["version"]
+                for feat in r.get("features", []):
+                    if feat not in fp.features:
+                        fp.features.append(feat)
+
+        elif "BlueBorne" in label:
+            for r in results:
+                vulns = r.get("vulnerabilities", []) if isinstance(r, dict) else []
+                for v in vulns:
+                    cve = v.get("cve", "")
+                    tag = f"blueborne:{cve}"
+                    if cve and tag not in fp.services:
+                        fp.services.append(tag)
+
+        elif "Advertisement" in label:
+            for r in results:
+                if not isinstance(r, dict):
+                    continue
+                mfg_id = r.get("mfg_id")
+                if mfg_id is not None and mfg_id not in fp.mfr_ids:
+                    fp.mfr_ids.append(mfg_id)
+                for svc in r.get("services", []):
+                    uuid = svc.get("uuid", "")
+                    if uuid and uuid not in fp.services:
+                        fp.services.append(uuid)
+
     # ── Output ─────────────────────────────────────────────────────────────
 
     def _banner(self) -> None:
@@ -1264,8 +1431,8 @@ class Module(ScannerModule):
                 print_warning("Cancelled")
                 return False
 
-        # Phase 1 — fingerprint + GAP + (optional) GATT deep analysis
-        print_info("\n[1/3] Fingerprinting target...")
+        # Phase 1 — base fingerprint + GAP + (optional) GATT deep analysis
+        print_info("\n[1/4] Fingerprinting target...")
         fp, gatt_rep, gap_rep = self._fingerprint(
             target, mode, timeout, gatt_scan, test_writes, deep_scan,
         )
@@ -1273,8 +1440,37 @@ class Module(ScannerModule):
         self._print_gap_report(gap_rep)
         self._print_gatt_report(gatt_rep)
 
-        # Phase 2 — load module catalogue
-        print_info("\n[2/3] Indexing exploit/DoS/aux modules...")
+        # Phase 2 — targeted deep scans dispatched from fingerprint evidence
+        C = Colors
+        dispatch_plan = self._build_dispatch_plan(fp, timeout, gatt_scan)
+        deep_scan_results: Dict[str, List[Any]] = {}
+
+        if dispatch_plan:
+            print_info(f"\n[2/4] Running {len(dispatch_plan)} targeted deep scan(s) "
+                       f"based on fingerprint...")
+            print(f"\n  {C.BOLD}Dispatch Plan{C.RESET}")
+            print(f"  {C.CYAN}{'─'*75}{C.RESET}")
+            for i, (_, _, label) in enumerate(dispatch_plan, 1):
+                marker = "BLE" if "Advertisement" in label or "GATT" in label else \
+                         "Classic" if "SDP" in label or "Version" in label else "All"
+                print(f"  {C.DARK_GREY}[{i}]{C.RESET} {label}  "
+                      f"{C.DARK_GREY}({marker}){C.RESET}")
+
+            for mod_path, opts, label in dispatch_plan:
+                results = self._dispatch_module(mod_path, opts, label)
+                deep_scan_results[label] = results
+                self._enrich_fp_from_dispatch(fp, label, results)
+
+            # Re-classify OS with any newly enriched vendor data
+            fp.os_guess = _classify_os(fp.name, fp.vendor, fp.address)
+            print(f"\n  {C.GREEN}Deep scans complete.{C.RESET}  "
+                  f"Enriched services: {len(fp.services)}  "
+                  f"Features: {len(fp.features)}")
+        else:
+            print_info("\n[2/4] No additional deep scans triggered by fingerprint.")
+
+        # Phase 3 — load module catalogue
+        print_info("\n[3/4] Indexing exploit/DoS/aux modules...")
         repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
         cve_modules = _scan_module_tree(repo_root)
         print_success(
@@ -1282,8 +1478,8 @@ class Module(ScannerModule):
             f"across {len(cve_modules)} unique CVEs"
         )
 
-        # Phase 3 — CVE scoring
-        print_info("\n[3/3] Matching CVEs against target evidence...")
+        # Phase 4 — CVE scoring against enriched fingerprint
+        print_info("\n[4/4] Matching CVEs against enriched target evidence...")
         findings: List[Dict[str, Any]] = []
 
         for cve, rule in CVE_RULES.items():
@@ -1317,7 +1513,6 @@ class Module(ScannerModule):
         self._print_cve_findings(findings)
 
         # ── Hardening footer ────────────────────────────────────────────────
-        C = Colors
         print(f"  {C.BOLD}HARDENING RECOMMENDATIONS{C.RESET}")
         print(f"  {C.CYAN}{'─'*75}{C.RESET}")
         if fp.protocol != "BLE" and "secure_connections" not in fp.features:
@@ -1380,6 +1575,10 @@ class Module(ScannerModule):
                  "modules": [m.use_path for m in f["modules"]]}
                 for f in findings
             ],
+            "deep_scans": {
+                label: len(results)
+                for label, results in deep_scan_results.items()
+            },
         }
         self.add_result(report)
 
