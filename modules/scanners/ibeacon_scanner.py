@@ -245,7 +245,66 @@ def classify_addr(addr: str, addr_type: int) -> Tuple[str, Optional[str]]:
 
 
 # =====================================================================
-# Phase 1 — Discovery
+# Phase 1 — Discovery (BleakScanner fallback — no root required)
+# =====================================================================
+def discover_ibeacons_bleak(duration: float,
+                             min_rssi: Optional[int]) -> List[Dict[str, Any]]:
+    """
+    BleakScanner-based iBeacon discovery.  No raw socket / root required.
+    Parses Apple manufacturer data (company ID 0x004C, type 0x02, len 0x15).
+    addr_type is returned as 0 (public) or 1 (random) from BlueZ props.
+    """
+    seen: Dict[str, Dict[str, Any]] = {}
+
+    async def _scan() -> None:
+        scanner = BleakScanner()
+        await scanner.start()
+        await asyncio.sleep(duration)
+        await scanner.stop()
+        for dev, adv in scanner.discovered_devices_and_advertisement_data.values():
+            rssi = getattr(adv, "rssi", -999) or -999
+            if min_rssi is not None and rssi < min_rssi:
+                continue
+            payload = adv.manufacturer_data.get(APPLE_COMPANY_ID, b"")
+            if len(payload) < 23:
+                continue
+            if payload[0] != IBEACON_TYPE or payload[1] != IBEACON_LENGTH:
+                continue
+            uuid     = _uuid_str(payload[2:18])
+            major    = struct.unpack(">H", payload[18:20])[0]
+            minor    = struct.unpack(">H", payload[20:22])[0]
+            tx_power = struct.unpack("<b", payload[22:23])[0]
+
+            try:
+                props = dev.details if isinstance(dev.details, dict) else {}
+                props = props.get("props", props)
+                addr_type_str = props.get("AddressType", "random")
+                addr_type = 0 if addr_type_str == "public" else 1
+            except Exception:
+                addr_type = 1
+
+            key = f"{dev.address}|{uuid}|{major}|{minor}"
+            rec = seen.get(key)
+            if rec is None:
+                rec = {
+                    "addr": dev.address.upper(), "addr_type": addr_type,
+                    "evt_types": set(), "rssi_min": rssi, "rssi_max": rssi,
+                    "count": 0, "uuid": uuid, "major": major,
+                    "minor": minor, "tx_power": tx_power,
+                }
+                seen[key] = rec
+            rec["rssi_min"] = min(rec["rssi_min"], rssi)
+            rec["rssi_max"] = max(rec["rssi_max"], rssi)
+            rec["count"] += 1
+
+    asyncio.run(_scan())
+    out = list(seen.values())
+    out.sort(key=lambda r: -r["rssi_max"])
+    return out
+
+
+# =====================================================================
+# Phase 1 — Discovery (raw HCI — needs CAP_NET_RAW or root)
 # =====================================================================
 def discover_ibeacons(dev_id: int, duration: float,
                        min_rssi: Optional[int]) -> List[Dict[str, Any]]:
