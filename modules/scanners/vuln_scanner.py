@@ -1233,6 +1233,122 @@ class Module(ScannerModule):
                     if uuid and uuid not in fp.services:
                         fp.services.append(uuid)
 
+    # ── Final consolidated report table ────────────────────────────────────
+
+    def _print_final_report_table(
+        self,
+        fp: Fingerprint,
+        gap_rep: GapReport,
+        gatt_rep: GattReport,
+        cve_findings: List[Dict[str, Any]],
+    ) -> None:
+        C = Colors
+        _ANSI = re.compile(r"\033\[[0-9;]*m")
+
+        def _vis(s: str) -> int:
+            return len(_ANSI.sub("", s))
+
+        def _pad(s: str, w: int) -> str:
+            return s + " " * max(0, w - _vis(s))
+
+        SEV_COLOR = {
+            "CRITICAL": C.RED + C.BOLD, "HIGH":   C.RED,
+            "MEDIUM":   C.YELLOW,        "LOW":    C.GREEN,
+            "INFO":     C.CYAN,
+        }
+        SEV_ORDER = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}
+
+        # ── Collect all rows ──────────────────────────────────────────────
+        rows: List[Dict[str, str]] = []
+
+        for f in gap_rep.findings:
+            rows.append({
+                "sev":     f.severity.value,
+                "cat":     "GAP",
+                "finding": f.name,
+                "details": f.description[:55] + ("…" if len(f.description) > 55 else ""),
+                "action":  f.recommendation[:40] + ("…" if len(f.recommendation) > 40 else ""),
+            })
+
+        for v in gatt_rep.vulns:
+            rows.append({
+                "sev":     v.severity.value,
+                "cat":     "GATT",
+                "finding": v.name,
+                "details": v.details[:55] + ("…" if len(v.details) > 55 else ""),
+                "action":  v.recommendation[:40] + ("…" if len(v.recommendation) > 40 else ""),
+            })
+
+        for f in cve_findings:
+            tier, _ = _confidence_tier(f["score"])
+            mods = ", ".join(m.use_path for m in f["modules"][:2])
+            rows.append({
+                "sev":     f["severity"],
+                "cat":     "CVE",
+                "finding": f["cve"],
+                "details": f"{tier} ({f['score']}%)  {', '.join(f['evidence'][:3])}",
+                "action":  f"use {mods}" if mods else "—",
+            })
+
+        rows.sort(key=lambda r: SEV_ORDER.get(r["sev"], 99))
+
+        if not rows:
+            return
+
+        # ── Column widths ─────────────────────────────────────────────────
+        W_SEV  = 8
+        W_CAT  = 5
+        W_FIND = max(len(r["finding"]) for r in rows)
+        W_FIND = min(max(W_FIND, 30), 50)
+        W_DET  = max(len(r["details"]) for r in rows)
+        W_DET  = min(max(W_DET, 25), 55)
+        W_ACT  = max(len(r["action"])  for r in rows)
+        W_ACT  = min(max(W_ACT, 20), 45)
+
+        sep   = f"  ├─{'─'*(W_SEV+2)}┼─{'─'*(W_CAT+2)}┼─{'─'*(W_FIND+2)}┼─{'─'*(W_DET+2)}┼─{'─'*(W_ACT+2)}┤"
+        top   = f"  ┌─{'─'*(W_SEV+2)}┬─{'─'*(W_CAT+2)}┬─{'─'*(W_FIND+2)}┬─{'─'*(W_DET+2)}┬─{'─'*(W_ACT+2)}┐"
+        bot   = f"  └─{'─'*(W_SEV+2)}┴─{'─'*(W_CAT+2)}┴─{'─'*(W_FIND+2)}┴─{'─'*(W_DET+2)}┴─{'─'*(W_ACT+2)}┘"
+
+        def _hdr(s: str, w: int) -> str:
+            return f"{C.BOLD}{s:<{w}}{C.RESET}"
+
+        print(f"\n  {C.BOLD}FINDINGS SUMMARY  —  {fp.address}  {fp.name or ''}  [{len(rows)} total]{C.RESET}")
+        print(f"  {C.CYAN}{'═'*75}{C.RESET}")
+        print(top)
+        print(f"  │ {_pad(_hdr('SEV', W_SEV), W_SEV+9)} │ {_pad(_hdr('CAT', W_CAT), W_CAT+9)} │ "
+              f"{_pad(_hdr('FINDING', W_FIND), W_FIND+9)} │ {_pad(_hdr('DETAILS', W_DET), W_DET+9)} │ "
+              f"{_pad(_hdr('ACTION', W_ACT), W_ACT+9)} │")
+        print(sep)
+
+        prev_sev = None
+        for r in rows:
+            if prev_sev and SEV_ORDER.get(r["sev"], 99) > SEV_ORDER.get(prev_sev, 99):
+                print(sep)
+            prev_sev = r["sev"]
+
+            sc  = SEV_COLOR.get(r["sev"], C.WHITE)
+            sev_cell  = f"{sc}{r['sev']:<{W_SEV}}{C.RESET}"
+            cat_cell  = f"{C.DARK_GREY}{r['cat']:<{W_CAT}}{C.RESET}"
+            find_cell = r["finding"][:W_FIND]
+            det_cell  = r["details"][:W_DET]
+            act_cell  = r["action"][:W_ACT]
+
+            print(f"  │ {_pad(sev_cell, W_SEV+9)} │ {_pad(cat_cell, W_CAT+9)} │ "
+                  f"{find_cell:<{W_FIND}} │ {det_cell:<{W_DET}} │ {act_cell:<{W_ACT}} │")
+
+        print(bot)
+
+        # ── Tally footer ─────────────────────────────────────────────────
+        tally: Dict[str, int] = {}
+        for r in rows:
+            tally[r["sev"]] = tally.get(r["sev"], 0) + 1
+
+        parts = []
+        for sev in ("CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"):
+            if sev in tally:
+                parts.append(f"{SEV_COLOR.get(sev,'')}{sev}: {tally[sev]}{C.RESET}")
+        print(f"  {' │ '.join(parts)}")
+
     # ── Output ─────────────────────────────────────────────────────────────
 
     def _banner(self) -> None:
@@ -1523,6 +1639,9 @@ class Module(ScannerModule):
         print(f"  {C.CYAN}• Disable Bluetooth when not in use{C.RESET}")
         print(f"  {C.CYAN}• Set device to non-discoverable mode{C.RESET}")
         print(f"  {C.CYAN}{'═'*75}{C.RESET}\n")
+
+        # ── Final consolidated findings table ───────────────────────────────
+        self._print_final_report_table(fp, gap_rep, gatt_rep, findings)
 
         # ── Persist ─────────────────────────────────────────────────────────
         report = {
