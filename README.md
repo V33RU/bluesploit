@@ -8,6 +8,7 @@
 ![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS-555555?style=for-the-badge&logo=linux&logoColor=white)
 ![Modules](https://img.shields.io/badge/Modules-101-orange?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)
+![Downloads](https://img.shields.io/github/downloads/V33RU/bluesploit/total?style=for-the-badge&logo=github&logoColor=white&label=Downloads&color=brightgreen)
 
 A Metasploit-style Bluetooth security testing framework for Classic BR/EDR and BLE, built for authorized penetration testing and security research.
 
