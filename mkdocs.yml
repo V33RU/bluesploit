@@ -1,8 +1,8 @@
 site_name: BlueSploit
 site_description: Bluetooth Security Research Framework — 144 modules, BLE + Classic
-site_url: https://Mr-IoT.github.io/bluesploit/
-repo_url: https://github.com/Mr-IoT/bluesploit
-repo_name: Mr-IoT/bluesploit
+site_url: https://V33RU.github.io/bluesploit/
+repo_url: https://github.com/V33RU/bluesploit
+repo_name: V33RU/bluesploit
 edit_uri: edit/main/docs/
 copyright: BlueSploit · MIT License · For authorized security research only
 
@@ -69,7 +69,7 @@ plugins:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/Mr-IoT/bluesploit
+      link: https://github.com/V33RU/bluesploit
     - icon: fontawesome/brands/twitter
       link: https://twitter.com/
 
