@@ -1,7 +1,7 @@
 # BlueSploit - Bluetooth Exploitation Framework
 
 ![Project](https://img.shields.io/badge/Project-BlueSploit-1a1aff?style=for-the-badge&logo=bluetooth&logoColor=white)
-![Version](https://img.shields.io/badge/Version-1.0.0-0099ff?style=for-the-badge)
+![Version](https://img.shields.io/badge/Version-1.0.1-0099ff?style=for-the-badge)
 ![Status](https://img.shields.io/badge/Status-Scaffold%20%2F%20Not%20Battle--Tested-orange?style=for-the-badge)
 ![Build](https://img.shields.io/badge/Build-Passing-success?style=for-the-badge&logo=github-actions&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3.8+-3776AB?style=for-the-badge&logo=python&logoColor=white)
