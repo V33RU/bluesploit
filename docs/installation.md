@@ -7,7 +7,7 @@ BlueSploit runs on **Linux (all major distros)** and **macOS**. Windows is not s
 ## One-line install (recommended)
 
 ```bash
-git clone https://github.com/Mr-IoT/bluesploit.git
+git clone https://github.com/V33RU/bluesploit.git
 cd bluesploit
 ./install.sh           # basic
 ./install.sh --full    # + Classic BT (Linux), rich UI extras
