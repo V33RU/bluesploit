@@ -74,11 +74,11 @@ setup(
     description="Bluetooth Exploitation Framework for Security Researchers",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/Mr-IoT/bluesploit",
+    url="https://github.com/V33RU/bluesploit",
     project_urls={
-        "Bug Tracker":    "https://github.com/Mr-IoT/bluesploit/issues",
-        "Documentation":  "https://github.com/Mr-IoT/bluesploit/wiki",
-        "Source":         "https://github.com/Mr-IoT/bluesploit",
+        "Bug Tracker":    "https://github.com/V33RU/bluesploit/issues",
+        "Documentation":  "https://github.com/V33RU/bluesploit/wiki",
+        "Source":         "https://github.com/V33RU/bluesploit",
     },
 
     # Package discovery
