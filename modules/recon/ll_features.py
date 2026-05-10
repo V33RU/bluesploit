@@ -92,8 +92,8 @@ class Module(ReconModule):
         self.add_option(ModuleOption(
             name="addr_type",
             required=False,
-            description="Peer address type: public or random",
-            default="public",
+            description="Peer address type: auto, public, or random",
+            default="auto",
         ))
         self.add_option(ModuleOption(
             name="timeout",
@@ -113,9 +113,25 @@ class Module(ReconModule):
             return False
 
         iface     = self.get_option("interface") or "hci0"
-        addr_type = (self.get_option("addr_type") or "public").lower()
+        addr_type = (self.get_option("addr_type") or "auto").lower()
         timeout   = float(self.get_option("timeout") or 12)
-        peer_at   = 0x01 if addr_type == "random" else 0x00
+
+        # Auto-detect: top 2 bits of MSB == 11 → BLE Static Random.
+        # 01 → Resolvable Private (random). 00 → Non-Resolvable Private (random).
+        # Otherwise assume public.
+        if addr_type == "auto":
+            msb = int(target.split(":")[0], 16) >> 6
+            if msb == 0b11:
+                addr_type = "random"
+                print_info(f"Auto-detected address type: random (Static Random — top 2 bits=11)")
+            elif msb == 0b01:
+                addr_type = "random"
+                print_info(f"Auto-detected address type: random (Resolvable Private)")
+            else:
+                addr_type = "public"
+                print_info(f"Auto-detected address type: public")
+
+        peer_at = 0x01 if addr_type == "random" else 0x00
 
         print_info(f"Target   : {target} ({addr_type})")
         print_info(f"Interface: {iface}")
