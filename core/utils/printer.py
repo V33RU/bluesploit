@@ -93,7 +93,7 @@ def print_banner(version: str) -> None:
     ║                                                                                 ║
     ║  {C.YELLOW}◉{C.RESET}{C.CYAN} {C.WHITE}Author{C.RESET}{C.CYAN}    : {C.WHITE}Mr-IoT{C.RESET}{C.CYAN}{'':59}║
     ║  {C.YELLOW}◉{C.RESET}{C.CYAN} {C.WHITE}Project{C.RESET}{C.CYAN}   : {C.WHITE}BlueSploit{C.RESET}{C.CYAN}{'':55}║
-    ║  {C.YELLOW}◉{C.RESET}{C.CYAN} {C.WHITE}GitHub{C.RESET}{C.CYAN}    : {C.DARK_CYAN}https://github.com/Mr-IoT{C.RESET}{C.CYAN}{'':40}║
+    ║  {C.YELLOW}◉{C.RESET}{C.CYAN} {C.WHITE}GitHub{C.RESET}{C.CYAN}    : {C.DARK_CYAN}https://github.com/V33RU{C.RESET}{C.CYAN}{'':40}║
     ║                                                                                 ║
     ╠═════════════════════════════════════════════════════════════════════════════════╣
     ║                                                                                 ║
