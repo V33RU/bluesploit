@@ -77,8 +77,8 @@ class Module(ReconModule):
         self.add_option(ModuleOption(
             name="addr_type",
             required=False,
-            description="Peer address type: public or random",
-            default="public",
+            description="Peer address type: auto, public, or random",
+            default="auto",
         ))
         self.add_option(ModuleOption(
             name="claim_io",
@@ -104,12 +104,23 @@ class Module(ReconModule):
             return False
 
         iface     = self.get_option("interface") or "hci0"
-        addr_type = (self.get_option("addr_type") or "public").lower()
+        addr_type = (self.get_option("addr_type") or "auto").lower()
         claim_io  = max(0, min(4, int(self.get_option("claim_io") or 3)))
         try:
             claim_ar = int(self.get_option("claim_auth") or "0x0D", 16)
         except ValueError:
             claim_ar = 0x0D
+
+        if addr_type == "auto":
+            msb = int(target.split(":")[0], 16) >> 6
+            if msb in (0b11, 0b01):
+                addr_type = "random"
+                print_info(f"Auto-detected address type: random "
+                           f"({'Static Random' if msb == 0b11 else 'Resolvable Private'})")
+            else:
+                addr_type = "public"
+                print_info("Auto-detected address type: public")
+
         peer_at = 0x01 if addr_type == "random" else 0x00
 
         print_info(f"Target   : {target} ({addr_type})")
