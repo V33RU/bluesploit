@@ -77,7 +77,7 @@ setup(
     url="https://github.com/V33RU/bluesploit",
     project_urls={
         "Bug Tracker":    "https://github.com/V33RU/bluesploit/issues",
-        "Documentation":  "https://github.com/V33RU/bluesploit/wiki",
+        "Documentation":  "https://v33ru.github.io/bluesploit/",
         "Source":         "https://github.com/V33RU/bluesploit",
     },
 
