@@ -168,12 +168,67 @@ class BaseModule(ABC):
             default=None,
         )
 
+    def _preflight_bluetooth(self) -> None:
+        """
+        Pre-flight check before every module run.
+        - Linux only (skipped on macOS/other)
+        - Brings the configured HCI adapter UP if it's DOWN
+        - Restarts bluetooth.service if it's not active
+        Non-fatal: failures here only print a warning; the module still tries to run.
+        """
+        import platform
+        import shutil
+        import subprocess
+        import time
+
+        if platform.system() != "Linux":
+            return
+        if not shutil.which("hciconfig"):
+            return  # bluez not installed → nothing to check
+
+        iface = self.get_option("interface") or "hci0"
+
+        # 1. Adapter UP check
+        try:
+            r = subprocess.run(["hciconfig", iface], capture_output=True, text=True, timeout=3)
+            if r.returncode == 0 and "UP RUNNING" not in r.stdout:
+                print(f"  [\033[93m!\033[0m] {iface} is DOWN — bringing it up...")
+                up = subprocess.run(["hciconfig", iface, "up"],
+                                    capture_output=True, text=True, timeout=5)
+                if up.returncode == 0:
+                    print(f"  [\033[92m+\033[0m] {iface} is now UP")
+                else:
+                    print(f"  [\033[93m!\033[0m] hciconfig {iface} up failed: "
+                          f"{(up.stderr or up.stdout).strip()[:80]}")
+        except Exception as e:
+            print(f"  [\033[93m!\033[0m] adapter check skipped: {e}")
+
+        # 2. bluetooth.service active check
+        if shutil.which("systemctl"):
+            try:
+                r = subprocess.run(["systemctl", "is-active", "bluetooth"],
+                                   capture_output=True, text=True, timeout=3)
+                status = r.stdout.strip()
+                if status not in ("active", "activating"):
+                    print(f"  [\033[93m!\033[0m] bluetooth.service is '{status}' — restarting...")
+                    rs = subprocess.run(["systemctl", "restart", "bluetooth"],
+                                        capture_output=True, text=True, timeout=10)
+                    if rs.returncode == 0:
+                        print(f"  [\033[92m+\033[0m] bluetooth.service restarted")
+                        time.sleep(1)  # give the daemon a moment to come up
+                    else:
+                        print(f"  [\033[93m!\033[0m] systemctl restart bluetooth failed: "
+                              f"{(rs.stderr or rs.stdout).strip()[:80]}")
+            except Exception as e:
+                print(f"  [\033[93m!\033[0m] service check skipped: {e}")
+
     def execute(self) -> bool:
         """
-        Execute module with optional PCAP capture.
+        Execute module with pre-flight Bluetooth check + optional PCAP capture.
         Called by the interpreter instead of run() directly.
-        Wraps run() with automatic pcap start/stop when pcap_file is set.
         """
+        self._preflight_bluetooth()
+
         pcap_file = self.get_option("pcap_file")
 
         if pcap_file:
