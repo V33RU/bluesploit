@@ -68,7 +68,7 @@ extras_require = {
 
 setup(
     name="bluesploit",
-    version="1.0.0",
+    version="1.0.1",
     author="Mr-IoT",
     author_email="Mr-IoT@mr-iot.dev",
     description="Bluetooth Exploitation Framework for Security Researchers",
