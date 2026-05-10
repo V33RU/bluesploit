@@ -17,7 +17,7 @@ Only the latest minor release receives security fixes. Older versions are unsupp
 
 Please report privately through one of:
 
-1. **GitHub Security Advisories** (preferred) — https://github.com/Mr-IoT/bluesploit/security/advisories/new
+1. **GitHub Security Advisories** (preferred) — https://github.com/V33RU/bluesploit/security/advisories/new
 2. **Email** — `Mr-IoT@mr-iot.dev` with subject `[BlueSploit Security]`
 
 Include in your report:
