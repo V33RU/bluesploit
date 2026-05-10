@@ -77,10 +77,10 @@ bluesploit = "bluesploit:main"
 bsploit = "bluesploit:main"
 
 [project.urls]
-Homepage = "https://github.com/Mr-IoT/bluesploit"
-Documentation = "https://github.com/Mr-IoT/bluesploit/wiki"
-Repository = "https://github.com/Mr-IoT/bluesploit"
-Issues = "https://github.com/Mr-IoT/bluesploit/issues"
+Homepage = "https://github.com/V33RU/bluesploit"
+Documentation = "https://v33ru.github.io/bluesploit/"
+Repository = "https://github.com/V33RU/bluesploit"
+Issues = "https://github.com/V33RU/bluesploit/issues"
 
 [tool.setuptools]
 packages = ["bluesploit", "bluesploit.core", "bluesploit.core.utils", "bluesploit.modules"]
