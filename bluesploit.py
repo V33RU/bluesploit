@@ -14,7 +14,7 @@ Usage:
 import sys
 import argparse
 
-__version__ = "1.0.1"
+__version__ = "1.0.2.dev0"
 
 
 def main():
