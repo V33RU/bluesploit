@@ -81,15 +81,17 @@ jobs:
         # Pinned exactly. The tests under scripts/ stub anything that
         # would touch hardware, so we deliberately do NOT install the
         # full runtime deps (bluepy/btlejack need root + native libs).
-        # `rich` is pure Python and is imported eagerly by core/ui/tables,
-        # so it has to come along.
+        # `rich` is pure Python and is imported eagerly by core/ui/tables.
+        # `cryptography` is needed for core/crypto.py (AES primitives used
+        # by the modules/auxiliary/crypto pack).
         run: |
           python -m pip install --upgrade "pip==25.0.1"
           pip install \
             "pytest==8.3.4" \
             "pytest-mock==3.14.0" \
             "pytest-cov==6.0.0" \
-            "rich==15.0.0"
+            "rich==15.0.0" \
+            "cryptography==47.0.0"
 
       - name: Run tests
         run: pytest scripts -q
