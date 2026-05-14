@@ -155,12 +155,14 @@ class Module(ReconModule):
             print_success(f"LL FeatureSet: {features.hex()}")
             self._decode(features)
 
-            self.add_result({
+            fp = {
                 "target": target,
                 "addr_type": addr_type,
                 "ll_features_hex": features.hex(),
                 "ll_features_bits": bitmap_to_dict(features, LL_FEATURES),
-            })
+            }
+            self.add_result(fp)
+            self._persist_fingerprint(target, fp)
             return True
 
         finally:
@@ -185,3 +187,21 @@ class Module(ReconModule):
             return
         for _idx, name in decoded:
             print(f"    {Colors.GREEN}✓{Colors.RESET} {name}")
+
+    def _persist_fingerprint(self, target: str, result: dict) -> None:
+        """Store this fingerprint so the CVE-matching scanner can read it.
+
+        Best-effort: any store failure prints a one-line warning and
+        does not affect the recon module's primary return value.
+        """
+        try:
+            self.store.add_host(address=target)
+            self.store.add_fingerprint(
+                host=target,
+                kind="ll_features",
+                data=result,
+                source_module="recon/ll_features",
+            )
+            print_info("fingerprint recorded (ll_features)")
+        except Exception as e:
+            print_warning(f"fingerprint store skipped: {e}")
