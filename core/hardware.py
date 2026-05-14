@@ -9,13 +9,13 @@ HCI adapters (standard):
   e.g. CSR8510, BCM20702, BCM20703, Intel AX200/201/210, Realtek RTL8761
 
 Passive sniffers:
-  Ubertooth One      — kismet/ubertooth suite; BLE + Classic sniffing
-  nRF Sniffer        — Nordic nRF52840 dongle running Sniffer firmware (BLE only)
-  BTLEJack Sniffer   — BBC micro:bit / nRF52840 running BTLEJack firmware (BLE hijack)
+  Ubertooth One     , kismet/ubertooth suite; BLE + Classic sniffing
+  nRF Sniffer       , Nordic nRF52840 dongle running Sniffer firmware (BLE only)
+  BTLEJack Sniffer  , BBC micro:bit / nRF52840 running BTLEJack firmware (BLE hijack)
 
 Packet injection hardware:
-  HackRF One         — SDR; gr-bluetooth or BTLE plugin for passive capture
-  YARD Stick One     — Sub-GHz SDR; useful for ZigBee/BTLE experiments
+  HackRF One        , SDR; gr-bluetooth or BTLE plugin for passive capture
+  YARD Stick One    , Sub-GHz SDR; useful for ZigBee/BTLE experiments
 
 Each HardwareDevice object exposes:
   .name          human-readable name
@@ -394,7 +394,7 @@ def _detect_yard_stick() -> List[HardwareDevice]:
 
 
 # ──────────────────────────────────────────────────────────────
-# HardwareManager — main public API
+# HardwareManager, main public API
 # ──────────────────────────────────────────────────────────────
 
 class HardwareManager:

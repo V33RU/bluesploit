@@ -274,7 +274,7 @@ def l2cap_probe(bdaddr: str, psm: int = 1, timeout: float = 4.0) -> Tuple[bool, 
     Try to connect L2CAP to (bdaddr, psm). Returns (device_present, reason).
 
     A device is considered present if connect() succeeds OR is refused
-    with ECONNREFUSED — the controller had to talk to it to refuse.
+    with ECONNREFUSED, the controller had to talk to it to refuse.
     EHOSTDOWN / EHOSTUNREACH / ETIMEDOUT mean the device didn't respond.
     """
     BTPROTO_L2CAP = 0
@@ -403,7 +403,7 @@ class Module(ScannerModule):
         return l2cap_probe(addr, psm=1, timeout=timeout)
 
     # ------------------------------------------------------------------
-    # Single-target probe — every method tried gets recorded, in order
+    # Single-target probe, every method tried gets recorded, in order
     # ------------------------------------------------------------------
     def _scan_single(self, backend, addr: str, method: str, timeout: float
                       ) -> Dict[str, Any]:
@@ -448,7 +448,7 @@ class Module(ScannerModule):
 
     # ------------------------------------------------------------------
     # Sequential scan over an address list (HCI is single-threaded by
-    # design — one Remote_Name_Request in flight per controller).
+    # design, one Remote_Name_Request in flight per controller).
     # ------------------------------------------------------------------
     def _scan_sequential(self, backend, addresses: List[str],
                           method: str, timeout: float) -> List[Dict]:
@@ -537,7 +537,7 @@ class Module(ScannerModule):
     def _report(self, results: List[Dict], strategy: str) -> None:
         C = Colors
         print(f"\n  {C.CYAN}{'=' * 70}{C.RESET}")
-        print(f"  {C.BOLD}HIDDEN DEVICE SCAN — strategy={strategy}{C.RESET}")
+        print(f"  {C.BOLD}HIDDEN DEVICE SCAN, strategy={strategy}{C.RESET}")
         print(f"  {C.CYAN}{'=' * 70}{C.RESET}")
         print(f"  Found: {C.GREEN}{len(results)}{C.RESET}")
         if not results:
@@ -638,7 +638,7 @@ class Module(ScannerModule):
                 print_info(f"OUIs: {', '.join(ouis)}")
                 per_oui = max(1, range_count // len(ouis))
                 for i, o in enumerate(ouis, 1):
-                    print_info(f"[{i}/{len(ouis)}] {o} — {per_oui} addresses")
+                    print_info(f"[{i}/{len(ouis)}] {o}, {per_oui} addresses")
                     addrs = self._gen_range(o, "00:00:00", per_oui)
                     results.extend(self._scan_sequential(backend, addrs, method, timeout))
 

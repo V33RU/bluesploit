@@ -5,12 +5,12 @@ BlueSploit Module: Unified Vulnerability Scanner
 A single scanner that handles BLE *and* Classic targets and combines two
 analyses in one pass:
 
-  1. **Fingerprint × CVE matcher** — detect protocol, vendor, OS, services,
+  1. **Fingerprint × CVE matcher**, detect protocol, vendor, OS, services,
      features; score every CVE in the framework's own module catalogue
      against the target's evidence; print the matching `use <module>`
      commands sorted by severity + confidence.
 
-  2. **BLE GATT deep analysis** — when the target is reachable over BLE,
+  2. **BLE GATT deep analysis**, when the target is reachable over BLE,
      enumerate every service / characteristic and flag:
         • known-risk services (DFU, Mesh, HID, Xiaomi, …)
         • sensitive characteristics writable without authentication
@@ -23,7 +23,7 @@ runtime, so the scanner stays in sync with whatever exploits the
 framework ships (currently 141 modules across exploits/, dos/, aux/).
 
 Replaces the old split between `scanners/vuln_scan` (BLE GATT) and
-`scanners/vuln_scanner` (Classic CVE matcher) — both used to fail on
+`scanners/vuln_scanner` (Classic CVE matcher), both used to fail on
 the wrong protocol; this one handles both transparently.
 """
 
@@ -313,13 +313,13 @@ class GattVuln:
 
 VULN_PATTERNS: Dict[str, Dict] = {
     "ffe0": {"name": "Common IoT (FFE0)",      "risk": "Often has unauthenticated writes",                   "severity": GattSeverity.HIGH},
-    "fff0": {"name": "Vendor (FFF0)",           "risk": "Custom protocol — verify authentication",            "severity": GattSeverity.MEDIUM},
-    "ffd0": {"name": "Vendor (FFD0)",           "risk": "Custom protocol — verify authentication",            "severity": GattSeverity.MEDIUM},
+    "fff0": {"name": "Vendor (FFF0)",           "risk": "Custom protocol, verify authentication",            "severity": GattSeverity.MEDIUM},
+    "ffd0": {"name": "Vendor (FFD0)",           "risk": "Custom protocol, verify authentication",            "severity": GattSeverity.MEDIUM},
     "fee0": {"name": "Xiaomi (FEE0)",           "risk": "Known unauthenticated write vulnerabilities",        "severity": GattSeverity.HIGH},
     "fe59": {"name": "Nordic DFU (FE59)",       "risk": "Unauthenticated firmware update possible",           "severity": GattSeverity.CRITICAL},
     "fddf": {"name": "Mesh Provisioning",       "risk": "Unauthenticated mesh device join",                   "severity": GattSeverity.HIGH},
     "fe0f": {"name": "Vendor Diagnostic",       "risk": "Debug commands exposed",                            "severity": GattSeverity.HIGH},
-    "fce0": {"name": "Fitbit (FCE0)",           "risk": "Proprietary protocol — verify authentication",       "severity": GattSeverity.MEDIUM},
+    "fce0": {"name": "Fitbit (FCE0)",           "risk": "Proprietary protocol, verify authentication",       "severity": GattSeverity.MEDIUM},
     "180a": {"name": "Device Information",      "risk": "Device metadata readable without auth",             "severity": GattSeverity.LOW},
     "180f": {"name": "Battery Service",         "risk": "Battery level disclosure",                          "severity": GattSeverity.INFO},
     "1812": {"name": "HID over GATT",           "risk": "Keystroke injection if writes are unauthenticated",  "severity": GattSeverity.HIGH},
@@ -338,7 +338,7 @@ VULN_PATTERNS: Dict[str, Dict] = {
 VULN_PATTERNS_128: Dict[str, Dict] = {
     "6e400001-b5a3-f393-e0a9-e50e24dcca9e": {
         "name": "Nordic UART Service (NUS)",
-        "risk": "Bidirectional serial-like UART channel — TX/RX data without authentication",
+        "risk": "Bidirectional serial-like UART channel, TX/RX data without authentication",
         "severity": GattSeverity.HIGH,
     },
     "0000fe59-0000-1000-8000-00805f9b34fb": {
@@ -353,7 +353,7 @@ VULN_PATTERNS_128: Dict[str, Dict] = {
     },
     "7905f431-b5ce-4e99-a40f-4b1e122d00d0": {
         "name": "Apple Notification Center (ANCS)",
-        "risk": "Notification data accessible — iOS notification content leak",
+        "risk": "Notification data accessible, iOS notification content leak",
         "severity": GattSeverity.MEDIUM,
     },
     "89d3502b-0f36-433a-8ef4-c502ad55f8dc": {
@@ -368,7 +368,7 @@ VULN_PATTERNS_128: Dict[str, Dict] = {
     },
     "00001530-1212-efde-1523-785feabcd123": {
         "name": "Nordic Legacy DFU",
-        "risk": "Legacy unauthenticated DFU — no signing required",
+        "risk": "Legacy unauthenticated DFU, no signing required",
         "severity": GattSeverity.CRITICAL,
     },
 }
@@ -479,14 +479,14 @@ def _analyze_gap(gap: GapReport, fp: Fingerprint) -> None:
         gap.findings.append(GapFinding(
             name="Public LE Address (Permanent Identifier)",
             severity=G.HIGH,
-            description="Device advertises with a public BD_ADDR — globally unique and never rotates. Allows persistent tracking by any nearby observer.",
+            description="Device advertises with a public BD_ADDR, globally unique and never rotates. Allows persistent tracking by any nearby observer.",
             recommendation="Switch to Resolvable Private Address (RPA) and rotate every ≤ 15 min.",
         ))
     elif gap.address_kind == "static":
         gap.findings.append(GapFinding(
             name="Static Random LE Address (Boot-Persistent)",
             severity=G.MEDIUM,
-            description="Static random address persists until the device is rebooted/re-paired — still trackable across short windows.",
+            description="Static random address persists until the device is rebooted/re-paired, still trackable across short windows.",
             recommendation="Use Resolvable Private Address (RPA) with periodic rotation.",
         ))
 
@@ -495,7 +495,7 @@ def _analyze_gap(gap: GapReport, fp: Fingerprint) -> None:
         gap.findings.append(GapFinding(
             name="Cross-Transport (BR/EDR + LE) Surface",
             severity=G.MEDIUM,
-            description="Device supports both Classic and LE — vulnerable to BLUR attacks (CVE-2020-15802) and cross-transport key derivation downgrade if a peer pairs over the weaker transport.",
+            description="Device supports both Classic and LE, vulnerable to BLUR attacks (CVE-2020-15802) and cross-transport key derivation downgrade if a peer pairs over the weaker transport.",
             recommendation="Disable the unused transport, or require Secure Connections on both.",
         ))
 
@@ -504,7 +504,7 @@ def _analyze_gap(gap: GapReport, fp: Fingerprint) -> None:
         gap.findings.append(GapFinding(
             name="LE General Discoverable Mode Active",
             severity=G.LOW,
-            description="Device continuously advertises in general discoverable mode — visible to any scanner indefinitely.",
+            description="Device continuously advertises in general discoverable mode, visible to any scanner indefinitely.",
             recommendation="Use Limited Discoverable mode with a 60s timer, or directed advertising once paired.",
         ))
     if gap.cod_limited_disc is False and gap.inquiry_scan:
@@ -529,7 +529,7 @@ def _analyze_gap(gap: GapReport, fp: Fingerprint) -> None:
         gap.findings.append(GapFinding(
             name="Legacy Pairing Enabled (Pre-SSP)",
             severity=G.HIGH,
-            description="Device falls back to legacy PIN-based pairing — vulnerable to PIN cracking (Shaked-Wool 2005) and BIAS impersonation.",
+            description="Device falls back to legacy PIN-based pairing, vulnerable to PIN cracking (Shaked-Wool 2005) and BIAS impersonation.",
             recommendation="Disable legacy pairing; require Secure Simple Pairing (SSP) with Secure Connections.",
         ))
 
@@ -588,7 +588,7 @@ def _extract_gap_ble(adv, dev, fp: Fingerprint) -> GapReport:
         try:    gap.appearance = int(props["Appearance"])
         except Exception: pass
 
-    # Adv flags byte — BlueZ surfaces it as AdvertisingFlags
+    # Adv flags byte, BlueZ surfaces it as AdvertisingFlags
     raw_flags = props.get("AdvertisingFlags")
     if isinstance(raw_flags, (bytes, bytearray)) and len(raw_flags) >= 1:
         gap.flags = raw_flags[0]
@@ -725,7 +725,7 @@ async def _ble_gatt_deep(
                         severity=pat["severity"],
                         description=pat["risk"],
                         affected=svc_uuid,
-                        details=f"128-bit vendor UUID — {pat['name']}",
+                        details=f"128-bit vendor UUID, {pat['name']}",
                         recommendation="Verify all characteristics require authentication",
                     ))
 
@@ -775,7 +775,7 @@ async def _ble_gatt_deep(
                         rep.vulns.append(GattVuln(
                             name=f"Unencrypted Notify: {INFO_LEAK_CHARS[short_char]}",
                             severity=GattSeverity.MEDIUM,
-                            description=f"{INFO_LEAK_CHARS[short_char]} supports notify — passive subscription possible",
+                            description=f"{INFO_LEAK_CHARS[short_char]} supports notify, passive subscription possible",
                             affected=char_uuid,
                             details=f"Properties: {', '.join(sorted(props))}",
                             recommendation="Notify only on encrypted/authenticated links",
@@ -852,7 +852,7 @@ async def _ble_gatt_deep(
 
     except Exception:
         # Catches asyncio.TimeoutError, BleakError, and anything else the
-        # underlying transport may raise — partial results are still useful.
+        # underlying transport may raise, partial results are still useful.
         return fp_extra, rep
     return fp_extra, rep
 
@@ -969,13 +969,13 @@ _SEV_ORDER = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}
 
 class Module(ScannerModule):
     """
-    Unified vulnerability scanner — BLE GATT deep analysis + CVE matcher
+    Unified vulnerability scanner, BLE GATT deep analysis + CVE matcher
     backed by the live module catalogue.
     """
 
     info = ModuleInfo(
         name="scanners/vuln_scanner",
-        description="Unified BLE+Classic vulnerability scanner — GATT deep analysis + CVE→module matcher",
+        description="Unified BLE+Classic vulnerability scanner, GATT deep analysis + CVE→module matcher",
         author=["BlueSploit"],
         protocol=BTProtocol.BOTH,
         severity=Severity.HIGH,
@@ -1048,7 +1048,7 @@ class Module(ScannerModule):
         gatt_rep:   GattReport            = GattReport()
         gap_rep:    Optional[GapReport]   = None
 
-        # Phase A — BLE adv + GAP capture
+        # Phase A, BLE adv + GAP capture
         if mode in ("auto", "ble", "both") and BLEAK_AVAILABLE:
             try:
                 fp_ble, gap_rep = self._run_async(_ble_passive_adv(target, timeout))
@@ -1069,9 +1069,9 @@ class Module(ScannerModule):
                 except Exception:
                     pass
         elif mode in ("auto", "ble", "both") and not BLEAK_AVAILABLE:
-            print_warning("bleak not installed — BLE analysis skipped (pip install bleak)")
+            print_warning("bleak not installed, BLE analysis skipped (pip install bleak)")
 
-        # Phase B — Classic (skipped in auto mode if address looks BLE-only)
+        # Phase B, Classic (skipped in auto mode if address looks BLE-only)
         if mode in ("auto", "classic", "both"):
             if mode != "auto" or not _ble_address_likely(target) or fp_ble is None:
                 try:
@@ -1270,7 +1270,7 @@ class Module(ScannerModule):
                 "cat":     "CVE",
                 "finding": f["cve"],
                 "details": f"{tier} ({f['score']}%)  {', '.join(f['evidence'][:3])}",
-                "action":  f"use {mods}" if mods else "—",
+                "action":  f"use {mods}" if mods else "-",
             })
 
         rows.sort(key=lambda r: SEV_ORDER.get(r["sev"], 99))
@@ -1295,7 +1295,7 @@ class Module(ScannerModule):
         def _hdr(s: str, w: int) -> str:
             return f"{C.BOLD}{s:<{w}}{C.RESET}"
 
-        print(f"\n  {C.BOLD}FINDINGS SUMMARY  —  {fp.address}  {fp.name or ''}  [{len(rows)} total]{C.RESET}")
+        print(f"\n  {C.BOLD}FINDINGS SUMMARY ,  {fp.address}  {fp.name or ''}  [{len(rows)} total]{C.RESET}")
         print(f"  {C.CYAN}{'═'*75}{C.RESET}")
         print(top)
         print(f"  │ {_pad(_hdr('SEV', W_SEV), W_SEV+9)} │ {_pad(_hdr('CAT', W_CAT), W_CAT+9)} │ "
@@ -1337,7 +1337,7 @@ class Module(ScannerModule):
     def _banner(self) -> None:
         C = Colors
         print(f"\n  {C.RED}╔{'═'*70}╗{C.RESET}")
-        print(f"  {C.RED}║{C.RESET}  {C.BOLD}Bluetooth Vulnerability Scanner — GATT × CVE × Module{C.RESET}           {C.RED}║{C.RESET}")
+        print(f"  {C.RED}║{C.RESET}  {C.BOLD}Bluetooth Vulnerability Scanner, GATT × CVE × Module{C.RESET}           {C.RED}║{C.RESET}")
         print(f"  {C.RED}╚{'═'*70}╝{C.RESET}")
 
     def _print_fingerprint(self, fp: Fingerprint) -> None:
@@ -1347,8 +1347,8 @@ class Module(ScannerModule):
         print(f"  BD_ADDR     : {C.WHITE}{fp.address}{C.RESET}")
         print(f"  Protocol    : {C.GREEN}{fp.protocol}{C.RESET}"
               + (f"  ({fp.addr_type})" if fp.addr_type and fp.addr_type != "?" else ""))
-        print(f"  Name        : {fp.name or '—'}")
-        print(f"  Vendor      : {fp.vendor or '—'}")
+        print(f"  Name        : {fp.name or '-'}")
+        print(f"  Vendor      : {fp.vendor or '-'}")
         print(f"  OS Guess    : {C.YELLOW}{fp.os_guess}{C.RESET}")
         if fp.lmp_version: print(f"  LMP Version : {fp.lmp_version}")
         if fp.rssi is not None: print(f"  RSSI        : {fp.rssi} dBm")
@@ -1384,7 +1384,7 @@ class Module(ScannerModule):
                   + (f"  ({gap.address_type})" if gap.address_type else ""))
         if gap.flags is not None:
             print(f"  Adv Flags        : 0x{gap.flags:02X}  "
-                  f"{C.DARK_GREY}[{', '.join(gap.flags_decoded) or '—'}]{C.RESET}")
+                  f"{C.DARK_GREY}[{', '.join(gap.flags_decoded) or '-'}]{C.RESET}")
         if gap.connectable is not None or gap.bondable is not None or gap.paired is not None:
             line = []
             if gap.connectable is not None:
@@ -1474,7 +1474,7 @@ class Module(ScannerModule):
 
         if not findings:
             print(f"\n  {C.GREEN}No CVE matches above the score threshold{C.RESET}")
-            print(f"  {C.YELLOW}Note: target evidence didn't match any rule — could be patched,{C.RESET}")
+            print(f"  {C.YELLOW}Note: target evidence didn't match any rule, could be patched,{C.RESET}")
             print(f"  {C.YELLOW}      OS guess wrong, or CVE requires intrusive verification.{C.RESET}")
             return
 
@@ -1522,7 +1522,7 @@ class Module(ScannerModule):
         print_info(f"GATT scan : {gatt_scan}    Test writes: {test_writes}    Timeout: {timeout}s")
 
         if test_writes:
-            print_warning("test_writes enabled — this may modify device state!")
+            print_warning("test_writes enabled, this may modify device state!")
             print_info("Continuing in 3s (Ctrl+C to abort)")
             try:
                 time.sleep(3)
@@ -1530,7 +1530,7 @@ class Module(ScannerModule):
                 print_warning("Cancelled")
                 return False
 
-        # Phase 1 — base fingerprint + GAP + (optional) GATT deep analysis
+        # Phase 1, base fingerprint + GAP + (optional) GATT deep analysis
         print_info("\n[1/4] Fingerprinting target...")
         fp, gatt_rep, gap_rep = self._fingerprint(
             target, mode, timeout, gatt_scan, test_writes, deep_scan,
@@ -1539,7 +1539,7 @@ class Module(ScannerModule):
         self._print_gap_report(gap_rep)
         self._print_gatt_report(gatt_rep)
 
-        # Phase 2 — targeted deep scans dispatched from fingerprint evidence
+        # Phase 2, targeted deep scans dispatched from fingerprint evidence
         C = Colors
         dispatch_plan = self._build_dispatch_plan(fp, timeout, gatt_scan)
         deep_scan_results: Dict[str, List[Any]] = {}
@@ -1568,7 +1568,7 @@ class Module(ScannerModule):
         else:
             print_info("\n[2/4] No additional deep scans triggered by fingerprint.")
 
-        # Phase 3 — load module catalogue
+        # Phase 3, load module catalogue
         print_info("\n[3/4] Indexing exploit/DoS/aux modules...")
         repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
         cve_modules = _scan_module_tree(repo_root)
@@ -1577,7 +1577,7 @@ class Module(ScannerModule):
             f"across {len(cve_modules)} unique CVEs"
         )
 
-        # Phase 4 — CVE scoring against enriched fingerprint
+        # Phase 4, CVE scoring against enriched fingerprint
         print_info("\n[4/4] Matching CVEs against enriched target evidence...")
         findings: List[Dict[str, Any]] = []
 

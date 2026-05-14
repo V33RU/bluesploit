@@ -50,7 +50,7 @@ def _literal(node) -> Any:
         if isinstance(node, ast.Constant):
             return node.value
         if isinstance(node, ast.JoinedStr):
-            # f-string — concatenate constant parts
+            # f-string, concatenate constant parts
             parts = []
             for v in node.values:
                 if isinstance(v, ast.Constant):
@@ -194,11 +194,11 @@ def render_category_doc(category: str, title: str, mod_path: str,
 
     for m in sorted(modules, key=lambda x: x["module_path"]):
         sev = str(m.get("severity") or "").upper()
-        sev_short = SEVERITY_BADGES.get(sev, sev or "—")
+        sev_short = SEVERITY_BADGES.get(sev, sev or "-")
         cves = m.get("cve") or []
         if isinstance(cves, str):
             cves = [cves]
-        cve_str = ", ".join(cves) if cves else "—"
+        cve_str = ", ".join(cves) if cves else "-"
         desc = (m.get("description") or "").replace("|", "\\|")
         if len(desc) > 80:
             desc = desc[:77] + "…"

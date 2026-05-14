@@ -1,6 +1,6 @@
 """
 BlueSploit Module: macOS IOBluetoothHCIUserClient OOB Demux Race
-EDB-ID: 39372  (Project Zero issue 569 — ianbeer)
+EDB-ID: 39372  (Project Zero issue 569, ianbeer)
 OS X 10.11 (El Capitan)
 
 Original C PoC embedded verbatim; compiled and run at module execution time.
@@ -82,9 +82,9 @@ class Module(DosModule):
             print_error("macOS only")
             return False
         if not find_compiler():
-            print_error("No C compiler — install Xcode CLI tools")
+            print_error("No C compiler, install Xcode CLI tools")
             return False
-        print_warning("Race condition — may need many runs to win")
+        print_warning("Race condition, may need many runs to win")
 
         last_rc = -1
         for i in range(iters):

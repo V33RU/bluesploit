@@ -3,7 +3,7 @@ BlueSploit Scanner: BLE Debug ECDH Key Detection
 
 The Bluetooth Core Specification publishes a fixed pair of debug ECDH keys
 intended for testing implementations. Production firmware should NEVER use
-these keys — but firmware/config bugs sometimes ship them, completely
+these keys, but firmware/config bugs sometimes ship them, completely
 breaking BLE Secure Connections security.
 
 If a device uses the debug DH key pair during pairing, anyone with the
@@ -11,7 +11,7 @@ corresponding (public) debug private key can derive the session LTK and
 decrypt all subsequent traffic. The debug key has been published by the
 Bluetooth SIG and is widely known.
 
-Debug Public Key (X || Y) — from Bluetooth Core Spec v5.0+:
+Debug Public Key (X || Y), from Bluetooth Core Spec v5.0+:
   X = 20 B0 03 D2 F2 97 BE 2C 5E 2C 83 A7 E9 F9 A5 B9
       EF F4 91 11 AC F4 FD DB CC 03 01 48 0E 35 9D E6
   Y = DC 80 9C 49 65 2A EB 6D 63 32 9A BF 5A 52 15 5C
@@ -22,9 +22,9 @@ Debug Private Key (corresponding):
   4A FF 60 7B EB 40 B7 99 58 99 B8 A6 CD 5C 9A 7B
 
 Modes:
-  detect    — Sniff or actively probe pairings, alert on debug key usage
-  exploit   — When debug key detected: derive LTK, attach to session
-  audit     — Static check on captured PCAP for debug key presence
+  detect   , Sniff or actively probe pairings, alert on debug key usage
+  exploit  , When debug key detected: derive LTK, attach to session
+  audit    , Static check on captured PCAP for debug key presence
 
 Reference: BT Core Specification v5.0 Vol. 6, Part E, §7.1.5.1
 """
@@ -84,7 +84,7 @@ class Module(ScannerModule):
         name="BLE Debug ECDH Key Detection",
         description=(
             "Detect Bluetooth devices that use the published BT SIG debug "
-            "ECDH key pair — production-broken Secure Connections"
+            "ECDH key pair, production-broken Secure Connections"
         ),
         author=["BlueSploit"],
         protocol=BTProtocol.BLE,
@@ -176,7 +176,7 @@ class Module(ScannerModule):
             proc.terminate()
             proc.wait(timeout=5)
         except FileNotFoundError:
-            print_error("btmon not found — install bluez-tools")
+            print_error("btmon not found, install bluez-tools")
             return False
 
         # Parse btmon log for SMP Pairing Public Key (opcode 0x0c)
@@ -222,7 +222,7 @@ class Module(ScannerModule):
             })
             return True
         except ImportError:
-            print_error("cryptography required — pip install cryptography")
+            print_error("cryptography required, pip install cryptography")
             return False
         except Exception as e:
             print_error(f"ECDH error: {e}")
@@ -285,7 +285,7 @@ class Module(ScannerModule):
             })
             return True
 
-        print_success("No debug ECDH key found in capture — looks clean")
+        print_success("No debug ECDH key found in capture, looks clean")
         self.add_result({
             "mode": "audit",
             "file": pcap_or_log,

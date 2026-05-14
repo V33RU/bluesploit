@@ -148,13 +148,13 @@ class Module(DosModule):
         print(f"  {C.BOLD}macOS bluetoothd MIG Hijack (EDB-44215){C.RESET}")
         print(f"  {C.RED}{'─'*55}{C.RESET}")
         if not is_macos():
-            print_error("macOS only — needs Foundation framework + Mach IPC")
+            print_error("macOS only, needs Foundation framework + Mach IPC")
             return False
         if not find_compiler():
-            print_error("No clang — install Xcode CLI tools")
+            print_error("No clang, install Xcode CLI tools")
             return False
         print_warning("Enumerates all session tokens and rewrites their callbacks")
-        print_info("This is the original ObjC PoC — may take ~30s to enumerate 0xFFFF*3 tokens")
+        print_info("This is the original ObjC PoC, may take ~30s to enumerate 0xFFFF*3 tokens")
 
         rc, out, err = compile_and_run(
             OBJC_SOURCE, "bluetoothd_mig",

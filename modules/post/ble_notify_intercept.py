@@ -105,7 +105,7 @@ class Module(AuxiliaryModule):
 
     def run(self) -> bool:
         if not BLEAK_AVAILABLE:
-            print_error("bleak required — pip install bleak")
+            print_error("bleak required, pip install bleak")
             return False
 
         target = self.get_option("target")
@@ -246,6 +246,6 @@ class Module(AuxiliaryModule):
 
         sensitive_count = sum(1 for r in records if r["sensitive"])
         if sensitive_count:
-            print_warning(f"{sensitive_count} notifications from sensitive UUIDs — review {output_file}")
+            print_warning(f"{sensitive_count} notifications from sensitive UUIDs, review {output_file}")
 
         return len(records)

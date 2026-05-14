@@ -62,7 +62,7 @@ git push origin feat/my-module
 - `black` (line length 100) + `flake8`
 - Use type hints where they aid clarity
 - Use `core.utils.printer` helpers, not bare `print()`
-- Keep modules under ~300 lines — split helpers into `core/utils/` if needed
+- Keep modules under ~300 lines, split helpers into `core/utils/` if needed
 
 ---
 

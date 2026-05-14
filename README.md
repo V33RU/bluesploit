@@ -26,7 +26,7 @@ A Metasploit-style Bluetooth security testing framework for Classic BR/EDR and B
 
 - **101 modules** across 6 categories: exploits, scanners, recon, DoS, auxiliary, post-exploitation
 - **40+ CVEs** implemented with working proof-of-concept exploits (2010 → 2026)
-- **Cross-platform install** — Linux (apt/dnf/yum/pacman/zypper/apk/xbps/emerge) + macOS (CoreBluetooth)
+- **Cross-platform install**, Linux (apt/dnf/yum/pacman/zypper/apk/xbps/emerge) + macOS (CoreBluetooth)
 - **Hardware support** for Ubertooth One, nRF52840, BTLEJack, HackRF One, YARD Stick One
 - **Interactive CLI** with Metasploit-style command interface (use/set/run/show)
 - **PCAP capture** for all module runs via btmon/tcpdump
@@ -72,7 +72,7 @@ pip install .
 | openSUSE | `sudo zypper install bluez bluez-devel python3-devel glib2-devel pkg-config gcc gcc-c++ make` |
 | Alpine | `sudo apk add bluez bluez-dev python3-dev glib-dev pkgconfig build-base linux-headers` |
 | Void | `sudo xbps-install -Sy bluez bluez-devel python3-devel glib-devel pkg-config base-devel` |
-| macOS | nothing — CoreBluetooth is built-in (BLE only via `bleak`) |
+| macOS | nothing, CoreBluetooth is built-in (BLE only via `bleak`) |
 
 ### Hardware-specific packages (optional)
 
@@ -83,8 +83,8 @@ sudo apt install ubertooth wireshark
 # HackRF One
 sudo apt install hackrf gr-bluetooth
 
-# nRF52840 — flash nRF Sniffer firmware, install Wireshark plugin
-# BTLEJack — flash BTLEJack firmware to micro:bit
+# nRF52840, flash nRF Sniffer firmware, install Wireshark plugin
+# BTLEJack, flash BTLEJack firmware to micro:bit
 
 # YARD Stick One
 pip install git+https://github.com/atlas0fd00m/rfcat.git
@@ -155,10 +155,10 @@ bluesploit (keystroke_injection) > run
 | `exploits/blueborne_linux_rce` | CVE-2017-1000251 | Linux BlueZ L2CAP stack overflow RCE |
 | `exploits/blueborne_leak` | CVE-2017-0781 | Android Bluetooth info leak |
 | `exploits/bnep_heap_disclosure` | CVE-2017-13258 | Android BNEP heap disclosure |
-| `exploits/whisperpair` | CVE-2025-36911 | Google Fast Pair hijack — force-pair without pairing mode |
+| `exploits/whisperpair` | CVE-2025-36911 | Google Fast Pair hijack, force-pair without pairing mode |
 | `exploits/zephyr_ble_smp_crash` | CVE-2025-10456 | Zephyr RTOS BLE fixed-channel integer overflow DoS |
 | `exploits/airoha_race_chain` | CVE-2025-20700/20701/20702 | Airoha 3-stage BLE→Classic→RACE RCE chain |
-| `exploits/rfcomm_privesc_race` | CVE-2026-23671 | Windows RFCOMM driver race condition — local EoP to SYSTEM |
+| `exploits/rfcomm_privesc_race` | CVE-2026-23671 | Windows RFCOMM driver race condition, local EoP to SYSTEM |
 | `exploits/apple_bt_dos` | CVE-2026-20650 | Apple BT subsystem crash via malformed packets |
 | `exploits/harmonyos_bt_oob` | CVE-2026-28540 | Huawei HarmonyOS Bluetooth OOB heap info disclosure |
 | `exploits/bluebugging` | - | AT command injection via RFCOMM |
@@ -299,7 +299,7 @@ bluesploit/
 ## Requirements
 
 - **Python** 3.8+
-- **OS:** Linux with BlueZ stack (all major distros — see install table) or macOS (BLE only via CoreBluetooth)
+- **OS:** Linux with BlueZ stack (all major distros, see install table) or macOS (BLE only via CoreBluetooth)
 - **Privileges:** Root / sudo required for most Linux modules (raw HCI sockets)
 
 ### Core Dependencies

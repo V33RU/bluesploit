@@ -48,8 +48,8 @@ install_requires = [
     "asyncio-dgram>=2.1.1",        # Async UDP/datagram support
 
     # ── Linux-only (HCI sockets, BlueZ) ─────────────────────────────────
-    # These wheels/sdists fail to build on macOS — gate on platform.
-    # pybluez2 0.46 sdist is broken — install via install.sh (uses fork)
+    # These wheels/sdists fail to build on macOS, gate on platform.
+    # pybluez2 0.46 sdist is broken, install via install.sh (uses fork)
     # 'pybluez2>=0.46;     sys_platform == "linux"',  # L2CAP/RFCOMM/HCI sockets
     'bluepy>=1.3.0;        sys_platform == "linux"',  # Raw BLE + GATT (Linux)
     'btlejack>=1.2;        sys_platform == "linux"',  # BLE conn hijacking (micro:bit)

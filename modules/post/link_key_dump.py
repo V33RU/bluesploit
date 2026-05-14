@@ -7,7 +7,7 @@ them enables impersonation, traffic decryption, and session hijacking
 without re-pairing.
 
 Targets:
-  - /var/lib/bluetooth/<adapter>/<device>/info — BlueZ 5.x key storage
+  - /var/lib/bluetooth/<adapter>/<device>/info, BlueZ 5.x key storage
   - Legacy: /var/lib/bluetooth/<adapter>/linkkeys
 """
 
@@ -79,7 +79,7 @@ class Module(AuxiliaryModule):
             return False
 
         if not os.access(bt_dir, os.R_OK):
-            self.print_error(f"Cannot read {bt_dir} — root privileges required")
+            self.print_error(f"Cannot read {bt_dir}, root privileges required")
             return False
 
         self.print_status(f"Scanning {bt_dir} for stored keys...")

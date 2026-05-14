@@ -1,9 +1,9 @@
 """
 BlueSploit Module: macOS IOBluetoothFamily Task-Struct UAF
-EDB-ID: 40652  (Project Zero issue 830 — ianbeer)
+EDB-ID: 40652  (Project Zero issue 830, ianbeer)
 OS X 10.11.5
 
-Original C PoC embedded verbatim — compiled and executed at runtime.
+Original C PoC embedded verbatim, compiled and executed at runtime.
 The C source includes the parent/child Mach port-dancer required to
 pass the child's task port as `owningTask`.
 """
@@ -192,10 +192,10 @@ class Module(DosModule):
         print(f"  {C.BOLD}macOS IOBluetoothFamily UAF (EDB-40652){C.RESET}")
         print(f"  {C.RED}{'─'*55}{C.RESET}")
         if not is_macos():
-            print_error("macOS only — needs Mach IPC + IOKit")
+            print_error("macOS only, needs Mach IPC + IOKit")
             return False
         if not find_compiler():
-            print_error("No C compiler — install Xcode CLI tools")
+            print_error("No C compiler, install Xcode CLI tools")
             return False
         print_warning("Spawns child + sends fake task port + triggers UAF")
 

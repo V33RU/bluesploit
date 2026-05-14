@@ -147,7 +147,7 @@ class BlueSploitInterpreter(cmd.Cmd):
             print_error(f"Module not found: {module_path}")
 
     def complete_use(self, text: str, line: str, begidx: int, endidx: int) -> List[str]:
-        """Tab completion for use command — matches full path or basename."""
+        """Tab completion for use command, matches full path or basename."""
         modules = self.loader.list_all()
         if not text:
             return modules

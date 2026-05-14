@@ -11,11 +11,11 @@ Classic target. Beyond the basic `sdptool browse` listing, this module:
     (BlueSnarfing), HFP/HSP (RFCOMM AT-command RCE), PBAP/MAP/SIM Access
     (privacy leak), A2DP/AVRCP (BlueFrag CVE-2020-0022), DUN, SDP itself
     (CVE-2017-0785), and so on.
-  • **Decodes PnP Information (UUID 0x1200)** — vendor ID source, vendor ID,
-    product ID, firmware version — and resolves common Bluetooth-SIG / USB
+  • **Decodes PnP Information (UUID 0x1200)**, vendor ID source, vendor ID,
+    product ID, firmware version, and resolves common Bluetooth-SIG / USB
     vendor IDs to human names.
   • **Probes L2CAP PSMs** discovered in the records to confirm they are
-    actually reachable (not just advertised) — concurrent, low-timeout.
+    actually reachable (not just advertised), concurrent, low-timeout.
   • **Parses XML** (`sdptool browse --xml`) into structured attribute
     records, extracting Security/Class attributes that the plain-text
     parser misses.
@@ -23,10 +23,10 @@ Classic target. Beyond the basic `sdptool browse` listing, this module:
     of the terminal width or color codes.
 
 Modes:
-    browse  — standard `sdptool browse` parse (legacy default behavior)
-    full    — browse + risk + pnp + l2cap-probe + xml-attrs (recommended)
-    records — raw `sdptool records` dump
-    tree    — raw `sdptool browse --tree` dump
+    browse , standard `sdptool browse` parse (legacy default behavior)
+    full   , browse + risk + pnp + l2cap-probe + xml-attrs (recommended)
+    records, raw `sdptool records` dump
+    tree   , raw `sdptool browse --tree` dump
 """
 
 import json
@@ -113,123 +113,123 @@ class Risk:
 
 
 RISK_MAP: Dict[str, Risk] = {
-    # HID — keystroke injection (BlueDucky / CVE-2023-45866)
+    # HID, keystroke injection (BlueDucky / CVE-2023-45866)
     "0x1124": Risk("CRITICAL",
-        "HID profile reachable — 0-click keystroke injection if peer accepts unauth HID reports.",
+        "HID profile reachable, 0-click keystroke injection if peer accepts unauth HID reports.",
         ["CVE-2023-45866"],
         ["exploits/classic/keystroke_injection_android_linux",
          "exploits/classic/keystroke_injection_apple",
          "exploits/classic/keystroke_injection_windows"]),
 
-    # SIM Access — direct SIM commands → cloning surface
+    # SIM Access, direct SIM commands → cloning surface
     "0x112d": Risk("CRITICAL",
-        "SIM Access Profile — direct SIM/USIM commands, IMSI/Ki extraction surface.",
+        "SIM Access Profile, direct SIM/USIM commands, IMSI/Ki extraction surface.",
         [], []),
 
-    # OBEX FTP — BlueSnarfing
+    # OBEX FTP, BlueSnarfing
     "0x1106": Risk("HIGH",
-        "OBEX File Transfer — historically allows unauthenticated filesystem browse (BlueSnarfing).",
+        "OBEX File Transfer, historically allows unauthenticated filesystem browse (BlueSnarfing).",
         ["CVE-2004-1001"],
         ["exploits/classic/bluesnarfing", "exploits/classic/obex_exploit"]),
 
-    # OBEX OPP — BlueJacking / vCard injection
+    # OBEX OPP, BlueJacking / vCard injection
     "0x1105": Risk("HIGH",
-        "OBEX Object Push — accepts unauth object pushes (BlueJacking, vCard/vCal injection).",
+        "OBEX Object Push, accepts unauth object pushes (BlueJacking, vCard/vCal injection).",
         [],
         ["exploits/classic/obex_exploit", "exploits/classic/bluesnarfing"]),
 
-    # PAN family — BlueBorne BNEP overflow
+    # PAN family, BlueBorne BNEP overflow
     "0x1115": Risk("HIGH",
-        "PANU — BNEP frames reachable; BlueBorne BNEP overflow code path.",
+        "PANU, BNEP frames reachable; BlueBorne BNEP overflow code path.",
         ["CVE-2017-0781"],
         ["exploits/classic/blueborne_bnep_overflow",
          "exploits/classic/bnep_heap_disclosure"]),
     "0x1116": Risk("HIGH",
-        "NAP — BNEP + IP routing; larger attack surface than PANU.",
+        "NAP, BNEP + IP routing; larger attack surface than PANU.",
         ["CVE-2017-0781"],
         ["exploits/classic/blueborne_bnep_overflow"]),
     "0x1117": Risk("MEDIUM",
-        "GN — BNEP-based, same BlueBorne surface.",
+        "GN, BNEP-based, same BlueBorne surface.",
         ["CVE-2017-0781"], []),
 
-    # HFP / HSP — AT-command RCE
+    # HFP / HSP, AT-command RCE
     "0x111e": Risk("HIGH",
-        "Hands-Free Profile — large RFCOMM AT-command attack surface; multiple recent Android RCE bugs.",
+        "Hands-Free Profile, large RFCOMM AT-command attack surface; multiple recent Android RCE bugs.",
         ["CVE-2023-21347", "CVE-2024-0039", "CVE-2025-22403"],
         ["exploits/classic/hfp_rce_2023", "exploits/classic/android_hfp_uaf_2025"]),
     "0x111f": Risk("HIGH",
-        "Handsfree Audio Gateway — same AT-command surface.",
+        "Handsfree Audio Gateway, same AT-command surface.",
         [],
         ["exploits/classic/hfp_rce_2023"]),
     "0x1108": Risk("MEDIUM",
-        "Headset profile — RFCOMM AT-command channel reachable.",
+        "Headset profile, RFCOMM AT-command channel reachable.",
         ["CVE-2023-21347"], []),
     "0x1112": Risk("MEDIUM",
-        "Headset Audio Gateway — AT command RFCOMM channel.",
+        "Headset Audio Gateway, AT command RFCOMM channel.",
         [], []),
 
-    # Phonebook / messaging — privacy leak
+    # Phonebook / messaging, privacy leak
     "0x112e": Risk("MEDIUM",
-        "Phonebook Access Client — peer can be tricked into exposing contacts.",
+        "Phonebook Access Client, peer can be tricked into exposing contacts.",
         [], []),
     "0x112f": Risk("HIGH",
-        "Phonebook Access Server — contacts/call-log readable; auto-bond car-kits often expose this.",
+        "Phonebook Access Server, contacts/call-log readable; auto-bond car-kits often expose this.",
         [], ["exploits/classic/bluebugging"]),
     "0x1130": Risk("HIGH",
-        "Phonebook Access — privacy leak of contacts and call history.",
+        "Phonebook Access, privacy leak of contacts and call history.",
         [], []),
     "0x1132": Risk("HIGH",
-        "Message Access Server — exposes SMS/MMS/IM messages.",
+        "Message Access Server, exposes SMS/MMS/IM messages.",
         [], []),
     "0x1133": Risk("MEDIUM",
-        "Message Notification Server — message metadata leak.",
+        "Message Notification Server, message metadata leak.",
         [], []),
     "0x1134": Risk("HIGH",
-        "Message Access Profile — historical privacy breach in car-kit pairings.",
+        "Message Access Profile, historical privacy breach in car-kit pairings.",
         [], []),
 
-    # A2DP / AVRCP — BlueFrag
+    # A2DP / AVRCP, BlueFrag
     "0x110d": Risk("HIGH",
-        "A2DP — AVDTP signalling reachable; BlueFrag heap overflow targets this on Android.",
+        "A2DP, AVDTP signalling reachable; BlueFrag heap overflow targets this on Android.",
         ["CVE-2020-0022"],
         ["exploits/classic/bluefrag", "dos/a2dp_flood"]),
     "0x110a": Risk("MEDIUM",
-        "AVDTP audio source — same BlueFrag code path.",
+        "AVDTP audio source, same BlueFrag code path.",
         ["CVE-2020-0022"], []),
     "0x110b": Risk("MEDIUM",
-        "AVDTP audio sink — same code path.",
+        "AVDTP audio sink, same code path.",
         ["CVE-2020-0022"], []),
     "0x110c": Risk("MEDIUM",
-        "AVRCP Target — older Android AVRCP RCEs.",
+        "AVRCP Target, older Android AVRCP RCEs.",
         ["CVE-2017-13258"], []),
     "0x110e": Risk("MEDIUM",
-        "AVRCP — same AVRCP RCE family.",
+        "AVRCP, same AVRCP RCE family.",
         ["CVE-2017-13258"], []),
 
-    # Serial / Dialup — open data channels
+    # Serial / Dialup, open data channels
     "0x1101": Risk("MEDIUM",
-        "Serial Port (SPP) — raw RFCOMM channel; auth depends entirely on the application above.",
+        "Serial Port (SPP), raw RFCOMM channel; auth depends entirely on the application above.",
         [], ["exploits/classic/rfcomm_shell"]),
     "0x1103": Risk("HIGH",
-        "Dialup Networking — AT-command channel; modem command injection / PIN brute possible.",
+        "Dialup Networking, AT-command channel; modem command injection / PIN brute possible.",
         [],
         ["exploits/classic/helomoto", "exploits/classic/bluebugging"]),
     "0x1102": Risk("MEDIUM",
-        "Legacy LAN Access PPP — outdated, often weak auth.",
+        "Legacy LAN Access PPP, outdated, often weak auth.",
         [], []),
 
     # SDP itself (BlueBorne info leak)
     "0x0001": Risk("MEDIUM",
-        "SDP server reachable — BlueBorne SDP heap leak abuses continuation state.",
+        "SDP server reachable, BlueBorne SDP heap leak abuses continuation state.",
         ["CVE-2017-0785"],
         ["exploits/classic/blueborne_sdp_leak"]),
 
-    # IrMC Sync — old privacy leak
+    # IrMC Sync, old privacy leak
     "0x1104": Risk("MEDIUM",
         "Sync profile may expose phonebook/calendar without authentication on legacy stacks.",
         [], []),
     "0x1107": Risk("MEDIUM",
-        "IrMC Sync Command — same legacy disclosure risk.",
+        "IrMC Sync Command, same legacy disclosure risk.",
         [], []),
 }
 
@@ -337,7 +337,7 @@ def _decode_pnp_from_text(raw_record: str) -> Optional[PnPInfo]:
     if "PnP Information" not in raw_record and "0x1200" not in raw_record:
         return None
     pnp = PnPInfo()
-    # sdptool emits hexadecimal attribute values inline — match them
+    # sdptool emits hexadecimal attribute values inline, match them
     m = re.search(r"VendorIDSource[^0-9a-fx]*0x([0-9a-fA-F]+)", raw_record)
     if m: pnp.vendor_id_source = int(m.group(1), 16)
     m = re.search(r"VendorID[^0-9a-fx]*0x([0-9a-fA-F]+)", raw_record)
@@ -420,7 +420,7 @@ class Module(ScannerModule):
 
     info = ModuleInfo(
         name="recon/sdp_enum",
-        description="Advanced SDP enumerator — risk + CVE map, PnP decode, L2CAP probe",
+        description="Advanced SDP enumerator, risk + CVE map, PnP decode, L2CAP probe",
         author=["BlueSploit"],
         protocol=BTProtocol.CLASSIC,
         severity=Severity.INFO,
@@ -661,7 +661,7 @@ class Module(ScannerModule):
         total = sum(W.values())
 
         print(f"\n  {C.CYAN}{'═'*(total+2)}{C.RESET}")
-        print(f"  {C.BOLD}{C.WHITE}SDP ENUMERATION  —  {target}  ·  {len(services)} service(s){C.RESET}")
+        print(f"  {C.BOLD}{C.WHITE}SDP ENUMERATION ,  {target}  ·  {len(services)} service(s){C.RESET}")
         print(f"  {C.CYAN}{'═'*(total+2)}{C.RESET}")
 
         # Header
@@ -673,12 +673,12 @@ class Module(ScannerModule):
 
         for idx, s in enumerate(services, 1):
             name = (s.name[:W["NAME"]-2] + "..") if len(s.name) > W["NAME"] else s.name
-            uuid = s.service_classes[0]["uuid"] if s.service_classes else "—"
-            chan = str(s.channel) if s.channel else "—"
-            psm  = str(s.psm)     if s.psm     else "—"
+            uuid = s.service_classes[0]["uuid"] if s.service_classes else "-"
+            chan = str(s.channel) if s.channel else "-"
+            psm  = str(s.psm)     if s.psm     else "-"
 
             if s.psm is None:
-                reach = "—"
+                reach = "-"
             elif s.psm_reachable is True:
                 reach = f"{C.GREEN}OPEN{C.RESET}"
             elif s.psm_reachable is False:
@@ -686,10 +686,10 @@ class Module(ScannerModule):
             else:
                 reach = "?"
 
-            proto = s.protocols[0]["name"][:W["PROTO"]-1] if s.protocols else "—"
+            proto = s.protocols[0]["name"][:W["PROTO"]-1] if s.protocols else "-"
 
             if s.risk is None:
-                risk_cell = f"{C.DARK_GREY}—{C.RESET}"
+                risk_cell = f"{C.DARK_GREY}-{C.RESET}"
             else:
                 col = {"CRITICAL": C.RED + C.BOLD, "HIGH": C.RED,
                        "MEDIUM": C.YELLOW,         "LOW": C.GREEN}.get(s.risk.severity, C.WHITE)
@@ -825,7 +825,7 @@ class Module(ScannerModule):
             return False
 
         if not self._have_sdptool():
-            print_error("sdptool not found — install BlueZ (`sudo apt install bluez`)")
+            print_error("sdptool not found, install BlueZ (`sudo apt install bluez`)")
             return False
 
         mode        = (self.get_option("mode") or "full").lower()
@@ -858,7 +858,7 @@ class Module(ScannerModule):
             output = self._run_sdptool(["browse", target], timeout)
 
         if not output:
-            print_warning("No SDP response — device out of range, paired-only, or stack patched")
+            print_warning("No SDP response, device out of range, paired-only, or stack patched")
             return False
 
         services = self._parse_browse(output)

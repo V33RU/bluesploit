@@ -3,15 +3,15 @@ BlueSploit Module: Android btsnoop Collector
 
 Collects the Bluetooth HCI snoop log (btsnoop_hci.log) from a connected
 Android device via ADB. The log captures every HCI command, event, and
-ACL/SCO data packet handled by the Android Bluetooth stack — equivalent
+ACL/SCO data packet handled by the Android Bluetooth stack, equivalent
 to a btmon trace of the phone's controller.
 
 Modes:
-  enable    — turn on Bluetooth HCI snoop logging (requires Developer Options)
-  disable   — turn off Bluetooth HCI snoop logging
-  pull      — pull the existing snoop log to local disk
-  full      — enable + restart Bluetooth + wait + pull
-  watch     — tail the snoop log in real time via adb shell
+  enable   , turn on Bluetooth HCI snoop logging (requires Developer Options)
+  disable  , turn off Bluetooth HCI snoop logging
+  pull     , pull the existing snoop log to local disk
+  full     , enable + restart Bluetooth + wait + pull
+  watch    , tail the snoop log in real time via adb shell
 
 Notes:
   - Requires `adb` in PATH and the device with USB debugging enabled
@@ -85,7 +85,7 @@ class Module(AuxiliaryModule):
 
     def run(self) -> bool:
         if not shutil.which("adb"):
-            print_error("adb not found in PATH — install android-tools-adb")
+            print_error("adb not found in PATH, install android-tools-adb")
             return False
 
         mode    = (self.get_option("mode") or "full").lower()
@@ -116,7 +116,7 @@ class Module(AuxiliaryModule):
         if mode == "full":
             if not self._enable_snoop(device):
                 return False
-            print_info(f"Capturing for {wait_s}s — exercise Bluetooth on the device now...")
+            print_info(f"Capturing for {wait_s}s, exercise Bluetooth on the device now...")
             try:
                 time.sleep(wait_s)
             except KeyboardInterrupt:
@@ -131,7 +131,7 @@ class Module(AuxiliaryModule):
         rc = self._adb(device, "shell", "settings", "put", "global",
                        "bluetooth_hci_log", "1")
         if rc != 0:
-            print_warning("settings put failed — trying setprop fallback")
+            print_warning("settings put failed, trying setprop fallback")
             self._adb(device, "shell", "setprop",
                       "persist.bluetooth.btsnoopenable", "true")
             self._adb(device, "shell", "setprop",
@@ -185,14 +185,14 @@ class Module(AuxiliaryModule):
         print_info(f"Pulling → {output}")
         rc = self._adb(device, "pull", chosen, output)
         if rc != 0:
-            # Snoop file may be in /data/ — needs root
-            print_warning("Pull failed (permission?) — retrying via cat (root su required)")
+            # Snoop file may be in /data/, needs root
+            print_warning("Pull failed (permission?), retrying via cat (root su required)")
             rc, out, _ = self._adb_capture(device, "shell", f"su -c 'cat {chosen}' 2>/dev/null")
             if rc == 0 and out:
                 with open(output, "wb") as f:
                     f.write(out.encode("latin-1") if isinstance(out, str) else out)
             else:
-                print_error("Could not pull snoop log — root access required for /data/")
+                print_error("Could not pull snoop log, root access required for /data/")
                 return False
 
         if os.path.exists(output):
@@ -235,7 +235,7 @@ class Module(AuxiliaryModule):
     def _adb_check(self, device: Optional[str]) -> bool:
         rc, out, _ = self._adb_capture(None, "devices")
         if rc != 0:
-            print_error("`adb devices` failed — is the daemon running?")
+            print_error("`adb devices` failed, is the daemon running?")
             return False
         lines = [l for l in out.strip().splitlines()[1:] if l.strip()]
         if not lines:
@@ -248,7 +248,7 @@ class Module(AuxiliaryModule):
         else:
             ready = [l for l in lines if l.endswith("device")]
             if not ready:
-                print_error("No authorized device — accept the USB debugging prompt")
+                print_error("No authorized device, accept the USB debugging prompt")
                 return False
         return True
 

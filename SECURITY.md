@@ -1,6 +1,6 @@
 # Security Policy
 
-BlueSploit is an offensive-security framework. This policy covers vulnerabilities **in BlueSploit itself** — not in the third-party Bluetooth stacks it tests.
+BlueSploit is an offensive-security framework. This policy covers vulnerabilities **in BlueSploit itself**, not in the third-party Bluetooth stacks it tests.
 
 ## Supported Versions
 
@@ -17,8 +17,8 @@ Only the latest minor release receives security fixes. Older versions are unsupp
 
 Please report privately through one of:
 
-1. **GitHub Security Advisories** (preferred) — https://github.com/V33RU/bluesploit/security/advisories/new
-2. **Email** — `Mr-IoT@mr-iot.dev` with subject `[BlueSploit Security]`
+1. **GitHub Security Advisories** (preferred), https://github.com/V33RU/bluesploit/security/advisories/new
+2. **Email**, `Mr-IoT@mr-iot.dev` with subject `[BlueSploit Security]`
 
 Include in your report:
 
@@ -50,8 +50,8 @@ If a report is **declined** (e.g. duplicate, out of scope, or working as intende
 
 **Out of scope** (do not report here):
 
-- Vulnerabilities in target Bluetooth stacks (BlueZ, Fluoride, Windows BT, etc.) — report those to the respective vendors.
-- The fact that an exploit module successfully exploits a public CVE — that is the intended behavior.
+- Vulnerabilities in target Bluetooth stacks (BlueZ, Fluoride, Windows BT, etc.), report those to the respective vendors.
+- The fact that an exploit module successfully exploits a public CVE, that is the intended behavior.
 - Issues requiring an attacker to already have local root on the user's machine.
 
 ## Disclosure
@@ -60,4 +60,4 @@ We follow **coordinated disclosure**. Once a fix ships, we publish a GitHub Secu
 
 ## Safe-harbor
 
-Good-faith security research against BlueSploit's own code is welcomed and will not result in legal action from the maintainers. This safe-harbor does **not** extend to using BlueSploit against third-party devices without authorization — see [Legal Disclaimer](docs/legal-disclaimer.md).
+Good-faith security research against BlueSploit's own code is welcomed and will not result in legal action from the maintainers. This safe-harbor does **not** extend to using BlueSploit against third-party devices without authorization, see [Legal Disclaimer](docs/legal-disclaimer.md).

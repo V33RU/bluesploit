@@ -226,9 +226,9 @@ def _get_ll_info(addr: str) -> Dict[str, Any]:
     Collect LL/LMP version, manufacturer, device name.
 
     Priority:
-      1. hcitool leinfo  — BLE LE connection, reads remote version (needs sudo)
-      2. hcitool info    — Classic BR/EDR inquiry (works for Dual devices)
-      3. bluetoothctl    — BlueZ cached record (works for any known device)
+      1. hcitool leinfo , BLE LE connection, reads remote version (needs sudo)
+      2. hcitool info   , Classic BR/EDR inquiry (works for Dual devices)
+      3. bluetoothctl   , BlueZ cached record (works for any known device)
     """
     info: Dict[str, Any] = {
         "lmp_version": None, "lmp_subversion": None,
@@ -237,7 +237,7 @@ def _get_ll_info(addr: str) -> Dict[str, Any]:
         "chipset_exact": None,
     }
 
-    # 1 — hcitool leinfo (BLE LE connection)
+    # 1, hcitool leinfo (BLE LE connection)
     try:
         r = subprocess.run(
             ["hcitool", "leinfo", addr],
@@ -248,7 +248,7 @@ def _get_ll_info(addr: str) -> Dict[str, Any]:
     except Exception:
         pass
 
-    # 2 — hcitool info (Classic inquiry, fallback for Dual devices)
+    # 2, hcitool info (Classic inquiry, fallback for Dual devices)
     if not info["lmp_version"]:
         try:
             r = subprocess.run(
@@ -260,7 +260,7 @@ def _get_ll_info(addr: str) -> Dict[str, Any]:
         except Exception:
             pass
 
-    # 3 — bluetoothctl info (reads BlueZ cached record, no root needed)
+    # 3, bluetoothctl info (reads BlueZ cached record, no root needed)
     try:
         r = subprocess.run(
             ["bluetoothctl", "info", addr],
@@ -544,7 +544,7 @@ class Module(ScannerModule):
             if identity.get("ll_subversion"):
                 ver_str += f"  (subver {identity['ll_subversion']})"
             if identity.get("ll_manufacturer"):
-                ver_str += f"  — {identity['ll_manufacturer']}"
+                ver_str += f" , {identity['ll_manufacturer']}"
             row("LL/LMP Ver", ver_str, C.CYAN)
 
         print(f"  {C.CYAN}{'─'*75}{C.RESET}")

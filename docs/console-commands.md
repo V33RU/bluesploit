@@ -61,4 +61,4 @@ bluesploit > exit
 
 - Tab-completion works for commands, module paths, and option names.
 - History persists across sessions in `~/.bluesploit_history` (or repo root, depending on launch).
-- Prefix `!` runs anything in your shell — handy for `hciconfig`, `bluetoothctl`, `rfkill`.
+- Prefix `!` runs anything in your shell, handy for `hciconfig`, `bluetoothctl`, `rfkill`.

