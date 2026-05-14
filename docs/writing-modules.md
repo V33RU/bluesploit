@@ -67,10 +67,10 @@ The class name should be `Scanner`, `DoS`, `Recon`, `Auxiliary`, or `Post` respe
 ## Conventions
 
 - **One module per file.** File name = module name (`my_exploit.py` → `exploits/my_exploit`).
-- **Use `print_info` / `print_ok` / `print_err`** from `core.utils.printer` — never `print()` directly.
+- **Use `print_info` / `print_ok` / `print_err`** from `core.utils.printer`, never `print()` directly.
 - **Validate inputs** in `check()`, not deep inside `run()`.
 - **Gate platform-specific code** with `import sys; if sys.platform != "linux": ...`.
-- **Reuse `core/hardware.py`** for adapter access — don't open raw HCI sockets directly unless you must.
+- **Reuse `core/hardware.py`** for adapter access, don't open raw HCI sockets directly unless you must.
 - **Keep module options small.** If a module needs >8 options, it's probably two modules.
 
 ---
@@ -94,4 +94,4 @@ pytest tests/exploits/test_my_exploit.py
 1. Branch off `main`.
 2. Add module + (optional) signature in `data/signatures/`.
 3. Update [Exploits](exploits.md) / [DoS](dos.md) / etc. wiki page.
-4. Open a PR — see [Contributing](contributing.md).
+4. Open a PR, see [Contributing](contributing.md).

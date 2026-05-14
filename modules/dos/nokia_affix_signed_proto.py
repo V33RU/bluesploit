@@ -6,7 +6,7 @@ Local DoS against the Nokia Affix Bluetooth stack: opens a
 PF_AFFIX/SOCK_RAW socket with proto=-31337. Signed-index bug in
 Affix's protocol dispatcher → host crash.
 
-PF_AFFIX is not registered on stock Linux — module reports cleanly
+PF_AFFIX is not registered on stock Linux, module reports cleanly
 when the address family is unknown.
 """
 
@@ -55,10 +55,10 @@ class Module(DosModule):
         try:
             s = socket.socket(PF_AFFIX, socket.SOCK_RAW, proto)
             s.close()
-            print_success("Affix accepted socket — vulnerable host detected")
+            print_success("Affix accepted socket, vulnerable host detected")
             self.add_result({"edb_id": 25525, "vulnerable": True})
         except OSError as e:
-            print_info(f"socket() rejected: {e} — Affix not present or patched")
+            print_info(f"socket() rejected: {e}, Affix not present or patched")
             self.add_result({"edb_id": 25525, "vulnerable": False, "errno": e.errno})
         except Exception as e:
             print_error(f"Error: {e}")

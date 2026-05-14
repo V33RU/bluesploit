@@ -34,7 +34,7 @@ bluesploit(recon/version_fingerprint) > set TARGET AA:BB:CC:DD:EE:FF
 bluesploit(recon/version_fingerprint) > run
 ```
 
-This identifies BT version, manufacturer, and likely chipset — useful for matching to known CVEs.
+This identifies BT version, manufacturer, and likely chipset, useful for matching to known CVEs.
 
 ---
 

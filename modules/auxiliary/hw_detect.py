@@ -242,7 +242,7 @@ class Module(AuxiliaryModule):
         if not available:
             return
 
-        print(f"\n  {C.BOLD}{C.WHITE}QUICK START — recommended hardware per task{C.RESET}")
+        print(f"\n  {C.BOLD}{C.WHITE}QUICK START, recommended hardware per task{C.RESET}")
         print(f"  {'─'*60}")
 
         tasks = [

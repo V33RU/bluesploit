@@ -1,6 +1,6 @@
 """
 BlueSploit Module: macOS IOBluetoothHCIPacketLogUserClient OSArray Race
-EDB-ID: 39371  (Project Zero issue 572 — ianbeer)
+EDB-ID: 39371  (Project Zero issue 572, ianbeer)
 OS X 10.11 (El Capitan)
 
 Original C PoC embedded verbatim; compiled and run at module execution time.
@@ -108,7 +108,7 @@ class Module(DosModule):
             print_error("macOS only")
             return False
         if not find_compiler():
-            print_error("No C compiler — install Xcode CLI tools")
+            print_error("No C compiler, install Xcode CLI tools")
             return False
         print_warning(f"Looping race PoC × {iters}")
 

@@ -1,6 +1,6 @@
 """
 BlueSploit Module: Bluetooth Discovery
-Full-spectrum passive discovery — Classic BR/EDR + BLE.
+Full-spectrum passive discovery, Classic BR/EDR + BLE.
 No connections. All intelligence extracted from advertisement packets only.
 
 Passive sources used:
@@ -260,7 +260,7 @@ def _classify_ble(
 ) -> Tuple[str, bool, Optional[str]]:
     """
     Return (class_label, is_risky, extra_info).
-    All derived from passive advertisement data — no connections.
+    All derived from passive advertisement data, no connections.
     """
     extra: Optional[str] = None
 
@@ -296,7 +296,7 @@ def _classify_ble(
     if vendor == "Ruuvi":
         return "EnvSensor", False, None
 
-    return "—", risky, extra
+    return "-", risky, extra
 
 
 def _smooth_rssi(buf: List[int], new_rssi: int) -> int:
@@ -361,7 +361,7 @@ class Device:
 
 class Module(ReconModule):
     """
-    Full-Spectrum Bluetooth Discovery Scanner (passive only — no connections)
+    Full-Spectrum Bluetooth Discovery Scanner (passive only, no connections)
 
     Extracts from raw advertisement packets:
       • Apple product type  (manufacturer data byte-pattern matching)
@@ -377,7 +377,7 @@ class Module(ReconModule):
 
     info = ModuleInfo(
         name="recon/discovery",
-        description="Passive full-spectrum Bluetooth discovery — Classic + BLE",
+        description="Passive full-spectrum Bluetooth discovery, Classic + BLE",
         author=["BlueSploit"],
         protocol=BTProtocol.BOTH,
         severity=Severity.INFO,
@@ -452,7 +452,7 @@ class Module(ReconModule):
                         dev_class=_decode_cod(cod),
                     )
         except FileNotFoundError:
-            print_warning("hcitool not found — Classic scan skipped (apt install bluez)")
+            print_warning("hcitool not found, Classic scan skipped (apt install bluez)")
             return []
         except (subprocess.TimeoutExpired, Exception):
             pass
@@ -516,20 +516,20 @@ class Module(ReconModule):
         # PROTO (width 8)
         col_proto = _cpad(f"{pc}{d.protocol}{C.RESET}", W["PROTO"])
 
-        # ADDRESS (width 20) — always plain, :<N> is safe
+        # ADDRESS (width 20), always plain, :<N> is safe
         col_addr = f"{d.address:<{W['ADDRESS']}}"
 
-        # NAME (width 22) — pad PLAIN string, then colorize
+        # NAME (width 22), pad PLAIN string, then colorize
         name_raw = d.name or ""
         name_raw = (name_raw[:20] + "..") if len(name_raw) > 22 else name_raw
         col_name = (
-            _cpad(f"{C.DARK_GREY}—{C.RESET}", W["NAME"])
+            _cpad(f"{C.DARK_GREY}-{C.RESET}", W["NAME"])
             if not d.name
             else f"{name_raw:<{W['NAME']}}"
         )
 
-        # CLASS (width 16) — prefix with "! " when risky, then _cpad
-        cls_raw  = (d.dev_class or "—")
+        # CLASS (width 16), prefix with "! " when risky, then _cpad
+        cls_raw  = (d.dev_class or "-")
         cls_raw  = (cls_raw[:13] + "..") if len(cls_raw) > 15 else cls_raw
         col_class = (
             _cpad(f"{C.RED}! {cls_raw}{C.RESET}", W["CLASS"])
@@ -537,19 +537,19 @@ class Module(ReconModule):
             else f"{cls_raw:<{W['CLASS']}}"
         )
 
-        # VENDOR (width 13) — always plain
-        vendor = (d.vendor or "—")
+        # VENDOR (width 13), always plain
+        vendor = (d.vendor or "-")
         vendor = (vendor[:11] + "..") if len(vendor) > 13 else vendor
         col_vendor = f"{vendor:<{W['VENDOR']}}"
 
-        # RSSI (width 9) — always plain
-        rssi_str  = f"{d.rssi} dBm" if d.rssi is not None else "—"
+        # RSSI (width 9), always plain
+        rssi_str  = f"{d.rssi} dBm" if d.rssi is not None else "-"
         col_rssi  = f"{rssi_str:<{W['RSSI']}}"
 
-        # SIGNAL (7) — _rssi_bar always returns exactly 5 visible chars
+        # SIGNAL (7), _rssi_bar always returns exactly 5 visible chars
         col_signal = _rssi_bar(d.rssi) + "  "
 
-        # DIST (9) — _cpad handles the color codes
+        # DIST (9), _cpad handles the color codes
         if d.rssi is not None:
             dist  = _estimate_distance(d.rssi, d.tx_power)
             dcol  = C.RED if dist <= 2 else (C.YELLOW if dist <= 10 else C.WHITE)
@@ -650,7 +650,7 @@ class Module(ReconModule):
                     new_cls, new_risky, new_extra = _classify_ble(
                         services, d.vendor, mfr_data, service_data
                     )
-                    if new_cls != "—":
+                    if new_cls != "-":
                         d.dev_class = new_cls
                     d.risky = d.risky or new_risky
                     if new_extra and not d.extra_info:
@@ -675,7 +675,7 @@ class Module(ReconModule):
                 if not m.rssi and d.rssi:   m.rssi      = d.rssi
                 if not m.name and d.name:   m.name      = d.name
                 if d.services:              m.services  = d.services
-                if d.dev_class and d.dev_class != "—":
+                if d.dev_class and d.dev_class != "-":
                     m.dev_class = d.dev_class
                 if d.extra_info and not m.extra_info:
                     m.extra_info = d.extra_info
@@ -690,7 +690,7 @@ class Module(ReconModule):
         Print the BLUETOOTH DISCOVERY summary.
 
         If `rows_already_shown` is True (live mode), skip the redundant per-device
-        rows — they were already printed during scanning — and emit only the
+        rows, they were already printed during scanning, and emit only the
         banner + summary footer.
         """
         C       = Colors
@@ -714,7 +714,7 @@ class Module(ReconModule):
             )
             print(f"\n  {C.CYAN}{'═'*(total_w+2)}{C.RESET}")
             print(
-                f"  {C.BOLD}{C.WHITE}BLUETOOTH DISCOVERY  —  {len(devices)} device(s) found"
+                f"  {C.BOLD}{C.WHITE}BLUETOOTH DISCOVERY ,  {len(devices)} device(s) found"
                 + (f"  {C.RED}[ {risky_n} RISKY ]{C.WHITE}" if risky_n else "")
                 + C.RESET
             )
@@ -809,10 +809,10 @@ class Module(ReconModule):
                 phase_label = f"[1/{phases}]" if phases > 1 else "[1/1]"
                 print_info(f"\n{phase_label} BLE scan ({timeout}s)...")
                 if not BLEAK_AVAILABLE:
-                    print_warning("BLE scan skipped — pip install bleak")
+                    print_warning("BLE scan skipped, pip install bleak")
                 else:
                     if live:
-                        print_info("Live feed — new devices as discovered:\n")
+                        print_info("Live feed, new devices as discovered:\n")
                         print(self._table_header())
                         print(self._separator())
                     try:
@@ -826,17 +826,17 @@ class Module(ReconModule):
                         ble_devices = loop.run_until_complete(
                             self._scan_ble_async(timeout, min_rssi, live)
                         )
-                    print_success(f"BLE done — {len(ble_devices)} device(s)")
+                    print_success(f"BLE done, {len(ble_devices)} device(s)")
 
             # ── Phase 2: Classic BR/EDR inquiry (adapter free after BLE) ─────
             if mode in ("all", "classic"):
                 phase_label = f"[2/{phases}]" if phases > 1 else "[1/1]"
                 print_info(f"\n{phase_label} BR/EDR inquiry on {iface} ({timeout}s)...")
                 classic_devices = self._scan_classic(iface, timeout)
-                print_success(f"BR/EDR done — {len(classic_devices)} device(s)")
+                print_success(f"BR/EDR done, {len(classic_devices)} device(s)")
 
         except KeyboardInterrupt:
-            print_warning("\nInterrupted — showing partial results")
+            print_warning("\nInterrupted, showing partial results")
 
         all_devices = self._merge(classic_devices, ble_devices)
 
@@ -848,7 +848,7 @@ class Module(ReconModule):
             self.add_result(d)
 
         print()
-        # When live mode is on, the per-device rows were already streamed —
+        # When live mode is on, the per-device rows were already streamed -
         # avoid printing them again and only show the summary footer.
         rows_already_shown = bool(live and mode in ("all", "ble"))
         self._print_table(all_devices, rows_already_shown=rows_already_shown)

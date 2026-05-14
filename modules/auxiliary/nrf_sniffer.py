@@ -185,7 +185,7 @@ class Module(AuxiliaryModule):
         try:
             import serial
         except ImportError:
-            self.print_error("pyserial not installed — run: pip install pyserial")
+            self.print_error("pyserial not installed, run: pip install pyserial")
             return False
 
         self.print_status(f"Opening serial port {serial_port}...")
@@ -282,7 +282,7 @@ class Module(AuxiliaryModule):
             if pcap_fd:
                 pcap_fd.close()
 
-        self.print_success(f"Capture complete — {packet_count} packets, {len(devices_seen)} devices")
+        self.print_success(f"Capture complete, {packet_count} packets, {len(devices_seen)} devices")
         if devices_seen:
             self.print_status("\nDevices discovered:")
             for addr, info in sorted(devices_seen.items(), key=lambda x: x[1]["count"], reverse=True)[:20]:
@@ -357,7 +357,7 @@ class Module(AuxiliaryModule):
                 except subprocess.TimeoutExpired:
                     proc.kill()
 
-            self.print_success(f"Capture complete — {packet_count} lines")
+            self.print_success(f"Capture complete, {packet_count} lines")
             return packet_count > 0
 
         except Exception as e:

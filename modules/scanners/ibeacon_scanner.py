@@ -3,9 +3,9 @@ BlueSploit Module: iBeacon Security Tester
 Discover iBeacons, let the user pick one, run a focused security test pass.
 
 Workflow:
-  Phase 1  Discovery     — LE active scan, list all iBeacons in range
-  Phase 2  Selection     — interactive prompt to choose target BD_ADDR
-  Phase 3  Security Test — focused tests on the selected beacon:
+  Phase 1  Discovery    , LE active scan, list all iBeacons in range
+  Phase 2  Selection    , interactive prompt to choose target BD_ADDR
+  Phase 3  Security Test, focused tests on the selected beacon:
              - identifier persistence / rotation
              - advertising interval fingerprint
              - BD_ADDR classification (public OUI vs random RPA/NRPA/static)
@@ -48,7 +48,7 @@ except ImportError:
     BLEAK_AVAILABLE = False
 
 # =====================================================================
-# HCI plumbing (TODO: lift to core.utils.hci — duplicated across modules)
+# HCI plumbing (TODO: lift to core.utils.hci, duplicated across modules)
 # =====================================================================
 AF_BLUETOOTH         = 31
 BTPROTO_HCI          = 1
@@ -245,7 +245,7 @@ def classify_addr(addr: str, addr_type: int) -> Tuple[str, Optional[str]]:
 
 
 # =====================================================================
-# Phase 1 — Discovery (BleakScanner fallback — no root required)
+# Phase 1, Discovery (BleakScanner fallback, no root required)
 # =====================================================================
 def discover_ibeacons_bleak(duration: float,
                              min_rssi: Optional[int]) -> List[Dict[str, Any]]:
@@ -255,7 +255,7 @@ def discover_ibeacons_bleak(duration: float,
     addr_type is returned as 0 (public) or 1 (random) from BlueZ props.
     """
     if not BLEAK_AVAILABLE:
-        raise RuntimeError("bleak not installed — pip install bleak")
+        raise RuntimeError("bleak not installed, pip install bleak")
     seen: Dict[str, Dict[str, Any]] = {}
 
     async def _scan() -> None:
@@ -306,7 +306,7 @@ def discover_ibeacons_bleak(duration: float,
 
 
 # =====================================================================
-# Phase 1 — Discovery (raw HCI — needs CAP_NET_RAW or root)
+# Phase 1, Discovery (raw HCI, needs CAP_NET_RAW or root)
 # =====================================================================
 def discover_ibeacons(dev_id: int, duration: float,
                        min_rssi: Optional[int]) -> List[Dict[str, Any]]:
@@ -349,7 +349,7 @@ def discover_ibeacons(dev_id: int, duration: float,
 
 
 # =====================================================================
-# Phase 2 — Interactive selection
+# Phase 2, Interactive selection
 # =====================================================================
 def show_candidates(cands: List[Dict[str, Any]]) -> None:
     C = Colors
@@ -398,7 +398,7 @@ def select_target(cands: List[Dict[str, Any]],
 
 
 # =====================================================================
-# Phase 3 — Targeted security tests
+# Phase 3, Targeted security tests
 # =====================================================================
 class Findings:
     """Collects findings with severity. Severities: info, low, medium, high, critical."""
@@ -493,7 +493,7 @@ def test_persistence_and_timing(target_addr: str, target_ib: Dict[str, Any],
     else:
         findings.add("info", "Rotating identifier observed",
                      f"{len(unique_ids)} distinct UUID/Major/Minor combinations seen. "
-                     f"Unusual for vanilla iBeacon — possible custom rotation scheme.",
+                     f"Unusual for vanilla iBeacon, possible custom rotation scheme.",
                      {"identities": list(unique_ids)})
 
     # Event-type expectation: pure iBeacon should be ADV_NONCONN_IND only
@@ -501,7 +501,7 @@ def test_persistence_and_timing(target_addr: str, target_ib: Dict[str, Any],
         findings.add("medium", "Beacon is connectable",
                      f"ADV_IND observed ({evt_types[ADV_IND]} frames). A pure "
                      f"iBeacon should use ADV_NONCONN_IND. Connectability exposes "
-                     f"a GATT attack surface — see GATT enumeration findings.",
+                     f"a GATT attack surface, see GATT enumeration findings.",
                      {"adv_ind_count": evt_types[ADV_IND]})
     if SCAN_RSP in evt_types:
         findings.add("low", "Beacon responds to SCAN_REQ",
@@ -530,7 +530,7 @@ def test_address_classification(addr: str, addr_type: int, findings: Findings
             "vendor": vendor}
 
     if cls == "public":
-        msg = (f"BD_ADDR is public — OUI maps to "
+        msg = (f"BD_ADDR is public, OUI maps to "
                f"{vendor or 'an unrecognized vendor'}. Public addresses are "
                f"globally unique, immutable, and trivially trackable.")
         findings.add("medium" if vendor else "low",
@@ -541,7 +541,7 @@ def test_address_classification(addr: str, addr_type: int, findings: Findings
                      "until next reset/repower.", info)
     elif cls.startswith("random/NRPA"):
         findings.add("info", "Non-resolvable private address",
-                     "Address is non-resolvable and rotates — good privacy posture.",
+                     "Address is non-resolvable and rotates, good privacy posture.",
                      info)
     elif cls.startswith("random/RPA"):
         findings.add("info", "Resolvable private address",
@@ -654,7 +654,7 @@ async def _gatt_enumerate(addr: str, timeout: float) -> Dict[str, Any]:
 def test_gatt_exposure(target_addr: str, findings: Findings,
                         timeout: float = 8.0) -> Dict[str, Any]:
     if not BLEAK_AVAILABLE:
-        print_warning("bleak not installed — skipping GATT exposure test "
+        print_warning("bleak not installed, skipping GATT exposure test "
                       "(`pip install bleak`)")
         findings.add("info", "GATT test skipped",
                      "bleak library not available; install with `pip install bleak` "
@@ -680,7 +680,7 @@ def test_gatt_exposure(target_addr: str, findings: Findings,
                          {"error": result["error"]})
         return result
 
-    # Connected — that itself is a finding
+    # Connected, that itself is a finding
     findings.add("high", "Beacon accepts GATT connections",
                  f"Successfully connected to {target_addr} without pairing. "
                  f"A pure iBeacon should reject connections. Connection-level "
@@ -719,7 +719,7 @@ def print_report(target: Dict[str, Any], findings: Findings,
                   test_results: Dict[str, Any]) -> None:
     C = Colors
     print(f"\n  {C.CYAN}{'=' * 78}{C.RESET}")
-    print(f"  {C.BOLD}SECURITY TEST REPORT — {target['addr']}{C.RESET}")
+    print(f"  {C.BOLD}SECURITY TEST REPORT, {target['addr']}{C.RESET}")
     print(f"  {C.CYAN}{'=' * 78}{C.RESET}")
     print(f"  UUID  : {target['uuid']}")
     print(f"  Major : {target['major']}    Minor: {target['minor']}    "
@@ -741,7 +741,7 @@ def print_report(target: Dict[str, Any], findings: Findings,
         print(line)
     gatt = test_results.get("gatt") or {}
     if gatt.get("connected"):
-        print(f"  GATT  : CONNECTED — {len(gatt.get('services', []))} services exposed")
+        print(f"  GATT  : CONNECTED, {len(gatt.get('services', []))} services exposed")
     elif gatt.get("skipped"):
         print(f"  GATT  : skipped")
     elif "connected" in gatt:
@@ -799,7 +799,7 @@ def _format_evidence(v: Any) -> str:
 # Module
 # =====================================================================
 class Module(ScannerModule):
-    """iBeacon Security Tester — discover, select, test."""
+    """iBeacon Security Tester, discover, select, test."""
 
     info = ModuleInfo(
         name="scanners/ibeacon_sec_test",
@@ -849,14 +849,14 @@ class Module(ScannerModule):
 
         # --------- Phase 1 ---------
         hci_available = True
-        print_info(f"\n[Phase 1] Discovery — scanning hci{hci_dev} for "
+        print_info(f"\n[Phase 1] Discovery, scanning hci{hci_dev} for "
                    f"{discovery_duration:.0f}s")
         try:
             cands = discover_ibeacons(hci_dev, discovery_duration, min_rssi)
         except OSError as e:
             if e.errno in (errno.EPERM, errno.EACCES):
                 print_warning(
-                    f"Raw HCI unavailable (need CAP_NET_RAW or root) — "
+                    f"Raw HCI unavailable (need CAP_NET_RAW or root), "
                     f"falling back to BleakScanner"
                 )
                 hci_available = False
@@ -902,7 +902,7 @@ class Module(ScannerModule):
 
         # 3.4 Persistence + timing + event types  (needs raw HCI)
         if not hci_available:
-            print_warning("persistence/timing test skipped — raw HCI not available")
+            print_warning("persistence/timing test skipped, raw HCI not available")
         else:
             try:
                 test_results["persistence_timing"] = test_persistence_and_timing(
@@ -912,7 +912,7 @@ class Module(ScannerModule):
 
         # 3.5 Scan response  (needs raw HCI)
         if not hci_available:
-            print_warning("scan-response test skipped — raw HCI not available")
+            print_warning("scan-response test skipped, raw HCI not available")
         else:
             try:
                 test_results["scan_response"] = test_scan_response(

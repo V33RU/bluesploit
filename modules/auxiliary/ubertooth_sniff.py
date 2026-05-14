@@ -140,10 +140,10 @@ class Module(AuxiliaryModule):
                 self.print_success(f"Ubertooth detected: {version}")
                 return True
             else:
-                self.print_error("Ubertooth device not found — ensure dongle is plugged in")
+                self.print_error("Ubertooth device not found, ensure dongle is plugged in")
                 return False
         except subprocess.TimeoutExpired:
-            self.print_warning("Ubertooth check timed out — proceeding anyway")
+            self.print_warning("Ubertooth check timed out, proceeding anyway")
             return True
         except Exception as e:
             self.print_error(f"Ubertooth check failed: {e}")
@@ -253,7 +253,7 @@ class Module(AuxiliaryModule):
                     if err_line.strip():
                         self.print_warning(f"  stderr: {err_line.strip()}")
 
-            self.print_success(f"Capture complete — {packet_count} packets/lines captured")
+            self.print_success(f"Capture complete, {packet_count} packets/lines captured")
             return packet_count > 0
 
         except FileNotFoundError:

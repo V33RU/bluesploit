@@ -130,7 +130,7 @@ class Module(AuxiliaryModule):
         self.print_status(f"Protocol: {protocol}")
         self.print_status(f"Strategy: {strategy}")
         self.print_status(f"Iterations: {iterations}")
-        self.print_warning("Fuzzing may crash the target device — ensure you have physical access for reset")
+        self.print_warning("Fuzzing may crash the target device, ensure you have physical access for reset")
 
         try:
             return asyncio.run(self._run_fuzzer(
@@ -148,7 +148,7 @@ class Module(AuxiliaryModule):
         try:
             from bleak import BleakClient
         except ImportError:
-            self.print_error("bleak not installed — run: pip install bleak")
+            self.print_error("bleak not installed, run: pip install bleak")
             return False
 
         results = {
@@ -202,7 +202,7 @@ class Module(AuxiliaryModule):
                     await client.connect()
                     self.print_status(f"  Reconnected after disconnect")
                 except Exception:
-                    self.print_error(f"  Cannot reconnect — target may be crashed")
+                    self.print_error(f"  Cannot reconnect, target may be crashed")
                     break
 
             # Send fuzz packet
@@ -215,7 +215,7 @@ class Module(AuxiliaryModule):
                         await client.write_gatt_char(char.uuid, fuzz_data, response=True)
                     results["sent"] += 1
                 elif proto == "smp":
-                    # SMP fuzzing requires L2CAP CID 6 — send via raw write
+                    # SMP fuzzing requires L2CAP CID 6, send via raw write
                     if write_chars:
                         char = random.choice(write_chars)
                         await client.write_gatt_char(char.uuid, fuzz_data, response=False)

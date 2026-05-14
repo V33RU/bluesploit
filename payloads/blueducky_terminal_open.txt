@@ -1,4 +1,4 @@
-REM Linux/Gnome — open a terminal and run id
+REM Linux/Gnome, open a terminal and run id
 DELAY 500
 CTRL ALT t
 DELAY 1500

@@ -127,7 +127,7 @@ class Module(AuxiliaryModule):
 
     def run(self) -> bool:
         if not BLEAK_AVAILABLE:
-            print_error("bleak required — pip install bleak")
+            print_error("bleak required, pip install bleak")
             return False
 
         target = self.get_option("target")
@@ -246,7 +246,7 @@ class Module(AuxiliaryModule):
                     dump["services"].append(svc_entry)
 
         except BleakDeviceNotFoundError:
-            print_error(f"Device {target} not found — ensure it is advertising")
+            print_error(f"Device {target} not found, ensure it is advertising")
             return None
         except BleakError as e:
             print_error(f"BLE connection error: {e}")

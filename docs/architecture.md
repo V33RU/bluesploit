@@ -69,6 +69,6 @@ Scanners, DoS, recon, auxiliary, and post modules each have an analogous base.
 
 ## Where to look next
 
-- [Writing Modules](writing-modules.md) — author your own module
-- [Hardware Setup](hardware-setup.md) — backend installation
-- [Module Categories](module-categories.md) — what each category contains
+- [Writing Modules](writing-modules.md), author your own module
+- [Hardware Setup](hardware-setup.md), backend installation
+- [Module Categories](module-categories.md), what each category contains

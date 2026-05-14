@@ -6,7 +6,7 @@ from nearby devices and prints them in real time. Catches both BR/EDR
 (HCI_Connection_Request, HCI_Connection_Complete) and BLE
 (LE_Connection_Complete) inbound events.
 
-Useful for passive discovery of devices that scan/probe the host —
+Useful for passive discovery of devices that scan/probe the host -
 e.g. catching a phone that auto-connects to a known SSP-bonded peer,
 or a peripheral that connects in to push a notification.
 """

@@ -1,6 +1,6 @@
 """
 BlueSploit Module: macOS TransferACLPacketToHW Panic
-EDB-ID: 35773  (Yosemite 10.10 — @rpaleari & @joystick)
+EDB-ID: 35773  (Yosemite 10.10, @rpaleari & @joystick)
 
 Original C PoC embedded verbatim; compiled and run at module execution time.
 """
@@ -79,7 +79,7 @@ class Module(DosModule):
             print_error("macOS only")
             return False
         if not find_compiler():
-            print_error("No C compiler — install Xcode CLI tools")
+            print_error("No C compiler, install Xcode CLI tools")
             return False
         print_warning("Will panic the local kernel if unpatched")
 

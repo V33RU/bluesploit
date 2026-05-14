@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════════════════════════════
-# BlueSploit — Bluetooth Exploitation Framework
+# BlueSploit, Bluetooth Exploitation Framework
 # ═══════════════════════════════════════════════════════════════════════
 #
 # Install:

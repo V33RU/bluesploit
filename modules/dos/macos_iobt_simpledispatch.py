@@ -1,6 +1,6 @@
 """
 BlueSploit Module: macOS IOBluetoothHCIUserClient SimpleDispatchWL Sign-Check
-EDB-ID: 35153  (Mavericks 10.9.4 / 10.9.5 — @rpaleari & @joystick)
+EDB-ID: 35153  (Mavericks 10.9.4 / 10.9.5, @rpaleari & @joystick)
 
 The original C PoC is embedded verbatim and compiled / executed at runtime
 via clang.  Highest fidelity to the researcher's exploit.
@@ -88,7 +88,7 @@ class Module(DosModule):
         print(f"  {C.BOLD}macOS SimpleDispatchWL DoS (EDB-35153){C.RESET}")
         print(f"  {C.RED}{'─'*55}{C.RESET}")
         if not is_macos():
-            print_error("macOS only — kIOMasterPortDefault / IOConnect APIs unavailable")
+            print_error("macOS only, kIOMasterPortDefault / IOConnect APIs unavailable")
             return False
         if not find_compiler():
             print_error("No C compiler (install clang via Xcode CLI tools)")

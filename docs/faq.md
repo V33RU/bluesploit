@@ -38,7 +38,7 @@ Use `auxiliary/nrf_sniffer` (best), `auxiliary/ubertooth_sniff`, or `auxiliary/b
 
 ### Is there a docker image?
 
-Not officially yet. Building one is on the roadmap — contributions welcome.
+Not officially yet. Building one is on the roadmap, contributions welcome.
 
 ### How is BlueSploit different from RouterSploit / Metasploit?
 

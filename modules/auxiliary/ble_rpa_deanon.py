@@ -9,7 +9,7 @@ An RPA (Resolvable Private Address) may be used to identify devices using the
 response or non-response to specific scan requests from remote addresses. RPAs
 that have been associated with a specific remote device may also be used to
 identify a peer in the same manner by using its reaction to an active scan
-request — an allowlist-based side channel.
+request, an allowlist-based side channel.
 
 Attack method:
   1. Maintain a database of previously seen RPA ↔ real-identity associations
@@ -19,9 +19,9 @@ Attack method:
   5. Track device movement/presence across time without resolving IRK
 
 Modes:
-  observe  — Build RPA response fingerprint database passively
-  probe    — Active: send scan requests from known addresses, log responses
-  correlate — Cross-reference RPA patterns to re-identify previously seen devices
+  observe , Build RPA response fingerprint database passively
+  probe   , Active: send scan requests from known addresses, log responses
+  correlate, Cross-reference RPA patterns to re-identify previously seen devices
 """
 
 import asyncio
@@ -145,7 +145,7 @@ class Module(AuxiliaryModule):
 
     def run(self) -> bool:
         if not BLEAK_AVAILABLE:
-            print_error("bleak required — pip install bleak")
+            print_error("bleak required, pip install bleak")
             return False
 
         mode     = (self.get_option("mode") or "observe").lower()
@@ -236,7 +236,7 @@ class Module(AuxiliaryModule):
             for grp in sorted(rotation_groups, key=lambda x: -x["rotation_count"])[:10]:
                 print_success(
                     f"  Device (fp={grp['fingerprint'][:30]}…): "
-                    f"{grp['rotation_count']} addresses — {', '.join(grp['addresses'][:5])}"
+                    f"{grp['rotation_count']} addresses, {', '.join(grp['addresses'][:5])}"
                 )
 
         # Save database
@@ -269,7 +269,7 @@ class Module(AuxiliaryModule):
     async def _probe(self, duration: int, adapter: str, db_file: str) -> bool:
         """
         Active probe: set local adapter address to known device addresses,
-        observe which RPAs respond to scan requests — allowlist side-channel.
+        observe which RPAs respond to scan requests, allowlist side-channel.
         A device using an allowlist will only respond to scan requests from
         trusted addresses; non-response from a new address confirms RPA identity.
         """

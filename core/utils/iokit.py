@@ -53,7 +53,7 @@ def open_iobluetooth(client_type: int = 0) -> Optional[int]:
     if service == 0:
         return None
 
-    # mach_task_self() — task port for current process
+    # mach_task_self(), task port for current process
     libsystem = ctypes.CDLL(ctypes.util.find_library("System"))
     libsystem.mach_task_self_.argtypes = []
     libsystem.mach_task_self_.restype  = ctypes.c_uint32

@@ -1,20 +1,20 @@
 """
 BlueSploit Module: BLE Advertisement Parser
-Deep passive analysis of BLE advertisement packets — no connections required.
+Deep passive analysis of BLE advertisement packets, no connections required.
 
 Decodes:
-  • Apple Continuity  — iBeacon, AirPods (model + battery + in-ear), Nearby Info
+  • Apple Continuity , iBeacon, AirPods (model + battery + in-ear), Nearby Info
                         (iOS version + status), Handoff, FindMy/AirTag, HomeKit,
                         AirDrop, AirPlay, Apple Watch
-  • Eddystone        — URL (full decode), UID (namespace + instance), TLM
-  • iBeacon          — UUID / Major / Minor / TX power
-  • Microsoft        — Swift Pair (pairing available)
-  • Google           — Fast Pair model ID
-  • BLE flags byte   — discoverable mode, cross-transport, connectable
-  • Service UUIDs    — 16-bit SIG + well-known 128-bit vendor UUIDs
-  • Address kind     — public | static-random | RPA | NRPA
-  • Distance         — log-distance path-loss estimate from RSSI + TX power
-  • Risk scoring     — DFU, HID, NUS, Mesh, cross-transport flagged per device
+  • Eddystone       , URL (full decode), UID (namespace + instance), TLM
+  • iBeacon         , UUID / Major / Minor / TX power
+  • Microsoft       , Swift Pair (pairing available)
+  • Google          , Fast Pair model ID
+  • BLE flags byte  , discoverable mode, cross-transport, connectable
+  • Service UUIDs   , 16-bit SIG + well-known 128-bit vendor UUIDs
+  • Address kind    , public | static-random | RPA | NRPA
+  • Distance        , log-distance path-loss estimate from RSSI + TX power
+  • Risk scoring    , DFU, HID, NUS, Mesh, cross-transport flagged per device
 """
 
 import asyncio
@@ -212,7 +212,7 @@ def _decode_airpods(payload: bytes) -> Dict[str, Any]:
 
 
 def _decode_nearby_info(payload: bytes) -> Dict[str, Any]:
-    """Nearby Info (type=0x10) — iOS version + activity status."""
+    """Nearby Info (type=0x10), iOS version + activity status."""
     info: Dict[str, Any] = {}
     if len(payload) < 2:
         return info
@@ -291,7 +291,7 @@ def _decode_eddystone(service_data: Dict[str, bytes]) -> Optional[Dict[str, Any]
 
 
 def _decode_fast_pair(service_data: Dict[str, bytes]) -> Optional[str]:
-    """Google Fast Pair — 3-byte model ID in service data for 0xFE2C."""
+    """Google Fast Pair, 3-byte model ID in service data for 0xFE2C."""
     for key, payload in service_data.items():
         if "fe2c" in key.lower() and len(payload) >= 3:
             model_id = (payload[0] << 16) | (payload[1] << 8) | payload[2]
@@ -300,7 +300,7 @@ def _decode_fast_pair(service_data: Dict[str, bytes]) -> Optional[str]:
 
 
 def _decode_swift_pair(payload: bytes) -> bool:
-    """Microsoft Swift Pair — first byte 0x06 means pairing available."""
+    """Microsoft Swift Pair, first byte 0x06 means pairing available."""
     return len(payload) >= 1 and payload[0] == 0x06
 
 
@@ -396,11 +396,11 @@ class ParsedAdv:
 # ── Module ────────────────────────────────────────────────────────────────────
 
 class Module(ScannerModule):
-    """BLE Advertisement Parser — deep passive decode, no connections"""
+    """BLE Advertisement Parser, deep passive decode, no connections"""
 
     info = ModuleInfo(
         name="scanners/ble/adv_parser",
-        description="Deep BLE advertisement analysis — Apple Continuity, Eddystone, iBeacon, Fast Pair, risk scoring",
+        description="Deep BLE advertisement analysis, Apple Continuity, Eddystone, iBeacon, Fast Pair, risk scoring",
         author=["BlueSploit"],
         protocol=BTProtocol.BLE,
         severity=Severity.INFO,
@@ -454,21 +454,21 @@ class Module(ScannerModule):
                 reasons.append(f"{SERVICE_UUIDS_128[u][0]} (attack surface)")
 
         if dev.addr_kind == "public":
-            reasons.append("Public address — permanently trackable")
+            reasons.append("Public address, permanently trackable")
         if dev.cross_transport:
-            reasons.append("Cross-transport (BR/EDR + LE) — BLUR attack surface")
+            reasons.append("Cross-transport (BR/EDR + LE), BLUR attack surface")
         if dev.mfg_id in (0x0157, 0x0131):
-            reasons.append("Xiaomi / Huami — check unauthenticated GATT writes")
+            reasons.append("Xiaomi / Huami, check unauthenticated GATT writes")
         if dev.apple and dev.apple.get("raw_type") == 0x10:
             details = dev.apple.get("details", {})
             if "ios_version" in details:
                 reasons.append(f"iOS version visible: {details['ios_version']}")
         if dev.apple and dev.apple.get("raw_type") in (0x0F, 0x12):
-            reasons.append("FindMy / AirTag beacon — location privacy concern")
+            reasons.append("FindMy / AirTag beacon, location privacy concern")
         if dev.swift_pair:
-            reasons.append("Swift Pair active — device accepting new pairings")
+            reasons.append("Swift Pair active, device accepting new pairings")
         if dev.fast_pair_id:
-            reasons.append(f"Google Fast Pair model {dev.fast_pair_id} — pairing available")
+            reasons.append(f"Google Fast Pair model {dev.fast_pair_id}, pairing available")
 
         return bool(reasons), reasons
 
@@ -615,7 +615,7 @@ class Module(ScannerModule):
         # ── Summary table ────────────────────────────────────────────────────
         print(f"\n  {C.CYAN}{'='*115}{C.RESET}")
         print(f"  {C.BOLD}BLE ADVERTISEMENT ANALYSIS{C.RESET}  "
-              f"— {len(devices)} device(s)"
+              f"- {len(devices)} device(s)"
               + (f"  {C.RED}[ {risky_count} RISKY ]{C.RESET}" if risky_count else ""))
         print(f"  {C.CYAN}{'='*115}{C.RESET}\n")
 
@@ -629,10 +629,10 @@ class Module(ScannerModule):
         print("  " + "─" * 113)
 
         for idx, d in enumerate(devices, 1):
-            name = (d.name[:20] + "..") if len(d.name) > 22 else (d.name or "—")
-            mfg  = (d.mfg_name[:16] + "..") if len(d.mfg_name) > 18 else (d.mfg_name or "—")
+            name = (d.name[:20] + "..") if len(d.name) > 22 else (d.name or "-")
+            mfg  = (d.mfg_name[:16] + "..") if len(d.mfg_name) > 18 else (d.mfg_name or "-")
 
-            dtype = "—"
+            dtype = "-"
             if d.apple:
                 label   = d.apple.get("label", "Apple")
                 details = d.apple.get("details", {})
@@ -667,7 +667,7 @@ class Module(ScannerModule):
                         if "1530" in u:     dtype = "Legacy DFU"; break
 
             dtype = (dtype[:18] + "..") if len(dtype) > 20 else dtype
-            dist  = f"~{d.distance_m}m" if d.distance_m >= 0 else "—"
+            dist  = f"~{d.distance_m}m" if d.distance_m >= 0 else "-"
             rc    = C.GREEN if d.rssi > -50 else (C.YELLOW if d.rssi > -70 else C.RED)
             bang  = f"{C.RED}!{C.RESET} " if d.risky else "  "
 
@@ -683,7 +683,7 @@ class Module(ScannerModule):
 
         for idx, d in enumerate(devices, 1):
             addr_col = C.RED if d.risky else C.CYAN
-            print(f"  {addr_col}[{idx}] {d.address}  {d.name or '—'}{C.RESET}")
+            print(f"  {addr_col}[{idx}] {d.address}  {d.name or '-'}{C.RESET}")
             print(f"  {'─'*80}")
 
             # Identity
@@ -696,7 +696,7 @@ class Module(ScannerModule):
             if d.connectable:
                 print(f"    Connectable   : yes")
             if d.flags is not None:
-                print(f"    Adv Flags     : 0x{d.flags:02X}  [{', '.join(d.flags_decoded) or '—'}]")
+                print(f"    Adv Flags     : 0x{d.flags:02X}  [{', '.join(d.flags_decoded) or '-'}]")
             if d.cross_transport:
                 print(f"    Transport     : {C.YELLOW}BR/EDR + LE (cross-transport){C.RESET}")
 
@@ -791,7 +791,7 @@ class Module(ScannerModule):
             print(f"\n  {C.RED}RISKY TARGETS ({risky_count}):{C.RESET}")
             for d in devices:
                 if d.risky:
-                    print(f"    {C.RED}>{C.RESET} {d.address}  {d.name or d.mfg_name or '—'}")
+                    print(f"    {C.RED}>{C.RESET} {d.address}  {d.name or d.mfg_name or '-'}")
                     for r in d.risk_reasons[:3]:
                         print(f"         {C.DARK_GREY}• {r}{C.RESET}")
 

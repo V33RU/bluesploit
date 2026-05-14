@@ -3,13 +3,13 @@ BlueSploit raw Bluetooth helpers.
 
 Low-level primitives that pure-Python pybluez/bleak don't expose:
 
-  * Raw HCI socket (AF_BLUETOOTH / BTPROTO_HCI) — send vendor commands,
+  * Raw HCI socket (AF_BLUETOOTH / BTPROTO_HCI), send vendor commands,
     receive every event including LE Meta and SMP-bearing ACL frames.
 
   * L2CAP raw socket (BTPROTO_L2CAP) with SO_BTPROTO_L2CAP_FLUSHABLE so we
     can ship malformed packets a normal socket would refuse.
 
-  * SMP / ATT / L2CAP signalling builders & parsers — enough to do
+  * SMP / ATT / L2CAP signalling builders & parsers, enough to do
     real protocol-level attacks (KeySize=7 downgrade, invalid-curve,
     confirm reflection, signed-write forgery, …).
 
@@ -546,7 +546,7 @@ def l2cap_att_connect(target: str, src_iface: str = "hci0",
     try:
         s.bind(bind_addr)
     except OSError:
-        # Some kernels reject explicit bind on ATT — try anonymous
+        # Some kernels reject explicit bind on ATT, try anonymous
         s.bind(_pack_sockaddr_l2("00:00:00:00:00:00", psm=0, cid=L2CAP_CID_ATT,
                                  addr_type=addr_type))
 

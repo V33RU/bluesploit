@@ -192,7 +192,7 @@ class BaseModule(ABC):
         try:
             r = subprocess.run(["hciconfig", iface], capture_output=True, text=True, timeout=3)
             if r.returncode == 0 and "UP RUNNING" not in r.stdout:
-                print(f"  [\033[93m!\033[0m] {iface} is DOWN — bringing it up...")
+                print(f"  [\033[93m!\033[0m] {iface} is DOWN, bringing it up...")
                 up = subprocess.run(["hciconfig", iface, "up"],
                                     capture_output=True, text=True, timeout=5)
                 if up.returncode == 0:
@@ -210,7 +210,7 @@ class BaseModule(ABC):
                                    capture_output=True, text=True, timeout=3)
                 status = r.stdout.strip()
                 if status not in ("active", "activating"):
-                    print(f"  [\033[93m!\033[0m] bluetooth.service is '{status}' — restarting...")
+                    print(f"  [\033[93m!\033[0m] bluetooth.service is '{status}', restarting...")
                     rs = subprocess.run(["systemctl", "restart", "bluetooth"],
                                         capture_output=True, text=True, timeout=10)
                     if rs.returncode == 0:

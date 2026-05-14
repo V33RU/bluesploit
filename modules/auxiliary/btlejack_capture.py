@@ -120,7 +120,7 @@ class Module(AuxiliaryModule):
                 self.print_warning("btlejack returned non-zero, attempting anyway...")
             return True
         except FileNotFoundError:
-            self.print_error("btlejack not installed — run: pip install btlejack")
+            self.print_error("btlejack not installed, run: pip install btlejack")
             return False
         except Exception as e:
             self.print_error(f"btlejack check failed: {e}")
@@ -172,7 +172,7 @@ class Module(AuxiliaryModule):
                 except subprocess.TimeoutExpired:
                     proc.kill()
 
-            self.print_status(f"\nScan complete — {packet_count} outputs")
+            self.print_status(f"\nScan complete, {packet_count} outputs")
             if connections_found:
                 self.print_success(f"Found {len(connections_found)} potential connections:")
                 for conn in connections_found[:10]:
@@ -300,7 +300,7 @@ class Module(AuxiliaryModule):
                     proc.kill()
                     proc.wait()
 
-            self.print_success(f"BTLEJack session complete — {packet_count} lines captured")
+            self.print_success(f"BTLEJack session complete, {packet_count} lines captured")
             return packet_count > 0
 
         except Exception as e:

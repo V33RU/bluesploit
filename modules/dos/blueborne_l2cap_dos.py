@@ -1,6 +1,6 @@
 """
 BlueSploit Module: BlueBorne Linux L2CAP Config DoS
-EDB-ID: 42762  /  CVE-2017-1000251  (Marcin Kozlowski, 2017 — DoS-only PoC)
+EDB-ID: 42762  /  CVE-2017-1000251  (Marcin Kozlowski, 2017, DoS-only PoC)
 
 Sends an L2CAP CONFIG_REQ followed by a CONFIG_RSP packed with 70 dummy
 config options. The Linux kernel L2CAP stack (3.3-rc1 to 4.13) overflows
@@ -9,7 +9,7 @@ its on-stack option array → kernel oops / panic.
 This is the DoS / unweaponised variant of the BlueBorne Linux RCE
 (CVE-2017-1000251). For the full RCE see exploits/blueborne_linux_rce.
 
-Authorized testing only — crashes the target Linux kernel.
+Authorized testing only, crashes the target Linux kernel.
 """
 
 import struct
@@ -131,7 +131,7 @@ class Module(DosModule):
         print(f"  {C.RED}╚{'═'*60}╝{C.RESET}\n")
         print_info(f"Target  : {target}  PSM 0x{psm:04X}")
         print_info(f"Options : {n_opts} bogus 4-byte entries  ({n_opts*4} bytes)")
-        print_warning("Authorized testing only — target kernel will panic")
+        print_warning("Authorized testing only, target kernel will panic")
 
         sock = None
         try:
@@ -161,7 +161,7 @@ class Module(DosModule):
         except (OSError, IOError) as e:
             err = str(e)
             if "Connection reset" in err or "Broken pipe" in err:
-                print_success("Connection reset — target likely panicked")
+                print_success("Connection reset, target likely panicked")
                 return True
             print_error(f"Connection error: {e}")
             return False

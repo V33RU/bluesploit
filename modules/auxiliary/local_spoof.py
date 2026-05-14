@@ -4,10 +4,10 @@ BlueSploit Module: Local Adapter Spoof
 Spoofs properties of the local Bluetooth adapter to impersonate
 another device or evade fingerprinting. Supports four spoof targets:
 
-  hostname  — change the host's broadcast Bluetooth name (HCI_Write_Local_Name)
-  alias     — set the BlueZ controller alias (mgmt API via bluetoothctl)
-  cod       — set the Class of Device (HCI_Write_Class_Of_Device)
-  bdaddr    — change the adapter's BD_ADDR (vendor-specific HCI commands)
+  hostname , change the host's broadcast Bluetooth name (HCI_Write_Local_Name)
+  alias    , set the BlueZ controller alias (mgmt API via bluetoothctl)
+  cod      , set the Class of Device (HCI_Write_Class_Of_Device)
+  bdaddr   , change the adapter's BD_ADDR (vendor-specific HCI commands)
 
 The cod/bdaddr operations are vendor-specific and require root + a
 compatible chipset (CSR, Broadcom, Intel, TI, Zeevo, Ericsson).
@@ -116,7 +116,7 @@ class Module(AuxiliaryModule):
     # ── hostname ──────────────────────────────────────────────────────────
 
     def _spoof_hostname(self, iface: str, name: str) -> bool:
-        """HCI_Write_Local_Name (OGF=0x03, OCF=0x0013) — 248-byte name."""
+        """HCI_Write_Local_Name (OGF=0x03, OCF=0x0013), 248-byte name."""
         if len(name.encode("utf-8")) > 248:
             print_error("Name too long (max 248 bytes UTF-8)")
             return False
@@ -141,7 +141,7 @@ class Module(AuxiliaryModule):
     def _spoof_alias(self, iface: str, alias: str) -> bool:
         """Set the BlueZ controller alias via bluetoothctl."""
         if not self._cmd_exists("bluetoothctl"):
-            print_error("bluetoothctl not found — install bluez")
+            print_error("bluetoothctl not found, install bluez")
             return False
         try:
             r = subprocess.run(
@@ -236,13 +236,13 @@ class Module(AuxiliaryModule):
             self._hci_cmd(hci, 0x3F, 0x0001, csr_pkt)
             ev = self._wait_event(hci, EVT_CMD_COMPLETE, timeout=5.0)
             if ev and len(ev) >= 4 and ev[3] == 0x00:
-                print_success(f"BD_ADDR write accepted (CSR vendor cmd) — restart adapter")
+                print_success(f"BD_ADDR write accepted (CSR vendor cmd), restart adapter")
                 if restart:
                     self._restart_adapter(iface)
                 self.add_result({"mode": "bdaddr", "value": new_addr, "success": True,
                                  "method": "csr_vendor"})
                 return True
-            print_error("CSR vendor BD_ADDR write rejected — chipset may need a different command")
+            print_error("CSR vendor BD_ADDR write rejected, chipset may need a different command")
             print_info("Try: build the bluez 'bdaddr' tool from source for your chipset")
             return False
         finally:

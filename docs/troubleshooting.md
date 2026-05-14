@@ -23,7 +23,7 @@ You need PyBluez/pybluez2 for Classic-BT modules:
 pip install pybluez2
 ```
 
-Requires `libbluetooth-dev` (Debian/Ubuntu) or `bluez-libs-devel` (Fedora). On macOS, this won't install — Classic BT isn't supported on macOS; only BLE via `bleak`.
+Requires `libbluetooth-dev` (Debian/Ubuntu) or `bluez-libs-devel` (Fedora). On macOS, this won't install, Classic BT isn't supported on macOS; only BLE via `bleak`.
 
 ---
 
@@ -73,11 +73,11 @@ After raw-HCI work, restart `bluetoothd` to restore normal pairing.
 
 ## `pybluez2` build fails
 
-You're missing system headers. Install per-distro packages from [Installation](installation.md), then retry. On older Python (<3.8) it won't compile — upgrade Python.
+You're missing system headers. Install per-distro packages from [Installation](installation.md), then retry. On older Python (<3.8) it won't compile, upgrade Python.
 
 ---
 
-## WSL/WSL2 — no Bluetooth
+## WSL/WSL2, no Bluetooth
 
 WSL doesn't expose the host radio. Either:
 
