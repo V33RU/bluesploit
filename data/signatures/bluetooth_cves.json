@@ -92,6 +92,127 @@
         "https://www.bluetooth.com/learn-about-bluetooth/key-attributes/bluetooth-security/erratum-23976/"
       ],
       "disclosed": "2023-11-28"
+    },
+    {
+      "id": "CVE-2020-15802",
+      "name": "BLURtooth, Cross-Transport Key Derivation downgrade",
+      "severity": "high",
+      "confidence": "medium",
+      "applies_to": {
+        "protocol": "ble"
+      },
+      "match": {
+        "fingerprint": "smp_pairing",
+        "rules": [
+          {
+            "ctkd_advertised": true,
+            "legacy_pairing_accepted": true
+          }
+        ],
+        "rationale": "When the peer advertises CT2 (CTKD willing) and accepts Legacy Pairing, an attacker can negotiate a weak Legacy LE LTK that the stack then derives into a BR/EDR link key, downgrading the cross-transport security. Bluetooth SIG erratum 11838 + Core 5.1 mitigations added; not every host enforces. Confidence medium because deriving usable BR/EDR access also depends on host-side BR/EDR support being enabled."
+      },
+      "description": "Cross-Transport Key Derivation can promote a weak LE pairing key to a BR/EDR link key, breaking the security guarantees of either transport.",
+      "related_modules": [
+        "exploits/blurtooth",
+        "scanners/ble_pairing_audit"
+      ],
+      "references": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2020-15802",
+        "https://kb.cert.org/vuls/id/589825",
+        "https://francozappa.github.io/publication/blurtooth/blurtooth.pdf",
+        "https://www.bluetooth.com/learn-about-bluetooth/key-attributes/bluetooth-security/blurtooth/"
+      ],
+      "disclosed": "2020-09-09"
+    },
+    {
+      "id": "CVE-2020-26555",
+      "name": "BIAS variant, BR/EDR Pin-Pairing impersonation",
+      "severity": "medium",
+      "confidence": "low",
+      "applies_to": {
+        "protocol": "classic"
+      },
+      "match": {
+        "fingerprint": "lmp_features",
+        "rules": [
+          {
+            "lmp_version_max_inclusive": "5.1",
+            "encryption_supported": true
+          }
+        ],
+        "rationale": "BR/EDR PIN-code Pairing on Core 5.1 and earlier allowed an attacker to complete authentication without knowing the PIN by exploiting the reflection of IO capabilities. Core 5.2 + erratum 16980 tightened the procedure. Confidence is low because only legacy pin-pairing devices (rare on modern peripherals) are affected, and the LMP version alone cannot confirm pin-pairing is in use."
+      },
+      "description": "Legacy BR/EDR PIN-Pairing on pre-5.2 controllers is susceptible to an impersonation flow that completes pairing without the PIN.",
+      "related_modules": [
+        "exploits/pin_bruteforce"
+      ],
+      "references": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2020-26555",
+        "https://www.bluetooth.com/learn-about-bluetooth/key-attributes/bluetooth-security/erratum-16980/"
+      ],
+      "disclosed": "2021-05-24"
+    },
+    {
+      "id": "CVE-2018-5383",
+      "name": "Invalid Curve attack on LE / BR-EDR Secure Connections",
+      "severity": "high",
+      "confidence": "low",
+      "applies_to": {
+        "protocol": "ble"
+      },
+      "match": {
+        "fingerprint": "smp_pairing",
+        "rules": [
+          {
+            "legacy_pairing_accepted": false,
+            "mitm_required": false
+          }
+        ],
+        "rationale": "Affected implementations failed to validate the peer's ECDH public key during LE Secure Connections (and SSP), letting an active MITM recover the link key. Affects iOS pre-11.4, macOS pre-10.13.5, BlueZ pre-fix, several SoCs (Broadcom, QCA, Intel). Confidence is low because the fingerprint cannot prove the stack lacks the public-key validation patch; it only narrows to peers offering SC without MITM, the surface the attack uses."
+      },
+      "description": "Implementations of Bluetooth Secure Connections that fail to validate the peer's ECDH public key allow an active MITM to recover the LTK.",
+      "related_modules": [
+        "exploits/ble_invalid_curve",
+        "scanners/ble_debug_ecdh"
+      ],
+      "references": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2018-5383",
+        "https://www.kb.cert.org/vuls/id/304725",
+        "https://www.iacr.org/cryptodb/data/paper.php?pubkey=29466"
+      ],
+      "disclosed": "2018-07-23"
+    },
+    {
+      "id": "CVE-2023-45866",
+      "name": "BlueDuck / forced unauthenticated BLE-HID keystroke injection",
+      "severity": "high",
+      "confidence": "low",
+      "applies_to": {
+        "protocol": "ble"
+      },
+      "match": {
+        "fingerprint": "smp_pairing",
+        "rules": [
+          {
+            "mitm_required": false,
+            "legacy_pairing_accepted": true
+          }
+        ],
+        "rationale": "Multiple BLE HID host stacks (Android, Linux, macOS, iOS) accepted pairing from a forced peripheral that claimed HID + no-input-no-output IO capability, then immediately accepted keystroke reports. Patched by Google in December 2023 and by Apple in iOS 17.2 / macOS 14.2. Confidence is low because the fingerprint cannot confirm the peer exposes the HID GATT service (0x1812); operators should cross-check with recon/ble_target_enum and look for the HID service."
+      },
+      "description": "BLE HID stacks could be coerced into pairing with a forged peripheral, after which keystroke reports were accepted without further authentication.",
+      "related_modules": [
+        "exploits/keystroke_injection_android_linux",
+        "exploits/keystroke_injection_apple",
+        "exploits/keystroke_injection_windows",
+        "exploits/blueducky"
+      ],
+      "references": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2023-45866",
+        "https://github.com/skysafe/reblueducky",
+        "https://github.com/marcnewlin/hi_my_name_is_keyboard"
+      ],
+      "disclosed": "2023-12-06"
     }
   ]
 }
