@@ -229,7 +229,7 @@ def main() -> int:
             continue
 
         modules = []
-        for path in sorted(cat_dir.glob("*.py")):
+        for path in sorted(cat_dir.rglob("*.py")):
             if path.name.startswith("_") or path.name == "__init__.py":
                 continue
             m = parse_module(path)

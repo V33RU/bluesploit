@@ -1,4 +1,4 @@
-# Auxiliary (10)
+# Auxiliary (11)
 
 Auto-generated from `modules/auxiliary/`.  
 Load any module with `use auxiliary/<name>`.
@@ -20,6 +20,7 @@ Load any module with `use auxiliary/<name>`.
 | [`auxiliary/hw_detect`](#auxiliaryhw_detect) | ℹ️ INFO | - | Detect connected Bluetooth testing hardware and check dependencies |
 | [`auxiliary/incoming_monitor`](#auxiliaryincoming_monitor) | ℹ️ INFO | - | Print incoming BR/EDR + BLE connection attempts from nearby devices |
 | [`auxiliary/local_spoof`](#auxiliarylocal_spoof) | ℹ️ INFO | - | Spoof local adapter hostname, alias, Class of Device, or BD_ADDR |
+| [`auxiliary/mesh/mesh_pdu_decode`](#auxiliarymeshmesh_pdu_decode) | ℹ️ INFO | - | Offline decoder for a captured Bluetooth Mesh Network PDU using K2 and AES-CCM |
 | [`auxiliary/nrf_sniffer`](#auxiliarynrf_sniffer) | ℹ️ INFO | - | nRF52840 dongle BLE passive sniffer wrapper |
 | [`auxiliary/stealtooth_breaktooth`](#auxiliarystealtooth_breaktooth) | 🟠 **HIGH** | - | Infer BT session state via l2ping RTT timing without pairing; auto-trigger re… |
 | [`auxiliary/ubertooth_sniff`](#auxiliaryubertooth_sniff) | ℹ️ INFO | - | Ubertooth One BLE/Classic passive sniffing wrapper |
@@ -168,6 +169,25 @@ Spoof local adapter hostname, alias, Class of Device, or BD_ADDR
 | `value` | ✓ |  | New value (string for hostname/alias, hex for CoD, MAC for bdaddr) |
 | `interface` |  | `hci0` | HCI adapter |
 | `restart` |  | `true` | Restart the adapter after spoof (true/false) |
+
+---
+
+### `auxiliary/mesh/mesh_pdu_decode`
+
+**Mesh Network PDU Decoder**
+
+Offline decoder for a captured Bluetooth Mesh Network PDU using K2 and AES-CCM
+
+**Severity:** ℹ️ INFO · **Protocol:** BLE
+
+| Option | Required | Default | Description |
+|---|---|---|---|
+| `pdu` | ✓ |  | Encrypted Mesh Network PDU as hex (IVI \|\| NID \|\| obfuscated header \|\| encrypted DST/TransportPDU \|\| NetMIC) |
+| `netkey` | ✓ |  | 16-byte NetKey as hex |
+| `iv_index` |  | `0x12345678` | 32-bit IV Index (hex or decimal). Defaults to 0x12345678. |
+
+**References:**
+- <https://www.bluetooth.com/specifications/specs/mesh-protocol/>
 
 ---
 
