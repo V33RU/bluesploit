@@ -15,6 +15,7 @@ from core.store import (
     Host,
     Loot,
     Store,
+    WorkspaceSummary,
     default_db_path,
     default_home,
     get_store,
@@ -297,3 +298,104 @@ def test_basemodule_store_property(tmp_path: Path, monkeypatch):
         assert m.store.get_host("AA:BB:CC:DD:EE:FF").name == "from-module"
     finally:
         reset_default_store()
+
+
+# Workspaces -----------------------------------------------------------------
+
+
+class TestWorkspaceAPI:
+    def test_default_workspace_on_fresh_open(self, store: Store):
+        assert store.workspace == DEFAULT_WORKSPACE
+
+    def test_set_workspace_persists_across_reopen(self, tmp_path: Path):
+        db = tmp_path / "ws.db"
+        s1 = Store(path=db)
+        try:
+            s1.set_workspace("engagement-x")
+            assert s1.workspace == "engagement-x"
+        finally:
+            s1.close()
+
+        s2 = Store(path=db)
+        try:
+            assert s2.workspace == "engagement-x"
+        finally:
+            s2.close()
+
+    def test_explicit_workspace_arg_overrides_persisted(self, tmp_path: Path):
+        db = tmp_path / "ws.db"
+        s1 = Store(path=db)
+        try:
+            s1.set_workspace("engagement-x")
+        finally:
+            s1.close()
+        # Explicit kwarg wins.
+        s2 = Store(path=db, workspace="ad-hoc")
+        try:
+            assert s2.workspace == "ad-hoc"
+        finally:
+            s2.close()
+
+    def test_set_workspace_rejects_empty(self, store: Store):
+        with pytest.raises(ValueError):
+            store.set_workspace("")
+        with pytest.raises(ValueError):
+            store.set_workspace("   ")
+
+    def test_list_workspaces_includes_default(self, store: Store):
+        summaries = store.list_workspaces()
+        names = [w.name for w in summaries]
+        assert DEFAULT_WORKSPACE in names
+        active = [w for w in summaries if w.active]
+        assert len(active) == 1
+        assert active[0].name == store.workspace
+
+    def test_list_workspaces_counts_rows(self, store: Store):
+        store.add_host("AA:11:22:33:44:55")
+        store.add_loot(None, kind="x", data=b"a")
+        store.add_credential(None, kind="k", value="v")
+        store.set_workspace("engagement-x")
+        store.add_host("BB:11:22:33:44:55")
+        store.add_host("CC:11:22:33:44:55")
+
+        by_name = {w.name: w for w in store.list_workspaces()}
+        assert by_name[DEFAULT_WORKSPACE].hosts == 1
+        assert by_name[DEFAULT_WORKSPACE].loot == 1
+        assert by_name[DEFAULT_WORKSPACE].credentials == 1
+        assert by_name["engagement-x"].hosts == 2
+        assert by_name["engagement-x"].active is True
+
+    def test_delete_workspace_purges_all_tables(self, store: Store):
+        # Plant rows in `to-purge`, then switch back to default before delete.
+        store.set_workspace("to-purge")
+        store.add_host("AA:11:22:33:44:55")
+        store.add_loot("AA:11:22:33:44:55", kind="pcap", data=b"a")
+        store.add_credential("AA:11:22:33:44:55", kind="LinkKey", value="abc")
+        store.set_workspace(DEFAULT_WORKSPACE)
+
+        deleted = store.delete_workspace("to-purge")
+        assert deleted == {"credentials": 1, "loot": 1, "hosts": 1}
+
+        # Workspace is gone from the listing now (no rows, not default, not active).
+        names = [w.name for w in store.list_workspaces()]
+        assert "to-purge" not in names
+
+    def test_delete_workspace_refuses_active(self, store: Store):
+        store.set_workspace("engagement-x")
+        with pytest.raises(ValueError) as exc:
+            store.delete_workspace("engagement-x")
+        assert "active" in str(exc.value).lower()
+
+    def test_delete_workspace_refuses_default(self, store: Store):
+        store.set_workspace("engagement-x")
+        with pytest.raises(ValueError) as exc:
+            store.delete_workspace(DEFAULT_WORKSPACE)
+        assert "default" in str(exc.value).lower()
+
+    def test_summary_is_workspace_summary_dataclass(self, store: Store):
+        for w in store.list_workspaces():
+            assert isinstance(w, WorkspaceSummary)
+            assert isinstance(w.hosts, int)
+            assert isinstance(w.loot, int)
+            assert isinstance(w.credentials, int)
+            assert isinstance(w.active, bool)
