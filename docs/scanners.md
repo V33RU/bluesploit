@@ -1,4 +1,4 @@
-# Scanners (9)
+# Scanners (11)
 
 Auto-generated from `modules/scanners/`.  
 Load any module with `use scanners/<name>`.
@@ -21,6 +21,8 @@ Load any module with `use scanners/<name>`.
 | [`scanners/cve_match`](#scannerscve_match) | ℹ️ INFO | - | Match stored fingerprints (lmp_features, ll_features, smp_pairing) against th… |
 | [`scanners/hidden_scanner`](#scannershidden_scanner) | ℹ️ INFO | - | Find non-discoverable Bluetooth devices (BR/EDR + LE) |
 | [`scanners/ibeacon_scanner`](#scannersibeacon_scanner) | ℹ️ INFO | - | Discover iBeacons, select a target, run focused security tests |
+| [`scanners/iot_profile_audit`](#scannersiot_profile_audit) | ℹ️ INFO | - | Classify stored BLE devices into IoT categories (wearable, lock, medical, bea… |
+| [`scanners/ll_features_audit`](#scannersll_features_audit) | ℹ️ INFO | - | Audit stored ll_features fingerprints for privacy gaps and BLE 5.x capability… |
 | [`scanners/vuln_scanner`](#scannersvuln_scanner) | 🟠 **HIGH** | - | Unified BLE+Classic vulnerability scanner, GATT deep analysis + CVE→module ma… |
 
 ---
@@ -202,6 +204,41 @@ Discover iBeacons, select a target, run focused security tests
 **References:**
 - <https://developer.apple.com/ibeacon/>
 - <Bluetooth Core 5.4 Vol 6 Part B (LL advertising, addr types)>
+
+---
+
+### `scanners/iot_profile_audit`
+
+**IoT Device Profile Audit**
+
+Classify stored BLE devices into IoT categories (wearable, lock, medical, beacon) based on service UUIDs and manufacturer-data prefixes
+
+**Severity:** ℹ️ INFO · **Protocol:** BLE
+
+| Option | Required | Default | Description |
+|---|---|---|---|
+| `target` |  |  | BD_ADDR or host id. Default audits every host in the workspace. |
+
+**References:**
+- <https://www.bluetooth.com/specifications/assigned-numbers/>
+
+---
+
+### `scanners/ll_features_audit`
+
+**BLE LL Features Audit**
+
+Audit stored ll_features fingerprints for privacy gaps and BLE 5.x capability profiling (Periodic Adv, CIS, Power Control, Coded PHY)
+
+**Severity:** ℹ️ INFO · **Protocol:** BLE
+
+| Option | Required | Default | Description |
+|---|---|---|---|
+| `target` |  |  | BD_ADDR or host id. Default audits every host with an ll_features fingerprint. |
+| `min_severity` |  | `info` | Drop findings below this severity |
+
+**References:**
+- <https://www.bluetooth.com/specifications/specs/core-specification-6-0/>
 
 ---
 
