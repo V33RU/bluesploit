@@ -446,6 +446,82 @@ class BlueSploitInterpreter(cmd.Cmd):
             return [n for n in names if n.lower().startswith(t)]
         return []
 
+    def do_report(self, args: str) -> None:
+        """
+        Export an engagement report from the active workspace.
+
+        Usage:
+            report <format> [path]
+
+        Formats:
+            json   structured dump suitable for downstream tooling
+            md     GitHub-flavored markdown with tables
+            html   self-contained HTML, inline CSS, no external assets
+
+        When `path` is omitted the file is written to
+        ./bluesploit-<workspace>-<UTC-timestamp>.<ext>. The report walks
+        hosts, loot, and credentials in the currently active workspace
+        only; switch with `workspace use <name>` to scope a different run.
+
+        Loot payloads are summarized (kind, size, source, sha256 prefix),
+        not embedded, so the report is safe to hand off as a deliverable.
+        """
+        from pathlib import Path
+
+        from core.report import (
+            SUPPORTED_FORMATS,
+            default_report_path,
+            write_report,
+        )
+
+        parts = args.strip().split(maxsplit=1)
+        if not parts:
+            print_error(
+                f"Usage: report <{'|'.join(SUPPORTED_FORMATS)}> [path]"
+            )
+            return
+
+        fmt = parts[0].lower()
+        if fmt not in SUPPORTED_FORMATS:
+            print_error(
+                f"Unknown format: {fmt}. "
+                f"Supported: {', '.join(SUPPORTED_FORMATS)}"
+            )
+            return
+
+        try:
+            from core.store import get_store
+            store = get_store()
+        except Exception as e:
+            print_error(f"Store unavailable: {e}")
+            return
+
+        path = Path(parts[1].strip()) if len(parts) > 1 else default_report_path(
+            store.workspace, fmt
+        )
+
+        try:
+            n = write_report(store, fmt, path)
+        except OSError as e:
+            print_error(f"Cannot write {path}: {e}")
+            return
+        print_success(f"Wrote {fmt} report ({n:,} bytes) to {path}")
+
+    def complete_report(
+        self, text: str, line: str, begidx: int, endidx: int
+    ) -> List[str]:
+        """Complete format on word 2, filesystem path on word 3."""
+        preceding = line[:begidx].split()
+        if len(preceding) <= 1:
+            from core.report import SUPPORTED_FORMATS
+            t = text.lower()
+            return [f for f in SUPPORTED_FORMATS if f.startswith(t)]
+        # path completion
+        import glob
+        expanded = os.path.expanduser(text)
+        candidates = glob.glob(expanded + "*")
+        return [c + ("/" if os.path.isdir(c) else "") for c in candidates]
+
     def do_resource(self, args: str) -> None:
         """
         Run console commands from a script file.
