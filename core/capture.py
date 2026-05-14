@@ -13,7 +13,7 @@ import shutil
 import signal
 import subprocess
 import time
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 
 class PCAPCapture:
@@ -32,8 +32,9 @@ class PCAPCapture:
                 # ... do Bluetooth operations ...
     """
 
-    # Ordered list of capture backends to try
-    BACKENDS = [
+    # Ordered list of capture backends to try.
+    # Typed Any-of-str-or-callable; each dict mixes strings with an args callable.
+    BACKENDS: List[Dict[str, Any]] = [
         {
             "name": "btmon",
             "binary": "btmon",

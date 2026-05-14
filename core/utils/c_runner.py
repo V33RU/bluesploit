@@ -65,6 +65,14 @@ def compile_and_run(
             r = subprocess.run(run_cmd, capture_output=True, text=True, timeout=timeout)
             return (r.returncode, r.stdout, r.stderr)
         except subprocess.TimeoutExpired as e:
-            return (-2, e.stdout or "", f"timed out after {timeout}s") # pyright: ignore[reportReturnType]
+            raw_partial = e.stdout
+            partial: str
+            if isinstance(raw_partial, (bytes, bytearray)):
+                partial = raw_partial.decode("utf-8", errors="replace")
+            elif isinstance(raw_partial, str):
+                partial = raw_partial
+            else:
+                partial = ""
+            return (-2, partial, f"timed out after {timeout}s")
     finally:
         shutil.rmtree(tmpdir, ignore_errors=True)

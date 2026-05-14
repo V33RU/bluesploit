@@ -6,7 +6,7 @@ Provides the interactive Metasploit-style command-line interface
 import cmd
 import readline
 import sys
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from core.base import BaseModule, ModuleType
 from core.loader import ModuleLoader
@@ -379,7 +379,7 @@ class BlueSploitInterpreter(cmd.Cmd):
         print()
 
         # Group by category
-        categories = {}
+        categories: Dict[str, List[str]] = {}
         for module_path in modules:
             category = module_path.split('/')[0]
             if category not in categories:
@@ -443,19 +443,20 @@ class BlueSploitInterpreter(cmd.Cmd):
                 print(f"    {k}: {v}")
             return
 
-        option, value = parts
+        option, raw_value = parts
         if option in self.global_options:
+            coerced: Any = raw_value
             if isinstance(self.global_options[option], bool):
-                value = value.lower() in ('true', '1', 'yes')
+                coerced = raw_value.lower() in ('true', '1', 'yes')
             elif isinstance(self.global_options[option], int):
                 try:
-                    value = int(value)
+                    coerced = int(raw_value)
                 except ValueError:
-                    print_error(f"Invalid integer value: {value}")
+                    print_error(f"Invalid integer value: {raw_value}")
                     return
 
-            self.global_options[option] = value
-            print_success(f"Global: {option} => {value}")
+            self.global_options[option] = coerced
+            print_success(f"Global: {option} => {coerced}")
         else:
             print_error(f"Unknown global option: {option}")
 
