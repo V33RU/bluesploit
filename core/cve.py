@@ -216,6 +216,14 @@ def _condition_met(key: str, expected: Any, fp_data: Dict[str, Any]) -> Tuple[bo
         if actual is None:
             return False, None
         return (actual <= int(expected), actual)
+    if key == "ctkd_advertised":
+        # CT2 bit in SMP AuthReq signals that the peer is willing to
+        # derive a BR/EDR link key from the LE pairing material
+        # (cross-transport key derivation). Core Spec Vol 3 Part H 3.5.1.
+        actual = fp_data.get("ct2")
+        if actual is None:
+            return False, None
+        return _bool_match(actual, expected), actual
 
     # Unknown condition keys are ignored rather than treated as match.
     # An unknown key cannot be "satisfied" because we have no rule for it.
