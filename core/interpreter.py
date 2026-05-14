@@ -21,6 +21,22 @@ from core.utils.printer import (
 )
 
 
+def _list_hci_interfaces() -> List[str]:
+    """Return sorted HCI adapter names (`hci0`, `hci1`, ...) on Linux.
+
+    Reads /sys/class/bluetooth, which `hciconfig` uses too. Falls back
+    to `['hci0']` when the path is missing (macOS, Windows, containers
+    without BlueZ exposed). Used by `set interface` tab completion.
+    """
+    try:
+        return sorted(
+            d for d in os.listdir("/sys/class/bluetooth")
+            if d.startswith("hci") and d[3:].isdigit()
+        )
+    except OSError:
+        return ["hci0"]
+
+
 class BlueSploitInterpreter(cmd.Cmd):
     """
     Interactive command interpreter for BlueSploit
@@ -330,8 +346,17 @@ class BlueSploitInterpreter(cmd.Cmd):
         return None
 
     def complete_set(self, text: str, line: str, begidx: int, endidx: int) -> List[str]:
-        """Tab completion for `set`. Completes option names, and for
-        `set target <TAB>` completes addresses from the store."""
+        """Tab completion for `set`.
+
+        Word 2 (the option name) completes from the loaded module's
+        option keys, case-insensitive prefix match.
+
+        Word 3 (the value) dispatches by option name:
+          - target          stored host addresses
+          - interface       /sys/class/bluetooth HCI adapters
+          - addr_type       auto / public / random
+          - any bool option true / false (based on default type)
+        """
         if not self.current_module:
             return []
 
@@ -345,6 +370,19 @@ class BlueSploitInterpreter(cmd.Cmd):
             return options
 
         option_name = preceding[1].lower() if len(preceding) >= 2 else ""
+        # Suggest values only for options the loaded module actually declares,
+        # so the operator does not get suggestions they cannot then `set`.
+        if option_name not in {k.lower() for k in self.current_module.options}:
+            return []
+        return self._complete_option_value(option_name, text)
+
+    def _complete_option_value(self, option_name: str, text: str) -> List[str]:
+        """Per-option value completion. Returns [] when nothing matches.
+
+        Shared between `set` (module options) and `setg` (global options)
+        so both autocompletion paths agree on what an `interface` or a
+        bool option should offer.
+        """
         if option_name == "target":
             try:
                 from core.store import get_store
@@ -352,10 +390,29 @@ class BlueSploitInterpreter(cmd.Cmd):
             except Exception:
                 return []
             candidates = [h.address for h in hosts]
-            if text:
-                t = text.upper()
-                return [c for c in candidates if c.upper().startswith(t)]
-            return candidates
+            t = text.upper()
+            return [c for c in candidates if c.upper().startswith(t)]
+
+        if option_name == "interface":
+            return [
+                c for c in _list_hci_interfaces()
+                if c.lower().startswith(text.lower())
+            ]
+
+        if option_name == "addr_type":
+            return [
+                c for c in ("auto", "public", "random")
+                if c.startswith(text.lower())
+            ]
+
+        # Auto-detect boolean options from the loaded module's defaults.
+        if self.current_module is not None:
+            opt = self.current_module.options.get(option_name)
+            if opt is not None and isinstance(opt.default, bool):
+                return [
+                    c for c in ("true", "false")
+                    if c.startswith(text.lower())
+                ]
 
         return []
 
@@ -967,12 +1024,34 @@ class BlueSploitInterpreter(cmd.Cmd):
     def complete_setg(
         self, text: str, line: str, begidx: int, endidx: int
     ) -> List[str]:
-        """Complete option names for `setg`. Value position returns []."""
+        """Tab completion for `setg`.
+
+        Word 2 completes global option names. Word 3 dispatches by
+        option name through the same per-option logic the module-level
+        `set` uses (interface, bool, etc.), plus a bool auto-detection
+        based on the framework default's declared type.
+        """
         preceding = line[:begidx].split()
-        if len(preceding) > 1:
+        if len(preceding) <= 1:
+            t = text.lower()
+            return [k for k in self.global_options if k.lower().startswith(t)]
+
+        option_name = preceding[1].lower() if len(preceding) >= 2 else ""
+
+        # Only complete for declared global options.
+        if option_name not in {k.lower() for k in self.global_options}:
             return []
-        t = text.lower()
-        return [k for k in self.global_options if k.lower().startswith(t)]
+
+        # interface / addr_type / target: same logic as set.
+        shared = self._complete_option_value(option_name, text)
+        if shared:
+            return shared
+
+        # Bool globals (verbose) auto-complete to true/false.
+        default = self._DEFAULT_GLOBAL_OPTIONS.get(option_name)
+        if isinstance(default, bool):
+            return [c for c in ("true", "false") if c.startswith(text.lower())]
+        return []
 
     def do_unsetg(self, args: str) -> None:
         """

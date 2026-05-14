@@ -166,7 +166,10 @@ class TestCompleteSetTarget:
         out = shell.complete_set("AA", "set target AA", 11, 13)
         assert out == ["AA:BB:CC:DD:EE:01"]
 
-    def test_value_completion_for_non_target_option_is_empty(self, shell):
-        # We only special-case `target`. Other options return [] for value position.
+    def test_value_completion_for_undeclared_option_is_empty(self, shell):
+        # The stub module only declares `target`. `set interface <TAB>` on
+        # this module returns [] because `interface` is not in its options
+        # dict. (Modules that DO declare it get HCI adapter suggestions;
+        # that path is covered in test_interpreter_completion.py.)
         out = shell.complete_set("", "set interface ", 14, 14)
         assert out == []

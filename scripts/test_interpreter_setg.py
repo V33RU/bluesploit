@@ -150,9 +150,21 @@ class TestCompletion:
         out = shell.complete_setg("ti", "setg ti", 5, 7)
         assert out == ["timeout"]
 
-    def test_complete_setg_value_position_empty(self, shell):
-        out = shell.complete_setg("", "setg interface ", 15, 15)
+    def test_complete_setg_value_position_falls_through(self, shell):
+        # `pcap_file` has no per-option value completer wired in and isn't
+        # bool-typed, so the value position returns [].
+        out = shell.complete_setg("", "setg pcap_file ", 15, 15)
         assert out == []
+
+    def test_complete_setg_interface_lists_adapters(self, shell, monkeypatch):
+        # Smarter completion landed in dev3: `setg interface <TAB>` enumerates
+        # HCI adapters from /sys/class/bluetooth (or falls back to hci0).
+        monkeypatch.setattr(
+            "core.interpreter.os.listdir",
+            lambda _: ["hci0", "hci2"],
+        )
+        out = shell.complete_setg("", "setg interface ", 15, 15)
+        assert out == ["hci0", "hci2"]
 
     def test_complete_unsetg_option_names(self, shell):
         out = shell.complete_unsetg("", "unsetg ", 7, 7)
