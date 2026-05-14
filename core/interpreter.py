@@ -418,22 +418,23 @@ class BlueSploitInterpreter(cmd.Cmd):
         rest = parts[1].strip() if len(parts) > 1 else ""
 
         if sub == "list":
+            from core.ui.tables import Column, render_table, total_footer
             summaries = store.list_workspaces()
-            header = (
-                f"  {'Active':<7} {'Workspace':<24} "
-                f"{'Hosts':>6}  {'Loot':>6}  {'Creds':>6}"
+            columns = [
+                Column("Active",    style="green",   justify="center", no_wrap=True),
+                Column("Workspace", style="cyan",    no_wrap=True),
+                Column("Hosts",     justify="right", no_wrap=True),
+                Column("Loot",      justify="right", no_wrap=True),
+                Column("Creds",     justify="right", no_wrap=True),
+            ]
+            rows = [
+                ("*" if w.active else "", w.name, w.hosts, w.loot, w.credentials)
+                for w in summaries
+            ]
+            render_table(
+                columns, rows,
+                footer=total_footer("workspace", len(summaries)),
             )
-            sep = "  " + "-" * (len(header) - 2)
-            print()
-            print(header)
-            print(sep)
-            for w in summaries:
-                marker = "*" if w.active else ""
-                print(
-                    f"  {marker:<7} {w.name:<24} "
-                    f"{w.hosts:>6}  {w.loot:>6}  {w.credentials:>6}"
-                )
-            print(f"\n  Total: {len(summaries)} workspace(s)\n")
             return
 
         if sub == "use":
@@ -628,14 +629,15 @@ class BlueSploitInterpreter(cmd.Cmd):
                 )
             return
 
-        header = (
-            f"  {'ID':<5} {'Host':<19} {'Kind':<14} "
-            f"{'Value':<34} {'Captured'}"
-        )
-        sep = "  " + "-" * (len(header) - 2)
-        print()
-        print(header)
-        print(sep)
+        from core.ui.tables import Column, render_table, total_footer
+        columns = [
+            Column("ID",       style="dim",     justify="right", no_wrap=True),
+            Column("Host",     style="cyan",    no_wrap=True),
+            Column("Kind",     style="magenta", no_wrap=True),
+            Column("Value",    style="green",   no_wrap=True),
+            Column("Captured", style="dim",     no_wrap=True),
+        ]
+        rows = []
         for c in creds:
             if c.host_id is None:
                 host_repr = "(orphan)"
@@ -645,13 +647,11 @@ class BlueSploitInterpreter(cmd.Cmd):
             value = c.value or ""
             value = value if len(value) <= 32 else value[:30] + ".."
             captured = (c.created_at or "").replace("T", " ").rstrip("Z+0:")
-            print(
-                f"  {c.id:<5} {host_repr:<19} {c.kind:<14} "
-                f"{value:<34} {captured}"
-            )
-        print(
-            f"\n  Total: {len(creds)} credential(s) in workspace "
-            f"'{store.workspace}'\n"
+            rows.append((c.id, host_repr, c.kind, value, captured))
+
+        render_table(
+            columns, rows,
+            footer=total_footer("credential", len(creds), workspace=store.workspace),
         )
 
     def do_hosts(self, args: str) -> None:
@@ -689,24 +689,30 @@ class BlueSploitInterpreter(cmd.Cmd):
                 print_info("No hosts recorded yet. Run a recon module first.")
             return
 
-        header = (
-            f"  {'ID':<5} {'Address':<19} {'Name':<26} "
-            f"{'RSSI':<6} {'Vendor':<18} {'Last seen'}"
-        )
-        sep = "  " + "-" * (len(header) - 2)
-        print()
-        print(header)
-        print(sep)
-        for h in hosts:
-            name = (h.name or "")[:25]
-            vendor = (h.manufacturer or "")[:17]
-            rssi = "" if h.rssi is None else str(h.rssi)
-            seen = (h.last_seen or "").replace("T", " ").rstrip("Z+0:")
-            print(
-                f"  {h.id:<5} {h.address:<19} {name:<26} "
-                f"{rssi:<6} {vendor:<18} {seen}"
+        from core.ui.tables import Column, render_table, total_footer
+        columns = [
+            Column("ID",        style="dim",  justify="right", no_wrap=True),
+            Column("Address",   style="cyan", no_wrap=True),
+            Column("Name"),
+            Column("RSSI",      justify="right"),
+            Column("Vendor"),
+            Column("Last seen", style="dim",  no_wrap=True),
+        ]
+        rows = [
+            (
+                h.id,
+                h.address,
+                h.name,
+                "" if h.rssi is None else h.rssi,
+                h.manufacturer,
+                (h.last_seen or "").replace("T", " ").rstrip("Z+0:"),
             )
-        print(f"\n  Total: {len(hosts)} host(s) in workspace '{store.workspace}'\n")
+            for h in hosts
+        ]
+        render_table(
+            columns, rows,
+            footer=total_footer("host", len(hosts), workspace=store.workspace),
+        )
 
     def do_info(self, _: str) -> None:
         """Show detailed information about current module"""
