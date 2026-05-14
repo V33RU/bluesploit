@@ -50,6 +50,7 @@ EVT_CMD_STATUS            = 0x0F
 EVT_CONN_COMPLETE         = 0x03
 EVT_DISCONN_COMPLETE      = 0x05
 EVT_REMOTE_FEATURES_COMPL = 0x0B
+EVT_REMOTE_VERSION_COMPL  = 0x0C
 EVT_REMOTE_EXT_FEAT_COMPL = 0x23
 HCI_LE_META               = 0x3E
 
@@ -305,3 +306,109 @@ def decode_bitmap(data: bytes, names: Iterable[str]) -> List[Tuple[int, str]]:
 def bitmap_to_dict(data: bytes, names: Iterable[str]) -> dict:
     """Same as decode_bitmap but returns a {name: True} dict for JSON output."""
     return {name: True for _idx, name in decode_bitmap(data, names)}
+
+
+# ── HCI Read_Remote_Version_Information ───────────────────────────────────
+#
+# Works on both BR/EDR and LE connections. The on-the-wire format and the
+# opcode are the same; what differs is whether the remote endpoint is
+# answering as an LMP controller (BR/EDR) or an LE Link Layer controller.
+# The recon modules use the byte returned in `version` directly; the maps
+# below give human labels for the values defined in the Bluetooth Core
+# Specification (Vol 2 Part D §1.1 Assigned Numbers).
+
+# Version byte to label. Source: Bluetooth Assigned Numbers, "Bluetooth
+# Core Specification" section. Updated alongside the spec; new releases
+# extend rather than renumber, so adding labels here is non-breaking.
+LMP_VERSION_LABELS = {
+    0x00: "1.0b",
+    0x01: "1.1",
+    0x02: "1.2",
+    0x03: "2.0 + EDR",
+    0x04: "2.1 + EDR",
+    0x05: "3.0 + HS",
+    0x06: "4.0",
+    0x07: "4.1",
+    0x08: "4.2",
+    0x09: "5.0",
+    0x0A: "5.1",
+    0x0B: "5.2",
+    0x0C: "5.3",
+    0x0D: "5.4",
+    0x0E: "5.5",
+    0x0F: "6.0",
+}
+
+# Curated common Company Identifiers (from the Bluetooth SIG Assigned
+# Numbers registry). This is not the full ~3000-entry list; it covers
+# the chipset and OEM vendors most likely to surface during a BLE/BR-EDR
+# probe. Lookup misses fall back to the raw numeric id.
+BT_COMPANY_IDS = {
+    0x0001: "Nokia Mobile Phones",
+    0x0002: "Intel",
+    0x0006: "Microsoft",
+    0x000A: "Cambridge Silicon Radio",  # CSR / now Qualcomm
+    0x000D: "Texas Instruments",
+    0x000F: "Broadcom",
+    0x0010: "Mitel Semiconductor",
+    0x0013: "Atmel",
+    0x001D: "Qualcomm",
+    0x002A: "Marvell",
+    0x0036: "MediaTek",
+    0x004C: "Apple",
+    0x0059: "Nordic Semiconductor",
+    0x0075: "Samsung",
+    0x008A: "Bose",
+    0x00C4: "LG Electronics",
+    0x015D: "Espressif",
+    0x0157: "Anhui Huami",  # Xiaomi wearables
+    0x0250: "Sony Mobile",
+    0x02A0: "Huawei",
+    0x02E5: "Xiaomi",
+    0x0309: "AsteroidOS",
+    0x03DA: "Garmin",
+    0x0590: "Logitech",
+    0x0822: "Realtek Semiconductor",
+}
+
+
+def decode_lmp_version(version_byte: int) -> str:
+    """Map an LMP / LE-LL version byte to its human label, or 'Unknown (0xNN)'."""
+    return LMP_VERSION_LABELS.get(version_byte, f"Unknown (0x{version_byte:02X})")
+
+
+def decode_company_id(company: int) -> str:
+    """Best-effort vendor name for a Bluetooth SIG Company Identifier."""
+    return BT_COMPANY_IDS.get(company, f"Unknown (0x{company:04X})")
+
+
+def read_remote_version(
+    hci: socket.socket,
+    handle: int,
+    timeout: float = 5.0,
+) -> Optional[Tuple[int, int, int]]:
+    """Issue HCI_Read_Remote_Version_Information and parse the response.
+
+    Returns `(version, manufacturer, subversion)` on success, or None if
+    the command failed or timed out. Works on both BR/EDR and LE
+    connections; the meaning of `version` depends on which transport
+    the handle belongs to (LMP version for BR/EDR, LE LL version for LE).
+
+    Encoding (BT Core Vol 4 Part E §7.1.23):
+        opcode:    OGF=0x01 (Link Control), OCF=0x001D
+        params:    connection handle (2 bytes, little-endian)
+        event:     0x0C (Read Remote Version Information Complete)
+                   payload: status(1) + handle(2) + version(1)
+                   + manufacturer(2 LE) + subversion(2 LE)
+    """
+    hci_cmd(hci, 0x01, 0x001D, struct.pack("<H", handle))
+    payload = wait_event(hci, EVT_REMOTE_VERSION_COMPL, timeout=timeout)
+    if payload is None or len(payload) < 8:
+        return None
+    status = payload[0]
+    if status != 0x00:
+        return None
+    version = payload[3]
+    manufacturer = struct.unpack_from("<H", payload, 4)[0]
+    subversion = struct.unpack_from("<H", payload, 6)[0]
+    return (version, manufacturer, subversion)
