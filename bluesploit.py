@@ -11,8 +11,8 @@ Usage:
     python bluesploit.py --list           # List all modules
 """
 
-import sys
 import argparse
+import sys
 
 __version__ = "1.0.2.dev0"
 

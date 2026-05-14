@@ -4,42 +4,44 @@ BlueSploit Module: LMP Features Reader
 Reads the Link Manager Protocol (LMP) feature page(s) of a remote BR/EDR
 device via HCI Read_Remote_Features and Read_Remote_Extended_Features
 commands. Decodes each bit against the Bluetooth Core Specification
-(Vol 2 Part C §3.3) — useful for fingerprinting controller capabilities,
+(Vol 2 Part C §3.3), useful for fingerprinting controller capabilities,
 BT version, supported encryption modes, Secure Simple Pairing, eSCO,
 LE-side support, and more.
 
 Modes:
-  basic     — Read only the standard 8-byte LMP feature page (default)
-  extended  — Read all extended feature pages (page 1, 2, ...)
-  full      — basic + extended + decoded summary
+  basic     Read only the standard 8-byte LMP feature page (default)
+  extended  Read all extended feature pages (page 1, 2, ...)
+  full      basic + extended + decoded summary
 """
 
-import os
-import select
-import socket
 import struct
-import time
-from typing import Optional, List, Tuple
+from typing import List, Optional
 
 from core.base import BTProtocol, ModuleInfo, ModuleOption, ReconModule, Severity
+from core.utils.bt import (
+    EVT_CONN_COMPLETE,
+    EVT_DISCONN_COMPLETE,
+    EVT_REMOTE_EXT_FEAT_COMPL,
+    EVT_REMOTE_FEATURES_COMPL,
+    HCIError,
+    bd_addr_bytes,
+    bitmap_to_dict,
+    decode_bitmap,
+    disconnect,
+    hci_cmd,
+    open_hci,
+    require_root,
+    wait_event,
+)
 from core.utils.printer import (
-    Colors, print_error, print_info, print_success, print_warning,
+    Colors,
+    print_error,
+    print_info,
+    print_success,
+    print_warning,
 )
 
-AF_BLUETOOTH    = 31
-BTPROTO_HCI     = 1
-HCI_COMMAND_PKT = 0x01
-HCI_EVENT_PKT   = 0x04
-
-# HCI events
-EVT_CMD_COMPLETE          = 0x0E
-EVT_CMD_STATUS            = 0x0F
-EVT_CONN_COMPLETE         = 0x03
-EVT_DISCONN_COMPLETE      = 0x05
-EVT_REMOTE_FEATURES_COMPL = 0x0B
-EVT_REMOTE_EXT_FEAT_COMPL = 0x23
-
-# Per BT Core Spec Vol 2 Part C §3.3 — Page 0 LMP features
+# Per BT Core Spec Vol 2 Part C §3.3, Page 0 LMP features
 LMP_FEATURES_PAGE0 = [
     # Byte 0
     "3-slot packets", "5-slot packets", "Encryption", "Slot offset",
@@ -74,7 +76,7 @@ LMP_FEATURES_PAGE0 = [
     "Extended features",
 ]
 
-# Page 1 — host features
+# Page 1, host features
 LMP_FEATURES_PAGE1 = [
     "Secure Simple Pairing (Host)",
     "LE Supported (Host)",
@@ -82,10 +84,10 @@ LMP_FEATURES_PAGE1 = [
     "Secure Connections (Host)",
 ] + ["Reserved"] * 60
 
-# Page 2 — controller extended
+# Page 2, controller extended
 LMP_FEATURES_PAGE2 = [
-    "Connectionless Slave Broadcast — Master Operation",
-    "Connectionless Slave Broadcast — Slave Operation",
+    "Connectionless Slave Broadcast Master Operation",
+    "Connectionless Slave Broadcast Slave Operation",
     "Synchronization Train", "Synchronization Scan",
     "Inquiry Response Notification Event", "Generalized interlaced scan",
     "Coarse Clock Adjustment", "Reserved",
@@ -133,8 +135,10 @@ class Module(ReconModule):
         ))
 
     def run(self) -> bool:
-        if os.geteuid() != 0:
-            print_error("Root required for raw HCI socket access")
+        try:
+            require_root()
+        except PermissionError as e:
+            print_error(str(e))
             return False
 
         target = self.get_option("target")
@@ -143,7 +147,7 @@ class Module(ReconModule):
             return False
 
         # Hint: top 2 bits = 11 strongly suggests a BLE Static Random address
-        # (LMP only exists on BR/EDR — these connections always fail).
+        # (LMP only exists on BR/EDR, these connections always fail).
         msb = int(target.split(":")[0], 16)
         ble_random_static = (msb >> 6) == 0b11
 
@@ -159,8 +163,10 @@ class Module(ReconModule):
         print_info(f"Mode     : {mode}")
         print_info(f"Interface: {iface}")
 
-        hci = self._open_hci(iface)
-        if not hci:
+        try:
+            hci = open_hci(iface)
+        except HCIError as e:
+            print_error(str(e))
             return False
 
         handle = None
@@ -172,7 +178,7 @@ class Module(ReconModule):
                 if ble_random_static:
                     print_warning(f"{target} looks like a BLE Static Random address "
                                   "(top 2 bits = 11). LMP features only exist on BR/EDR.")
-                    print_warning("→ Try 'use recon/ll_features' for this target instead.")
+                    print_warning("Try 'use recon/ll_features' for this target instead.")
                 return False
             print_success(f"Connected (handle=0x{handle:04x})")
 
@@ -184,7 +190,7 @@ class Module(ReconModule):
             print_success(f"LMP features (page 0): {page0.hex()}")
             self._decode_features(page0, LMP_FEATURES_PAGE0, "Page 0")
             result = {"target": target, "page_0_hex": page0.hex(),
-                      "page_0_bits": self._extract_bits(page0, LMP_FEATURES_PAGE0)}
+                      "page_0_bits": bitmap_to_dict(page0, LMP_FEATURES_PAGE0)}
 
             if mode in ("extended", "full"):
                 ext = page0[7] & 0x80  # extended features bit
@@ -200,101 +206,53 @@ class Module(ReconModule):
                         decoder = LMP_FEATURES_PAGE1 if page == 1 else LMP_FEATURES_PAGE2
                         self._decode_features(epage, decoder, f"Page {page}")
                         result[f"page_{page}_hex"] = epage.hex()
-                        result[f"page_{page}_bits"] = self._extract_bits(epage, decoder)
+                        result[f"page_{page}_bits"] = bitmap_to_dict(epage, decoder)
 
             self.add_result(result)
             return True
 
         finally:
             if handle is not None:
-                self._disconnect(hci, handle)
+                self._classic_disconnect(hci, handle)
             hci.close()
-
-    # ── HCI helpers ───────────────────────────────────────────────────────
-
-    def _open_hci(self, iface: str) -> Optional[socket.socket]:
-        try:
-            hci = socket.socket(AF_BLUETOOTH, socket.SOCK_RAW, BTPROTO_HCI)
-            dev_id = int(iface.replace("hci", ""))
-            hci.bind((dev_id,))
-            return hci
-        except OSError as e:
-            print_error(f"HCI open failed on {iface}: {e}")
-            return None
-
-    def _hci_cmd(self, hci, ogf, ocf, params=b''):
-        opcode = (ogf << 10) | ocf
-        pkt = struct.pack("<BHB", HCI_COMMAND_PKT, opcode, len(params)) + params
-        hci.setblocking(True); hci.send(pkt); hci.setblocking(False)
-
-    def _wait_event(self, hci, event_code, timeout=15.0) -> Optional[bytes]:
-        deadline = time.time() + timeout
-        while time.time() < deadline:
-            r, _, _ = select.select([hci], [], [], 0.5)
-            if not r:
-                continue
-            pkt = hci.recv(255)
-            if pkt and pkt[0] == HCI_EVENT_PKT and pkt[1] == event_code:
-                return pkt[3:]
-        return None
 
     def _create_acl_connection(self, hci, target: str) -> Optional[int]:
         """HCI_Create_Connection (BR/EDR), returns connection handle."""
-        addr = bytes(int(x, 16) for x in reversed(target.split(":")))
+        addr = bd_addr_bytes(target)
         # bdaddr(6) + packet_type(2) + page_scan_repetition_mode(1)
         # + reserved(1) + clock_offset(2) + allow_role_switch(1)
         params = struct.pack("<6sHBBHB", addr, 0xCC18, 0x02, 0x00, 0x0000, 0x01)
-        self._hci_cmd(hci, 0x01, 0x0005, params)
-        ev = self._wait_event(hci, EVT_CONN_COMPLETE, timeout=15.0)
-        if ev and len(ev) >= 11 and ev[0] == 0x00:  # status=0
+        hci_cmd(hci, 0x01, 0x0005, params)
+        ev = wait_event(hci, EVT_CONN_COMPLETE, timeout=15.0)
+        if ev and len(ev) >= 11 and ev[0] == 0x00:
             return struct.unpack_from("<H", ev, 1)[0] & 0x0FFF
         return None
 
     def _read_remote_features(self, hci, handle: int) -> Optional[bytes]:
         """HCI_Read_Remote_Supported_Features."""
-        self._hci_cmd(hci, 0x01, 0x001B, struct.pack("<H", handle))
-        ev = self._wait_event(hci, EVT_REMOTE_FEATURES_COMPL, timeout=10.0)
+        hci_cmd(hci, 0x01, 0x001B, struct.pack("<H", handle))
+        ev = wait_event(hci, EVT_REMOTE_FEATURES_COMPL, timeout=10.0)
         if ev and len(ev) >= 11 and ev[0] == 0x00:
             return ev[3:11]
         return None
 
     def _read_remote_extended_features(self, hci, handle: int, page: int) -> Optional[bytes]:
         """HCI_Read_Remote_Extended_Features."""
-        self._hci_cmd(hci, 0x01, 0x001C, struct.pack("<HB", handle, page))
-        ev = self._wait_event(hci, EVT_REMOTE_EXT_FEAT_COMPL, timeout=10.0)
+        hci_cmd(hci, 0x01, 0x001C, struct.pack("<HB", handle, page))
+        ev = wait_event(hci, EVT_REMOTE_EXT_FEAT_COMPL, timeout=10.0)
         if ev and len(ev) >= 13 and ev[0] == 0x00:
             return ev[5:13]
         return None
 
-    def _disconnect(self, hci, handle: int):
-        params = struct.pack("<HB", handle, 0x13)
-        try:
-            self._hci_cmd(hci, 0x01, 0x0006, params)
-            self._wait_event(hci, EVT_DISCONN_COMPLETE, timeout=3.0)
-        except Exception:
-            pass
-
-    def _extract_bits(self, data: bytes, names: List[str]) -> dict:
-        bits = {}
-        for byte_idx, byte in enumerate(data):
-            for bit in range(8):
-                idx = byte_idx * 8 + bit
-                if idx >= len(names) or names[idx] == "Reserved":
-                    continue
-                if byte & (1 << bit):
-                    bits[names[idx]] = True
-        return bits
+    def _classic_disconnect(self, hci, handle: int):
+        disconnect(hci, handle)
+        wait_event(hci, EVT_DISCONN_COMPLETE, timeout=3.0)
 
     def _decode_features(self, data: bytes, names: List[str], label: str):
         print_info(f"  {label} decoded:")
-        any_set = False
-        for byte_idx, byte in enumerate(data):
-            for bit in range(8):
-                idx = byte_idx * 8 + bit
-                if idx >= len(names) or names[idx] == "Reserved":
-                    continue
-                if byte & (1 << bit):
-                    any_set = True
-                    print(f"    {Colors.GREEN}✓{Colors.RESET} {names[idx]}")
-        if not any_set:
+        decoded = decode_bitmap(data, names)
+        if not decoded:
             print(f"    {Colors.DARK_GREY}(none){Colors.RESET}")
+            return
+        for _idx, name in decoded:
+            print(f"    {Colors.GREEN}✓{Colors.RESET} {name}")

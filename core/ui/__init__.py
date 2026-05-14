@@ -9,8 +9,8 @@ Components:
 from .themes import (
     Theme,
     ThemeManager,
-    theme_manager,
     get_theme,
+    theme_manager,
 )
 
 __all__ = [

@@ -36,40 +36,50 @@ classifiers = [
     "Topic :: Security",
 ]
 
+# Runtime deps are pinned with ==. This is a CLI tool, not a library, so
+# resolver flexibility is not a goal. Pins block typosquat installs and
+# silent major-version bumps. Dependabot opens PRs for updates.
+#
+# Pinned versions are the ones currently installed and verified working
+# on the maintainer's dev machine.
 dependencies = [
-    # Cross-platform core
-    "bleak>=0.21.0",
-    "scapy>=2.5.0",
-    "cryptography>=41.0.0",
-    "pyserial>=3.5",
-    "rich>=13.0.0",
-    "cmd2>=2.4.0",
-    "asyncio-dgram>=2.1.1",
-    # Linux-only Classic BT / raw BLE — gated by platform marker
-    # 'pybluez2>=0.46; sys_platform == "linux"',  # broken sdist; install.sh handles it
-    'bluepy>=1.3.0;  sys_platform == "linux"',
-    'btlejack>=1.2;  sys_platform == "linux"',
+    # Cross-platform core (actually imported by modules/ or core/)
+    "bleak==3.0.1",          # 55 imports across modules/
+    "scapy==2.7.0",
+    "cryptography==47.0.0",
+    "pyserial==3.5",
+    # Console UI helpers (declared for future use; not yet imported)
+    "rich==15.0.0",
+    "cmd2==3.5.1",
+    "asyncio-dgram==3.0.0",
+    # Linux-only Classic BT / raw BLE, gated by platform marker.
+    # pybluez2 is intentionally NOT listed: 0.46 sdist on PyPI is broken
+    # (missing btmodule.h). install.sh installs it from the maintained
+    # upstream fork.
+    'bluepy==1.3.0;    sys_platform == "linux"',
+    'btlejack==2.1.1;  sys_platform == "linux"',
 ]
 
 [project.optional-dependencies]
 classic = [
-    # 'pybluez2>=0.46; sys_platform == "linux"',  # broken sdist; install.sh handles it
-    'bluepy>=1.3.0;  sys_platform == "linux"',
+    # pybluez2 broken sdist, see note above; install.sh handles it.
+    'bluepy==1.3.0;    sys_platform == "linux"',
 ]
 full = [
-    # 'pybluez2>=0.46; sys_platform == "linux"',  # broken sdist; install.sh handles it
-    'bluepy>=1.3.0;  sys_platform == "linux"',
-    'btlejack>=1.2;  sys_platform == "linux"',
-    "scapy>=2.5.0",
-    "rich>=13.0.0",
-    "cmd2>=2.4.0",
+    'bluepy==1.3.0;    sys_platform == "linux"',
+    'btlejack==2.1.1;  sys_platform == "linux"',
+    "scapy==2.7.0",
+    "rich==15.0.0",
+    "cmd2==3.5.1",
 ]
 dev = [
-    "pytest>=7.0.0",
-    "pytest-asyncio>=0.21.0",
-    "black>=23.0.0",
-    "flake8>=6.0.0",
-    "mypy>=1.5.0",
+    "pytest==8.3.4",
+    "pytest-asyncio==0.24.0",
+    "pytest-cov==6.0.0",
+    "pytest-mock==3.14.0",
+    "black==24.10.0",
+    "ruff==0.15.12",
+    "mypy==1.13.0",
 ]
 
 [project.scripts]
@@ -93,6 +103,45 @@ bluesploit = ["data/**/*"]
 line-length = 100
 target-version = ['py38', 'py39', 'py310', 'py311']
 
+[tool.ruff]
+line-length = 100
+target-version = "py38"
+extend-exclude = ["new-add-ons", "build", "dist", ".venv"]
+
+[tool.ruff.lint]
+# E,W: pycodestyle  F: pyflakes  I: isort  B: bugbear  UP: pyupgrade
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = [
+    "E501",  # line too long (handled by black/line-length)
+    "E402",  # module level import not at top of file
+    "E701",  # multiple statements on one line (common in HCI plumbing)
+    "E722",  # bare except (already used defensively in modules)
+    "B007",  # unused loop variable (intentional in decode loops)
+    "B008",  # function call in default arg
+    "UP006", # builtins.list vs typing.List (py38)
+    "UP007", # Optional[X] vs X | None (py38)
+    "UP035", # typing imports deprecated (py38)
+    "UP045", # X | None deprecation (py38)
+    "F401",  # unused import (modules re-export Colors etc.)
+    "F403",  # star imports (legacy module style)
+    "F841",  # unused locals (kept for clarity in protocol code)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"modules/**/*.py" = ["F401", "F841"]  # modules often keep imports/locals for clarity
+"scripts/test_*.py" = ["F401"]
+
+[tool.mypy]
+python_version = "3.8"
+ignore_missing_imports = true
+follow_imports = "silent"
+warn_unused_ignores = false
+warn_return_any = false
+allow_untyped_defs = true
+check_untyped_defs = false
+exclude = "(new-add-ons|build|dist)"
+
 [tool.pytest.ini_options]
-asyncio_mode = "auto"
-testpaths = ["tests"]
+testpaths = ["scripts"]
+python_files = ["test_*.py"]
+addopts = "-ra --strict-markers"

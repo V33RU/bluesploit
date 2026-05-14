@@ -418,10 +418,11 @@ def aes_cmac(key: bytes, msg: bytes) -> bytes:
     try:
         from Crypto.Cipher import AES
     except ImportError:
-        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
         from cryptography.hazmat.backends import default_backend
+
         # cryptography path: build CMAC directly
         from cryptography.hazmat.primitives import cmac as _cmac
+        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
         c = _cmac.CMAC(algorithms.AES(key), backend=default_backend())
         c.update(msg)
         return c.finalize()
