@@ -1,12 +1,12 @@
-# BlueSploit - Bluetooth Exploitation Framework
+# BlueSploit, Bluetooth Exploitation Framework
 
 ![Project](https://img.shields.io/badge/Project-BlueSploit-1a1aff?style=for-the-badge&logo=bluetooth&logoColor=white)
-![Version](https://img.shields.io/badge/Version-1.0.1-0099ff?style=for-the-badge)
+![Version](https://img.shields.io/badge/Version-1.0.2-0099ff?style=for-the-badge)
 ![Status](https://img.shields.io/badge/Status-Scaffold%20%2F%20Not%20Battle--Tested-orange?style=for-the-badge)
 ![Build](https://img.shields.io/badge/Build-Passing-success?style=for-the-badge&logo=github-actions&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3.8+-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS-555555?style=for-the-badge&logo=linux&logoColor=white)
-![Modules](https://img.shields.io/badge/Modules-101-orange?style=for-the-badge)
+![Modules](https://img.shields.io/badge/Modules-146-orange?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)
 
 A Metasploit-style Bluetooth security testing framework for Classic BR/EDR and BLE, built for authorized penetration testing and security research.
@@ -20,17 +20,25 @@ A Metasploit-style Bluetooth security testing framework for Classic BR/EDR and B
   ╚═════╝ ╚══════╝ ╚═════╝ ╚══════╝╚══════╝╚═╝     ╚══════╝ ╚═════╝ ╚═╝   ╚═╝
 ```
 
+Documentation: [v33ru.github.io/bluesploit](https://v33ru.github.io/bluesploit/)
+Latest release: [v1.0.2](https://github.com/V33RU/bluesploit/releases/tag/v1.0.2)
+
 ---
 
 ## Features
 
-- **101 modules** across 6 categories: exploits, scanners, recon, DoS, auxiliary, post-exploitation
-- **40+ CVEs** implemented with working proof-of-concept exploits (2010 → 2026)
-- **Cross-platform install**, Linux (apt/dnf/yum/pacman/zypper/apk/xbps/emerge) + macOS (CoreBluetooth)
-- **Hardware support** for Ubertooth One, nRF52840, BTLEJack, HackRF One, YARD Stick One
-- **Interactive CLI** with Metasploit-style command interface (use/set/run/show)
-- **PCAP capture** for all module runs via btmon/tcpdump
-- **Dual-protocol** coverage: Bluetooth Classic (BR/EDR) and Bluetooth Low Energy (BLE)
+- **146 modules** across 6 categories: exploits, DoS, scanners, recon, auxiliary, post-exploitation.
+- **40+ CVEs** implemented with working proof-of-concept exploits (2010 to 2026).
+- **Persistent engagement state** in `~/.bluesploit/store.db`: hosts, credentials, loot, and workspaces survive restarts.
+- **Smart `set target`**: accepts a full BD_ADDR, a numeric host id from the store, or a substring matched against host address or name. Resolved hosts auto-fill `link_key`, `ltk`, `irk`, `csrk`, `pin` from the credentials table.
+- **Workspaces** to isolate one engagement from another, with a persisted active workspace.
+- **Resource scripts**: `resource <file>` replays a sequence of console commands.
+- **Persistent `setg` / `unsetg`** for framework-wide options.
+- **Cross-platform install**: Linux (apt/dnf/yum/pacman/zypper/apk/xbps/emerge) + macOS (CoreBluetooth).
+- **Hardware support** for Ubertooth One, nRF52840, BTLEJack, HackRF One, YARD Stick One.
+- **Metasploit-style REPL** with `use` / `set` / `run` / `check` / `back`.
+- **PCAP capture** for individual module runs via `btmon` / `tcpdump`.
+- **Dual-protocol** coverage: Bluetooth Classic (BR/EDR) and Bluetooth Low Energy (BLE).
 
 ---
 
@@ -46,7 +54,7 @@ cd bluesploit
 ./install.sh             # basic
 ./install.sh --full      # all extras (rich, cmd2, scapy, classic BT)
 ./install.sh --classic   # add Bluetooth Classic support (Linux only)
-./install.sh --dev       # add dev tooling (pytest, black, flake8)
+./install.sh --dev       # add dev tooling (pytest, ruff, mypy)
 ./install.sh --no-deps   # skip system packages (Python deps only)
 ```
 
@@ -96,107 +104,129 @@ pip install git+https://github.com/atlas0fd00m/rfcat.git
 
 ```bash
 # Launch the interactive console
-sudo python bluesploit.py
+sudo python3 bluesploit.py
 
-# List all available modules
-sudo python bluesploit.py --list
+# Or just list every module
+python3 bluesploit.py --list
 ```
 
-> **Note:** Most modules require root privileges for raw Bluetooth socket access.
+> **Note:** Most modules require root for raw Bluetooth socket access.
 
-### Example Usage
+### End-to-end example
 
+```text
+bluesploit > workspace use pentest-acme
+bluesploit > use recon/discovery
+bluesploit(recon/discovery) > run
+bluesploit(recon/discovery) > back
+
+bluesploit > hosts
+  ID    Address             Name           RSSI   Vendor    Last seen
+  ---------------------------------------------------------------------
+  1     AA:BB:CC:DD:EE:01   alpha-laptop   -42    Apple     2026-05-14 20:30
+  2     AA:BB:CC:DD:EE:02   wearable       -55    Garmin    2026-05-14 20:30
+
+bluesploit > use post/link_key_dump
+bluesploit(post/link_key_dump) > set target 1
+bluesploit(post/link_key_dump) > run
+... extracts LinkKey 0xDEADBEEF...
+
+bluesploit > creds
+  ID    Host                 Kind        Value                  Captured
+  ------------------------------------------------------------------------
+  1     AA:BB:CC:DD:EE:01    LinkKey     DEADBEEF...            2026-05-14 20:31
+
+bluesploit > use post/bt_impersonation
+bluesploit(post/bt_impersonation) > set target 1
+[+] target => AA:BB:CC:DD:EE:01
+[*] auto-filled link_key from credentials#1 (LinkKey)
+bluesploit(post/bt_impersonation) > run
 ```
-bluesploit > use exploits/keystroke_injection
-bluesploit (keystroke_injection) > set target AA:BB:CC:DD:EE:FF
-bluesploit (keystroke_injection) > set payload hello world
-bluesploit (keystroke_injection) > options
-bluesploit (keystroke_injection) > run
-```
+
+For the full walkthrough see the [Quick Start docs](https://v33ru.github.io/bluesploit/quick-start/).
 
 ---
 
 ## Console Commands
 
-| Command | Description |
-|---------|-------------|
-| `help` | Show all commands |
-| `use <module>` | Select a module |
-| `set <opt> <val>` | Set module option |
-| `options` | Show current module options |
-| `run` / `exploit` | Execute the selected module |
-| `back` | Deselect current module |
-| `show modules` | List all modules |
-| `search <term>` | Search modules by name/description |
-| `info [module]` | Show detailed module info |
-| `exit` / `quit` | Exit the framework |
+| Command                | Description                                                       |
+|------------------------|-------------------------------------------------------------------|
+| `help [cmd]`           | Show built-in help                                                |
+| `use <module>`         | Load a module                                                     |
+| `back`                 | Leave the current module                                          |
+| `search <term>`        | Search modules by path, description, CVE, author                  |
+| `show modules`         | List every loaded module                                          |
+| `options`              | Show current module options                                       |
+| `info`                 | Show detailed module metadata                                     |
+| `set <opt> <val>`      | Set an option; `set target` resolves stored ids and auto-fills creds |
+| `unset <opt>`          | Clear an option                                                   |
+| `check`                | Run a non-destructive pre-flight                                  |
+| `run` / `exploit`      | Execute the selected module                                       |
+| `hosts [filter]`       | Show hosts stored in the active workspace                         |
+| `creds [filter]`       | Show credentials stored in the active workspace                   |
+| `workspace ...`        | `list` / `use <name>` / `delete <name>`                           |
+| `setg [opt val]`       | List or set a persistent global option                            |
+| `unsetg <opt>`         | Clear a persisted global, restore default                         |
+| `resource <file>`      | Replay console commands from a file                               |
+| `exit` / `quit`        | Leave BlueSploit                                                  |
 
 ---
 
-## Modules (101)
+## Modules (146)
 
-> Counts by category: **exploits 69 · dos 10 · recon 6 · auxiliary 6 · scanners 5 · post 2** (run `python3 bluesploit.py --list` for the full live list).
+| Category | Count |
+|----------|-------|
+| `exploits/`  | 87 |
+| `dos/`       | 29 |
+| `auxiliary/` | 10 |
+| `recon/`     | 8 |
+| `post/`      | 7 |
+| `scanners/`  | 5 |
 
-### Exploits (69)
+Run `python3 bluesploit.py --list` for the full live list, or see the per-category pages on the [documentation site](https://v33ru.github.io/bluesploit/exploits/).
+
+A representative slice:
+
+### Exploits (87)
 
 | Module | CVE | Description |
 |--------|-----|-------------|
-| `exploits/keystroke_injection` | CVE-2023-45866 | 0-click Bluetooth HID keystroke injection |
+| `exploits/keystroke_injection_windows` | CVE-2023-45866 | 0-click Bluetooth HID keystroke injection (Windows) |
 | `exploits/bluffs` | CVE-2023-24023 | BLUFFS session key downgrade |
-| `exploits/bluffs_mitm` | CVE-2023-24023 | BLUFFS active MITM attack |
 | `exploits/braktooth_esp32` | CVE-2021-28139 | BrakTooth ESP32 LMP crash / ACE |
 | `exploits/bluefrag` | CVE-2020-0022 | Android Bluetooth A2DP RCE |
 | `exploits/bias` | CVE-2020-10135 | BIAS authentication bypass |
 | `exploits/badkarma` | CVE-2020-12351 | BleedingTooth L2CAP type confusion RCE |
-| `exploits/badchoice` | CVE-2020-12352 | BleedingTooth A2MP info disclosure |
 | `exploits/knob` | CVE-2019-9506 | Key negotiation entropy check |
-| `exploits/knob_active` | CVE-2019-9506 | Active key entropy downgrade |
 | `exploits/sweyntooth` | CVE-2019-16336+ | SweynTooth BLE link-layer exploits |
-| `exploits/blueborne_linux_rce` | CVE-2017-1000251 | Linux BlueZ L2CAP stack overflow RCE |
-| `exploits/blueborne_leak` | CVE-2017-0781 | Android Bluetooth info leak |
-| `exploits/bnep_heap_disclosure` | CVE-2017-13258 | Android BNEP heap disclosure |
-| `exploits/whisperpair` | CVE-2025-36911 | Google Fast Pair hijack, force-pair without pairing mode |
-| `exploits/zephyr_ble_smp_crash` | CVE-2025-10456 | Zephyr RTOS BLE fixed-channel integer overflow DoS |
-| `exploits/airoha_race_chain` | CVE-2025-20700/20701/20702 | Airoha 3-stage BLE→Classic→RACE RCE chain |
-| `exploits/rfcomm_privesc_race` | CVE-2026-23671 | Windows RFCOMM driver race condition, local EoP to SYSTEM |
-| `exploits/apple_bt_dos` | CVE-2026-20650 | Apple BT subsystem crash via malformed packets |
-| `exploits/harmonyos_bt_oob` | CVE-2026-28540 | Huawei HarmonyOS Bluetooth OOB heap info disclosure |
-| `exploits/bluebugging` | - | AT command injection via RFCOMM |
-| `exploits/bluesnarfing` | - | OBEX file theft (contacts, SMS, calendar) |
-| `exploits/a2dp_inject` | - | A2DP audio injection & media control |
-| `exploits/ble_mitm` | - | BLE man-in-the-middle relay |
-| `exploits/ble_pairing_downgrade` | - | Force JustWorks/legacy pairing |
-| `exploits/ble_replay` | - | BLE GATT capture & replay |
-| `exploits/ble_sc_bypass` | - | BLE Secure Connections bypass |
-| `exploits/ble_longrange` | - | BT 5.x coded PHY / long-range attacks |
-| `exploits/mesh_attack` | - | BLE Mesh provisioning MITM & replay |
-| `exploits/unauth_write` | - | Unauthenticated BLE GATT write |
-| `exploits/rfcomm_shell` | - | RFCOMM reverse/bind shell |
-| `exploits/obex_exploit` | - | OBEX OPP/FTP file push/pull |
-| `exploits/pin_bruteforce` | - | Classic Bluetooth 4-digit PIN brute-force |
+| `exploits/blueborne_linux_rce` | CVE-2017-1000251 | BlueZ L2CAP stack overflow RCE |
+| `exploits/whisperpair` | CVE-2025-36911 | Google Fast Pair force-pair without pairing mode |
+| `exploits/airoha_race_chain` | CVE-2025-20700/20701/20702 | Airoha 3-stage BLE -> Classic -> RACE RCE chain |
 
 ### Scanners (5)
 
 | Module | Description |
 |--------|-------------|
-| `scanners/vuln_scanner` | Automatic CVE detection based on device profile |
-| `scanners/vuln_scan` | Quick BLE vulnerability scan |
+| `scanners/vuln_scanner` | Unified BLE+Classic vulnerability scanner with CVE matcher |
+| `scanners/ble_debug_ecdh` | Detect devices using the published debug ECDH key pair |
 | `scanners/blueborne_scan` | BlueBorne vulnerability detection |
-| `scanners/ble_vuln_scanner` | Comprehensive BLE security assessment |
-| `scanners/hidden_scanner` | Find non-discoverable devices via brute-force |
+| `scanners/ibeacon_scanner` | iBeacon discovery and focused security tests |
+| `scanners/hidden_scanner` | Find non-discoverable BR/EDR + LE devices |
 
-### Recon (6)
+### Recon (8)
 
 | Module | Description |
 |--------|-------------|
-| `recon/discovery` | BLE device discovery with detailed info |
-| `recon/gatt_enum` | BLE GATT service/characteristic enumeration |
-| `recon/sdp_enum` | Classic SDP service enumeration |
-| `recon/adv_parser` | BLE advertisement deep analysis & fingerprinting |
-| `recon/oui_lookup` | MAC address manufacturer identification |
-| `recon/version_fingerprint` | OS/firmware fingerprinting via Bluetooth |
+| `recon/discovery` | Passive full-spectrum Bluetooth discovery (Classic + BLE), writes hosts |
+| `recon/gatt_enum` | GATT service / characteristic enumeration + device identity |
+| `recon/sdp_enum` | SDP service enumeration with CVE risk mapping |
+| `recon/lmp_features` | LMP feature page reader for BR/EDR fingerprinting |
+| `recon/ll_features` | BLE Link Layer feature set reader |
+| `recon/ble_pairing_features` | SMP pairing features probe |
+| `recon/adv_parser` | BLE advertisement deep analysis |
+| `recon/oui_lookup` | OUI manufacturer lookup |
 
-### DoS (10)
+### DoS (29)
 
 | Module | Description |
 |--------|-------------|
@@ -205,23 +235,48 @@ bluesploit (keystroke_injection) > run
 | `dos/sdp_flood` | SDP query flood |
 | `dos/rfcomm_flood` | RFCOMM connection exhaustion |
 | `dos/notify_flood` | BLE notification flood |
+| `dos/bt_phy_jam` | PHY-level Bluetooth jamming (Ubertooth / HackRF) |
+| `dos/macos_iobt_*` | macOS IOBluetooth kernel crash family |
 
-### Auxiliary (6)
+### Auxiliary (10)
 
 | Module | Description |
 |--------|-------------|
 | `auxiliary/hw_detect` | Detect all connected Bluetooth hardware |
-| `auxiliary/ble_fuzzer` | BLE ATT/GATT/SMP protocol fuzzer |
+| `auxiliary/ble_fuzzer` | BLE ATT / GATT / SMP protocol fuzzer |
 | `auxiliary/ubertooth_sniff` | Ubertooth One passive sniffer |
 | `auxiliary/nrf_sniffer` | nRF52840 BLE packet capture |
-| `auxiliary/btlejack_capture` | BTLEJack connection following & hijacking |
+| `auxiliary/btlejack_capture` | BTLEJack connection following and hijacking |
+| `auxiliary/ble_rpa_deanon` | BLE RPA de-anonymization (CVE-2020-35473) |
+| `auxiliary/btsnoop_collect` | Android btsnoop log collection over adb |
+| `auxiliary/local_spoof` | Local adapter hostname / address spoofing |
 
-### Post-Exploitation (2)
+### Post-Exploitation (7)
 
 | Module | Description |
 |--------|-------------|
-| `post/link_key_dump` | Extract stored link keys from BlueZ |
+| `post/link_key_dump` | Extract stored link keys from BlueZ; writes credentials |
+| `post/apple_link_key_extract` | Extract link keys on macOS |
 | `post/bt_impersonation` | Impersonate paired device with stolen link key |
+| `post/bt_session_hijack` | Hijack an active BR/EDR session with a recovered key |
+| `post/ble_gatt_exfil` | Read all accessible GATT characteristics from a target |
+| `post/ble_notify_intercept` | Passive BLE notification interception |
+| `post/gatt_cache_poison` | GATT characteristic cache poisoning |
+
+---
+
+## Engagement State
+
+State persists in `~/.bluesploit/store.db` (override with the `BLUESPLOIT_HOME` environment variable). The store holds four tables, scoped by workspace:
+
+| Table         | What                                                             |
+|---------------|------------------------------------------------------------------|
+| `hosts`       | Discovered BD_ADDRs, names, RSSI, vendor, first/last seen        |
+| `credentials` | Link keys, LTKs, IRKs, CSRKs, PINs                               |
+| `loot`        | Raw payloads (PCAP paths, GATT dumps, arbitrary bytes)           |
+| `meta`        | Schema version, active workspace, persisted `setg` overrides    |
+
+The active workspace is `default` unless the operator switches with `workspace use <name>`. See the [Engagement State docs](https://v33ru.github.io/bluesploit/engagement-state/) for the full model.
 
 ---
 
@@ -232,9 +287,9 @@ bluesploit (keystroke_injection) > run
 | USB Bluetooth Adapter (HCI) | Classic + BLE | Scanning, exploits, connections |
 | Ubertooth One | Classic + BLE | Passive sniffing, spectrum analysis |
 | nRF52840 Dongle | BLE | Passive BLE sniffing |
-| BTLEJack (micro:bit) | BLE | Connection hijacking & injection |
+| BTLEJack (micro:bit) | BLE | Connection hijacking and injection |
 | HackRF One | Classic | Raw Bluetooth baseband capture |
-| YARD Stick One | Sub-GHz | RF analysis & injection |
+| YARD Stick One | Sub-GHz | RF analysis and injection |
 
 ---
 
@@ -256,9 +311,9 @@ bluesploit (keystroke_injection) > run
 | CVE-2017-13258 | BNEP Heap Disclosure | Android memory leak |
 | CVE-2025-36911 | WhisperPair | Google Fast Pair hijack |
 | CVE-2025-10456 | Zephyr BLE Crash | Zephyr RTOS DoS / memory corruption |
-| CVE-2025-20700/20701/20702 | Airoha RACE Chain | Airoha chipset RCE (Sony/Bose/JBL/29+ devices) |
+| CVE-2025-20700/20701/20702 | Airoha RACE Chain | Airoha chipset RCE (Sony / Bose / JBL / 29+ devices) |
 | CVE-2026-23671 | RFCOMM PrivEsc Race | Windows RFCOMM driver local EoP to SYSTEM |
-| CVE-2026-20650 | Apple BT DoS | Apple BT subsystem crash (iOS/macOS/watchOS/tvOS) |
+| CVE-2026-20650 | Apple BT DoS | Apple BT subsystem crash (iOS / macOS / watchOS / tvOS) |
 | CVE-2026-28540 | HarmonyOS BT OOB | Huawei HarmonyOS Bluetooth heap info disclosure |
 
 ---
@@ -269,29 +324,40 @@ bluesploit (keystroke_injection) > run
 bluesploit/
 ├── bluesploit.py          # Main entry point
 ├── setup.py               # Package installation
-├── requirements.txt       # Python dependencies
+├── requirements.txt       # Python dependencies (pinned with ==)
+├── requirements-docs.txt  # Hash-locked docs build deps
 ├── core/
-│   ├── base.py            # Module base classes & data models
-│   ├── interpreter.py     # Interactive CLI (Metasploit-style)
+│   ├── base.py            # Module base classes, BaseModule.store property
+│   ├── interpreter.py     # Interactive REPL, all console verbs
 │   ├── loader.py          # Dynamic module loader
-│   ├── hardware.py        # Hardware detection & abstraction
-│   ├── capture.py         # PCAP capture (btmon/tcpdump)
+│   ├── store.py           # SQLite-backed engagement state
+│   ├── hardware.py        # Hardware detection and abstraction
+│   ├── capture.py         # PCAP capture (btmon / tcpdump)
+│   ├── bt_raw.py          # Low-level Bluetooth frame builders
 │   ├── utils/
-│   │   └── printer.py     # Colored output & banners
+│   │   ├── bt.py          # Shared HCI / BD_ADDR / L2CAP helpers
+│   │   ├── printer.py     # Colored output and banners
+│   │   ├── c_runner.py    # macOS embedded C / Obj-C compile+run
+│   │   └── iokit.py       # macOS IOKit bridge
 │   └── ui/
 │       └── themes.py      # Color themes
 ├── modules/
-│   ├── exploits/          # 69 exploit modules
-│   ├── scanners/          # 5 scanner modules
-│   ├── recon/             # 6 reconnaissance modules
-│   ├── dos/               # 10 denial-of-service modules
-│   ├── auxiliary/         # 6 auxiliary/hardware modules
-│   └── post/              # 2 post-exploitation modules
-└── data/
-    ├── oui/               # MAC address OUI database
-    ├── profiles/          # Device profile definitions
-    ├── signatures/        # Vulnerability signatures
-    └── wordlists/         # PIN wordlists for brute-force
+│   ├── exploits/          # 87 exploit modules
+│   ├── dos/               # 29 denial-of-service modules
+│   ├── auxiliary/         # 10 auxiliary / hardware modules
+│   ├── recon/             # 8 reconnaissance modules
+│   ├── post/              # 7 post-exploitation modules
+│   └── scanners/          # 5 scanner modules
+├── data/
+│   ├── oui/               # MAC address OUI database
+│   ├── profiles/          # Device profile definitions
+│   ├── signatures/        # Vulnerability signatures
+│   └── wordlists/         # PIN wordlists for brute-force
+├── scripts/
+│   ├── gen_module_docs.py # Auto-build the mkdocs module catalog
+│   ├── validate_modules.py# AST metadata gate (run in CI)
+│   └── test_*.py          # pytest suites for core/
+└── docs/                  # mkdocs site (https://v33ru.github.io/bluesploit/)
 ```
 
 ---
@@ -304,23 +370,34 @@ bluesploit/
 
 ### Core Dependencies
 
+All pinned with `==` in `pyproject.toml`. Bumped via Dependabot.
+
 | Package | Purpose |
 |---------|---------|
-| `bleak` | BLE scanning & GATT (cross-platform) |
-| `pybluez2` | Classic Bluetooth L2CAP/RFCOMM/HCI |
-| `scapy` | Packet crafting & injection |
-| `cryptography` | Key derivation & crypto analysis |
+| `bleak` | BLE scanning and GATT (cross-platform) |
+| `pybluez2` | Classic Bluetooth L2CAP / RFCOMM / HCI |
+| `scapy` | Packet crafting and injection |
+| `cryptography` | Key derivation and crypto analysis |
 | `bluepy` | Low-level BLE access (Linux) |
 | `pyserial` | Hardware dongle communication |
 | `btlejack` | BLE connection hijacking |
-| `rich` | Terminal UI (tables, progress) |
+| `rich` | Terminal UI helpers |
 | `cmd2` | Advanced REPL |
+
+---
+
+## Releases
+
+- **v1.0.2** (current): engagement state + supply chain hardening. [Release notes](https://github.com/V33RU/bluesploit/releases/tag/v1.0.2).
+- v1.0.1: bluing parity + HCI bind/struct fixes.
+
+The development branch is `dev`; merged PRs land on `main` and are tagged `vX.Y.Z.devN`. Tag, branch, and PR conventions live in [Contributing](https://v33ru.github.io/bluesploit/contributing/).
 
 ---
 
 ## Author
 
-**Mr-IoT** / Mr-IoT
+**Mr-IoT**
 
 ---
 
@@ -334,7 +411,7 @@ This project is licensed under the [MIT License](LICENSE).
 
 **This tool is for educational purposes and authorized security testing only.**
 
-- Only use against devices you own or have explicit written permission to test
-- Unauthorized access to computer systems and networks is illegal
-- The authors are not responsible for any misuse or damage caused by this tool
-- Always comply with local laws and regulations regarding wireless security testing
+- Only use against devices you own or have explicit written permission to test.
+- Unauthorized access to computer systems and networks is illegal.
+- The authors are not responsible for any misuse or damage caused by this tool.
+- Always comply with local laws and regulations regarding wireless security testing.
