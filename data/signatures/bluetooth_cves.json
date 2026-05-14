@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "generated_note": "Curated by hand from public advisories. Every entry below cites the NVD record plus at least one primary source (research paper or vendor advisory). See SOURCE.md for the format and SCHEMA.md for field semantics. Detection rules are deliberately conservative: when fingerprint data is not a definitive indicator, confidence drops to 'low' and severity is held at 'info' or 'medium'.",
+  "entries": [
+    {
+      "id": "CVE-2019-9506",
+      "name": "KNOB, Key Negotiation Of Bluetooth",
+      "severity": "high",
+      "confidence": "medium",
+      "applies_to": {
+        "protocol": "classic"
+      },
+      "match": {
+        "fingerprint": "lmp_features",
+        "rules": [
+          {
+            "lmp_version_max_inclusive": "5.0",
+            "encryption_supported": true
+          }
+        ],
+        "rationale": "Pre-5.1 BR/EDR implementations did not enforce a minimum encryption key length; the spec allowed negotiation down to 1 byte. Bluetooth SIG erratum 11838 (Core 5.1) introduced a 7-byte minimum. Confidence is medium because some vendors backported the fix without bumping the LMP version."
+      },
+      "description": "BR/EDR encryption key length is negotiable down to 1 byte, allowing offline brute force of the link key after capturing a single session.",
+      "related_modules": [
+        "exploits/knob",
+        "exploits/knob_active"
+      ],
+      "references": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2019-9506",
+        "https://knobattack.com/",
+        "https://www.usenix.org/system/files/sec19-antonioli.pdf",
+        "https://www.bluetooth.com/learn-about-bluetooth/key-attributes/bluetooth-security/erratum-11838/"
+      ],
+      "disclosed": "2019-08-13"
+    },
+    {
+      "id": "CVE-2020-10135",
+      "name": "BIAS, Bluetooth Impersonation AttackS",
+      "severity": "high",
+      "confidence": "low",
+      "applies_to": {
+        "protocol": "classic"
+      },
+      "match": {
+        "fingerprint": "lmp_features",
+        "rules": [
+          {
+            "lmp_version_max_inclusive": "5.0",
+            "secure_connections_controller": true
+          }
+        ],
+        "rationale": "BIAS exploits the BR/EDR Secure Authentication procedure: a device that supports Secure Connections on the controller but does not enforce mutual SC authentication against a peer claiming legacy is impersonated. Bluetooth Core 5.1 (errata 11838 + 12009) tightened this. Confidence is low because feature-bit presence does not tell us whether the host enforces SC; live probing is the only reliable check."
+      },
+      "description": "BR/EDR authentication can be downgraded to legacy, letting an attacker impersonate a previously-paired device without knowing the link key.",
+      "related_modules": [
+        "exploits/bias"
+      ],
+      "references": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2020-10135",
+        "https://francozappa.github.io/about-bias/",
+        "https://francozappa.github.io/publication/bias/bias.pdf"
+      ],
+      "disclosed": "2020-05-19"
+    },
+    {
+      "id": "CVE-2023-24023",
+      "name": "BLUFFS, Bluetooth Forward and Future Secrecy",
+      "severity": "high",
+      "confidence": "medium",
+      "applies_to": {
+        "protocol": "classic"
+      },
+      "match": {
+        "fingerprint": "lmp_features",
+        "rules": [
+          {
+            "lmp_version_max_inclusive": "5.3",
+            "secure_connections_controller": true
+          }
+        ],
+        "rationale": "BLUFFS abuses session key derivation in BR/EDR Secure Connections: the attacker forces a weak diversifier so past and future sessions share keys. Bluetooth SIG erratum 23976 (Core 5.4) closes it by binding the diversifier. Confidence is medium because LMP version 5.4 is still rare in deployed devices and the fix requires both controller and host updates."
+      },
+      "description": "Session key diversification in BR/EDR Secure Connections can be forced low, breaking forward and future secrecy across pairings.",
+      "related_modules": [
+        "exploits/bluffs",
+        "exploits/bluffs_mitm"
+      ],
+      "references": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2023-24023",
+        "https://www.bluffs.io/",
+        "https://francozappa.github.io/publication/bluffs/bluffs.pdf",
+        "https://www.bluetooth.com/learn-about-bluetooth/key-attributes/bluetooth-security/erratum-23976/"
+      ],
+      "disclosed": "2023-11-28"
+    }
+  ]
+}
