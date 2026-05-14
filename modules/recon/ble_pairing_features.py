@@ -207,7 +207,7 @@ class Module(ReconModule):
         if max_key < 16:
             print_warning(f"Peer accepts {max_key}-byte key, KNOB-style downgrade possible")
 
-        self.add_result({
+        fp = {
             "target": target,
             "io_capability": IO_NAMES.get(io, f"0x{io:02x}"),
             "oob": bool(oob),
@@ -217,7 +217,27 @@ class Module(ReconModule):
             "max_key_size": max_key,
             "init_key_dist": f"0x{init_kd:02x}",
             "resp_key_dist": f"0x{resp_kd:02x}",
-        })
+        }
+        self.add_result(fp)
+        self._persist_fingerprint(target, fp)
+
+    def _persist_fingerprint(self, target: str, result: dict) -> None:
+        """Store this fingerprint so the CVE-matching scanner can read it.
+
+        Best-effort: any store failure prints a one-line warning and
+        does not affect the recon module's primary return value.
+        """
+        try:
+            self.store.add_host(address=target)
+            self.store.add_fingerprint(
+                host=target,
+                kind="smp_pairing",
+                data=result,
+                source_module="recon/ble_pairing_features",
+            )
+            print_info("fingerprint recorded (smp_pairing)")
+        except Exception as e:
+            print_warning(f"fingerprint store skipped: {e}")
 
     def _print_keydist(self, mask: int):
         any_set = False

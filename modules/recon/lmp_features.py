@@ -209,6 +209,7 @@ class Module(ReconModule):
                         result[f"page_{page}_bits"] = bitmap_to_dict(epage, decoder)
 
             self.add_result(result)
+            self._persist_fingerprint(target, result)
             return True
 
         finally:
@@ -256,3 +257,21 @@ class Module(ReconModule):
             return
         for _idx, name in decoded:
             print(f"    {Colors.GREEN}✓{Colors.RESET} {name}")
+
+    def _persist_fingerprint(self, target: str, result: dict) -> None:
+        """Store this fingerprint so the CVE-matching scanner can read it.
+
+        Best-effort: any store failure prints a one-line warning and
+        does not affect the recon module's primary return value.
+        """
+        try:
+            self.store.add_host(address=target)
+            self.store.add_fingerprint(
+                host=target,
+                kind="lmp_features",
+                data=result,
+                source_module="recon/lmp_features",
+            )
+            print_info("fingerprint recorded (lmp_features)")
+        except Exception as e:
+            print_warning(f"fingerprint store skipped: {e}")

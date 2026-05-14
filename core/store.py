@@ -26,6 +26,7 @@ The path is created on first open.
 from __future__ import annotations
 
 import contextlib
+import json
 import os
 import sqlite3
 import threading
@@ -92,6 +93,25 @@ class Credential:
     kind: str
     value: str
     metadata: Optional[str] = None
+    created_at: Optional[str] = None
+    workspace: str = DEFAULT_WORKSPACE
+
+
+@dataclass
+class Fingerprint:
+    """A structured probe result that the CVE-matching scanner consumes.
+
+    Each row captures one snapshot from one recon module against one
+    host (lmp_features, ll_features, smp_pairing, ...). `data` is a
+    JSON-serializable dict so the schema can evolve per fingerprint
+    kind without changing the table layout.
+    """
+
+    id: int
+    host_id: Optional[int]
+    kind: str             # 'lmp_features' | 'll_features' | 'smp_pairing' | ...
+    data: str             # JSON-encoded dict
+    source_module: Optional[str] = None
     created_at: Optional[str] = None
     workspace: str = DEFAULT_WORKSPACE
 
@@ -208,6 +228,17 @@ class Store:
                     UNIQUE(host_id, kind, value, workspace)
                 );
 
+                CREATE TABLE IF NOT EXISTS fingerprints (
+                    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                    host_id       INTEGER,
+                    kind          TEXT NOT NULL,
+                    data          TEXT NOT NULL,
+                    source_module TEXT,
+                    created_at    TEXT NOT NULL,
+                    workspace     TEXT NOT NULL DEFAULT 'default',
+                    FOREIGN KEY (host_id) REFERENCES hosts(id) ON DELETE SET NULL
+                );
+
                 CREATE INDEX IF NOT EXISTS idx_loot_host        ON loot(host_id);
                 CREATE INDEX IF NOT EXISTS idx_loot_kind        ON loot(kind);
                 CREATE INDEX IF NOT EXISTS idx_creds_host       ON credentials(host_id);
@@ -215,6 +246,9 @@ class Store:
                 CREATE INDEX IF NOT EXISTS idx_hosts_workspace  ON hosts(workspace);
                 CREATE INDEX IF NOT EXISTS idx_loot_workspace   ON loot(workspace);
                 CREATE INDEX IF NOT EXISTS idx_creds_workspace  ON credentials(workspace);
+                CREATE INDEX IF NOT EXISTS idx_fp_host           ON fingerprints(host_id);
+                CREATE INDEX IF NOT EXISTS idx_fp_kind           ON fingerprints(kind);
+                CREATE INDEX IF NOT EXISTS idx_fp_workspace      ON fingerprints(workspace);
                 """
             )
             self._conn.execute(
@@ -575,6 +609,85 @@ class Store:
             ).fetchone()
         return _row_to_credential(row) if row else None
 
+    # Fingerprints ----------------------------------------------------------
+    #
+    # Recon modules write structured probe results here (LMP feature page,
+    # LL feature bitmap, SMP pairing response, ...). The CVE-matching
+    # scanner reads them on demand.
+
+    def add_fingerprint(
+        self,
+        host: Optional[Union[Host, str, int]],
+        kind: str,
+        data: Union[dict, str],
+        source_module: Optional[str] = None,
+    ) -> Fingerprint:
+        """Persist one fingerprint snapshot. `data` is a dict (will be
+        JSON-encoded) or a pre-encoded JSON string."""
+        if not kind or not kind.strip():
+            raise ValueError("fingerprint kind must be non-empty")
+        host_id = self._resolve_host_id(host)
+        if isinstance(data, dict):
+            payload = json.dumps(data, sort_keys=True, default=str)
+        else:
+            payload = str(data)
+        now = _now()
+        with self._lock, self._conn:
+            cur = self._conn.execute(
+                """
+                INSERT INTO fingerprints
+                    (host_id, kind, data, source_module, created_at, workspace)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (host_id, kind, payload, source_module, now, self.workspace),
+            )
+            fp_id = int(cur.lastrowid or 0)
+        fp = self.get_fingerprint_by_id(fp_id)
+        assert fp is not None
+        return fp
+
+    def get_fingerprint_by_id(self, fp_id: int) -> Optional[Fingerprint]:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT * FROM fingerprints WHERE id = ?", (fp_id,)
+            ).fetchone()
+        return _row_to_fingerprint(row) if row else None
+
+    def list_fingerprints(
+        self,
+        host: Optional[Union[Host, str, int]] = None,
+        kind: Optional[str] = None,
+    ) -> List[Fingerprint]:
+        sql = "SELECT * FROM fingerprints WHERE workspace = ?"
+        params: List[object] = [self.workspace]
+        if host is not None:
+            host_id = self._resolve_host_id(host)
+            sql += " AND host_id = ?"
+            params.append(host_id)
+        if kind is not None:
+            sql += " AND kind = ?"
+            params.append(kind)
+        sql += " ORDER BY created_at DESC, id DESC"
+        with self._lock:
+            rows = self._conn.execute(sql, params).fetchall()
+        return [_row_to_fingerprint(r) for r in rows]
+
+    def latest_fingerprint(
+        self,
+        host: Union[Host, str, int],
+        kind: str,
+    ) -> Optional[Fingerprint]:
+        """Most recent fingerprint of `kind` for the host in the active workspace."""
+        host_id = self._resolve_host_id(host)
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT * FROM fingerprints "
+                "WHERE host_id = ? AND kind = ? AND workspace = ? "
+                "ORDER BY created_at DESC, id DESC LIMIT 1",
+                (host_id, kind, self.workspace),
+            ).fetchone()
+        return _row_to_fingerprint(row) if row else None
+
     # Internal ---------------------------------------------------------------
 
     def _resolve_host_id(
@@ -634,6 +747,18 @@ def _row_to_credential(row: sqlite3.Row) -> Credential:
         kind=row["kind"],
         value=row["value"],
         metadata=row["metadata"],
+        created_at=row["created_at"],
+        workspace=row["workspace"],
+    )
+
+
+def _row_to_fingerprint(row: sqlite3.Row) -> Fingerprint:
+    return Fingerprint(
+        id=row["id"],
+        host_id=row["host_id"],
+        kind=row["kind"],
+        data=row["data"],
+        source_module=row["source_module"],
         created_at=row["created_at"],
         workspace=row["workspace"],
     )
