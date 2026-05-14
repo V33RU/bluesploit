@@ -380,6 +380,10 @@ class TestShippedSignaturesEndToEnd:
         sigs = load_signatures()
         findings, gaps = scan_host(sigs, {})
         assert findings == []
-        # All three lmp_features-keyed signatures should produce gaps.
-        assert len(gaps) >= 3
-        assert all(g.fingerprint_kind == "lmp_features" for g in gaps)
+        # Catalog has lmp_features-keyed and smp_pairing-keyed signatures.
+        # Every signature whose required fingerprint is missing should
+        # appear as a gap.
+        kinds = {g.fingerprint_kind for g in gaps}
+        assert "lmp_features" in kinds
+        assert "smp_pairing" in kinds
+        assert len(gaps) == len(sigs)
