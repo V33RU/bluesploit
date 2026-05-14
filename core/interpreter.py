@@ -297,6 +297,118 @@ class BlueSploitInterpreter(cmd.Cmd):
 
         self.current_module.show_options()
 
+    def do_workspace(self, args: str) -> None:
+        """
+        Manage engagement workspaces.
+
+        Usage:
+            workspace                       Show the active workspace.
+            workspace list                  List every workspace with row counts.
+            workspace use <name>            Switch to a workspace (created on
+                                            first use; the choice is persisted).
+            workspace delete <name>         Drop every host, loot, and credential
+                                            row scoped to <name>. Refuses to
+                                            delete the active or default workspace.
+
+        Workspaces are how you isolate one engagement from another: the
+        `hosts`, `loot`, and credentials views all filter by the active
+        workspace. Default is `default`.
+        """
+        try:
+            from core.store import DEFAULT_WORKSPACE, get_store
+            store = get_store()
+        except Exception as e:
+            print_error(f"Store unavailable: {e}")
+            return
+
+        parts = args.strip().split(maxsplit=1)
+        if not parts:
+            print_info(f"Active workspace: {store.workspace}")
+            return
+
+        sub = parts[0].lower()
+        rest = parts[1].strip() if len(parts) > 1 else ""
+
+        if sub == "list":
+            summaries = store.list_workspaces()
+            header = (
+                f"  {'Active':<7} {'Workspace':<24} "
+                f"{'Hosts':>6}  {'Loot':>6}  {'Creds':>6}"
+            )
+            sep = "  " + "-" * (len(header) - 2)
+            print()
+            print(header)
+            print(sep)
+            for w in summaries:
+                marker = "*" if w.active else ""
+                print(
+                    f"  {marker:<7} {w.name:<24} "
+                    f"{w.hosts:>6}  {w.loot:>6}  {w.credentials:>6}"
+                )
+            print(f"\n  Total: {len(summaries)} workspace(s)\n")
+            return
+
+        if sub == "use":
+            if not rest:
+                print_error("Usage: workspace use <name>")
+                return
+            try:
+                store.set_workspace(rest)
+            except ValueError as e:
+                print_error(str(e))
+                return
+            print_success(f"Switched to workspace '{rest}'")
+            return
+
+        if sub in ("delete", "rm", "drop"):
+            if not rest:
+                print_error(f"Usage: workspace {sub} <name>")
+                return
+            try:
+                deleted = store.delete_workspace(rest)
+            except ValueError as e:
+                print_error(str(e))
+                return
+            total = sum(deleted.values())
+            if total == 0:
+                print_info(f"Workspace '{rest}' had no rows")
+            else:
+                print_success(
+                    f"Deleted workspace '{rest}': "
+                    f"{deleted.get('hosts', 0)} host(s), "
+                    f"{deleted.get('loot', 0)} loot, "
+                    f"{deleted.get('credentials', 0)} credential(s)"
+                )
+            _ = DEFAULT_WORKSPACE  # kept in scope for symmetry with set/list
+            return
+
+        print_error(
+            f"Unknown subcommand: {sub}. Try 'workspace list', "
+            "'workspace use <name>', or 'workspace delete <name>'."
+        )
+
+    def complete_workspace(
+        self, text: str, line: str, begidx: int, endidx: int
+    ) -> List[str]:
+        """Tab completion: subcommands on word 2, workspace names on word 3."""
+        preceding = line[:begidx].split()
+        subcommands = ["list", "use", "delete"]
+
+        if len(preceding) <= 1:
+            t = text.lower()
+            return [s for s in subcommands if s.startswith(t)]
+
+        sub = preceding[1].lower() if len(preceding) >= 2 else ""
+        if sub in ("use", "delete", "rm", "drop"):
+            try:
+                from core.store import get_store
+                names = [w.name for w in get_store().list_workspaces()]
+            except Exception:
+                return []
+            t = text.lower()
+            return [n for n in names if n.lower().startswith(t)]
+        return []
+
     def do_hosts(self, args: str) -> None:
         """
         List hosts recorded in the engagement store.

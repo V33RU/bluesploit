@@ -96,6 +96,17 @@ class Credential:
     workspace: str = DEFAULT_WORKSPACE
 
 
+@dataclass
+class WorkspaceSummary:
+    """One row in `Store.list_workspaces()` output."""
+
+    name: str
+    hosts: int = 0
+    loot: int = 0
+    credentials: int = 0
+    active: bool = False
+
+
 # Store ----------------------------------------------------------------------
 
 
@@ -109,12 +120,11 @@ class Store:
     def __init__(
         self,
         path: Optional[Union[str, Path]] = None,
-        workspace: str = DEFAULT_WORKSPACE,
+        workspace: Optional[str] = None,
     ) -> None:
         if path is None:
             path = default_db_path()
         self.path = Path(path).expanduser()
-        self.workspace = workspace
         self._lock = threading.RLock()
 
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -125,6 +135,15 @@ class Store:
         self._conn.execute("PRAGMA foreign_keys = ON")
         self._conn.execute("PRAGMA journal_mode = WAL")
         self._init_schema()
+
+        # Workspace resolution. Explicit constructor argument wins. Otherwise
+        # the persisted `active_workspace` in the meta table wins. Otherwise
+        # fall back to the framework default.
+        if workspace is not None:
+            self.workspace = workspace
+        else:
+            persisted = self._read_meta("active_workspace")
+            self.workspace = persisted or DEFAULT_WORKSPACE
 
     # Context manager sugar so callers can do `with Store() as s:`
     def __enter__(self) -> Store:
@@ -147,6 +166,11 @@ class Store:
                 CREATE TABLE IF NOT EXISTS meta (
                     key   TEXT PRIMARY KEY,
                     value TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS workspaces (
+                    name       TEXT PRIMARY KEY,
+                    created_at TEXT NOT NULL
                 );
 
                 CREATE TABLE IF NOT EXISTS hosts (
@@ -197,6 +221,11 @@ class Store:
                 "INSERT OR IGNORE INTO meta(key, value) VALUES ('schema_version', ?)",
                 (str(SCHEMA_VERSION),),
             )
+            # Seed the default workspace so it always shows up in listings.
+            self._conn.execute(
+                "INSERT OR IGNORE INTO workspaces(name, created_at) VALUES (?, ?)",
+                (DEFAULT_WORKSPACE, _now()),
+            )
 
     @property
     def schema_version(self) -> int:
@@ -205,6 +234,116 @@ class Store:
                 "SELECT value FROM meta WHERE key = 'schema_version'"
             ).fetchone()
         return int(row["value"]) if row else 0
+
+    # Meta -------------------------------------------------------------------
+
+    def _read_meta(self, key: str) -> Optional[str]:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT value FROM meta WHERE key = ?", (key,)
+            ).fetchone()
+        return row["value"] if row else None
+
+    def _write_meta(self, key: str, value: str) -> None:
+        with self._lock, self._conn:
+            self._conn.execute(
+                "INSERT INTO meta(key, value) VALUES (?, ?) "
+                "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                (key, value),
+            )
+
+    # Workspaces -------------------------------------------------------------
+
+    def set_workspace(self, name: str) -> None:
+        """
+        Switch the active workspace.
+
+        Workspaces are created implicitly the first time they are used: any
+        non-empty name is valid. The name is recorded in the workspaces
+        table so it persists across `list_workspaces` even when empty, and
+        the choice is persisted in the meta table so the next process
+        pick-up resumes in the same workspace.
+        """
+        name = (name or "").strip()
+        if not name:
+            raise ValueError("workspace name must be non-empty")
+        with self._lock, self._conn:
+            self._conn.execute(
+                "INSERT OR IGNORE INTO workspaces(name, created_at) VALUES (?, ?)",
+                (name, _now()),
+            )
+        self.workspace = name
+        self._write_meta("active_workspace", name)
+
+    def list_workspaces(self) -> List[WorkspaceSummary]:
+        """
+        Return every known workspace with per-table row counts. Sorted by
+        name. A workspace is "known" if it was ever activated via
+        set_workspace, or if any row references it, or if it is the
+        currently active one. The default workspace is always included.
+        """
+        names: set[str] = {DEFAULT_WORKSPACE, self.workspace}
+        with self._lock:
+            for row in self._conn.execute("SELECT name FROM workspaces"):
+                names.add(row["name"])
+            for table in ("hosts", "loot", "credentials"):
+                for row in self._conn.execute(
+                    f"SELECT DISTINCT workspace FROM {table}"
+                ):
+                    names.add(row["workspace"])
+
+            summaries: List[WorkspaceSummary] = []
+            for name in sorted(names):
+                hosts = self._conn.execute(
+                    "SELECT COUNT(*) AS c FROM hosts WHERE workspace = ?", (name,)
+                ).fetchone()["c"]
+                loot = self._conn.execute(
+                    "SELECT COUNT(*) AS c FROM loot WHERE workspace = ?", (name,)
+                ).fetchone()["c"]
+                creds = self._conn.execute(
+                    "SELECT COUNT(*) AS c FROM credentials WHERE workspace = ?",
+                    (name,),
+                ).fetchone()["c"]
+                summaries.append(
+                    WorkspaceSummary(
+                        name=name,
+                        hosts=hosts,
+                        loot=loot,
+                        credentials=creds,
+                        active=(name == self.workspace),
+                    )
+                )
+        return summaries
+
+    def delete_workspace(self, name: str) -> dict:
+        """
+        Delete every host, loot row, and credential in the named workspace.
+
+        Refuses to delete the currently active workspace, refuses to delete
+        the framework default workspace. Returns a dict of {table: rows_deleted}.
+        """
+        name = (name or "").strip()
+        if not name:
+            raise ValueError("workspace name must be non-empty")
+        if name == self.workspace:
+            raise ValueError(
+                f"cannot delete the active workspace '{name}'; "
+                "switch with `workspace use <other>` first"
+            )
+        if name == DEFAULT_WORKSPACE:
+            raise ValueError(f"cannot delete the default workspace '{DEFAULT_WORKSPACE}'")
+
+        with self._lock, self._conn:
+            deleted = {}
+            for table in ("credentials", "loot", "hosts"):
+                cur = self._conn.execute(
+                    f"DELETE FROM {table} WHERE workspace = ?", (name,)
+                )
+                deleted[table] = cur.rowcount
+            # Also drop the workspaces table entry so completion stops
+            # offering a name the operator explicitly purged.
+            self._conn.execute("DELETE FROM workspaces WHERE name = ?", (name,))
+        return deleted
 
     # Hosts ------------------------------------------------------------------
 
