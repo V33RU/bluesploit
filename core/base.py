@@ -327,6 +327,18 @@ class BaseModule(ABC):
         return self.get_option("target")
 
     @property
+    def store(self):
+        """
+        Lazy access to the process-wide persistent Store.
+
+        Modules use this to record discovered hosts, looted artifacts, and
+        recovered credentials without rolling per-module output files.
+        See core/store.py.
+        """
+        from core.store import get_store
+        return get_store()
+
+    @property
     def results(self) -> List[Any]:
         """Get stored results"""
         return self._results

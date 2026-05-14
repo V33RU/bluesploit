@@ -149,10 +149,41 @@ class Module(AuxiliaryModule):
         for key in all_keys:
             self._print_key(key)
 
+        # Persist to the engagement store so downstream modules
+        # (impersonation, session hijack, GATT decrypt) can pick the keys
+        # up without re-parsing /var/lib/bluetooth. Best-effort: a store
+        # failure should not mask the actual extraction result.
+        try:
+            self._save_to_store(all_keys)
+        except Exception as e:
+            self.print_warning(f"Store write skipped: {e}")
+
         if output_file:
             self._save_keys(output_file, all_keys)
 
         return True
+
+    def _save_to_store(self, keys: list) -> None:
+        """Push each extracted key into the persistent credentials table."""
+        import json
+
+        saved = 0
+        for key in keys:
+            extra = {
+                k: v for k, v in key.items()
+                if k not in ("type", "adapter", "device", "name", "key")
+            }
+            extra["adapter"] = key.get("adapter")
+            extra["device_name"] = key.get("name")
+            self.store.add_credential(
+                host=key["device"],
+                kind=key["type"],
+                value=key["key"],
+                metadata=json.dumps(extra, sort_keys=True),
+            )
+            saved += 1
+        if saved:
+            self.print_success(f"Saved {saved} key(s) to store ({self.store.path})")
 
     def _extract_keys(self, info_file: str, adapter: str,
                       device: str, show_ltk: bool) -> list:
