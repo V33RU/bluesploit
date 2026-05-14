@@ -1,4 +1,4 @@
-# Scanners (7)
+# Scanners (9)
 
 Auto-generated from `modules/scanners/`.  
 Load any module with `use scanners/<name>`.
@@ -13,9 +13,11 @@ Load any module with `use scanners/<name>`.
 
 | Module | Severity | CVE | Description |
 |---|---|---|---|
+| [`scanners/adv_anomaly_audit`](#scannersadv_anomaly_audit) | ℹ️ INFO | - | Audit stored adv fingerprints for tracking surface (Apple Continuity, Eddysto… |
 | [`scanners/ble_debug_ecdh`](#scannersble_debug_ecdh) | 🟠 **HIGH** | - | Detect Bluetooth devices that use the published BT SIG debug ECDH key pair, p… |
 | [`scanners/ble_pairing_audit`](#scannersble_pairing_audit) | ℹ️ INFO | - | Audit stored SMP pairing-feature fingerprints for JustWorks, legacy pairing, … |
 | [`scanners/blueborne_scan`](#scannersblueborne_scan) | 🟠 **HIGH** | - | Scan for BlueBorne vulnerable devices (CVE-2017-*) |
+| [`scanners/char_permission_audit`](#scannerschar_permission_audit) | ℹ️ INFO | - | Audit stored gatt_topology fingerprints for over-permissive GATT characterist… |
 | [`scanners/cve_match`](#scannerscve_match) | ℹ️ INFO | - | Match stored fingerprints (lmp_features, ll_features, smp_pairing) against th… |
 | [`scanners/hidden_scanner`](#scannershidden_scanner) | ℹ️ INFO | - | Find non-discoverable Bluetooth devices (BR/EDR + LE) |
 | [`scanners/ibeacon_scanner`](#scannersibeacon_scanner) | ℹ️ INFO | - | Discover iBeacons, select a target, run focused security tests |
@@ -24,6 +26,26 @@ Load any module with `use scanners/<name>`.
 ---
 
 ## Modules
+
+### `scanners/adv_anomaly_audit`
+
+**BLE Advertising Anomaly Audit**
+
+Audit stored adv fingerprints for tracking surface (Apple Continuity, Eddystone-UID, public-address peripherals, oversized local names)
+
+**Severity:** ℹ️ INFO · **Protocol:** BLE
+
+| Option | Required | Default | Description |
+|---|---|---|---|
+| `target` |  |  | BD_ADDR or stored host id. Default audits every host with an adv fingerprint. |
+| `min_severity` |  | `info` | Drop findings below this severity (info\|low\|medium\|high\|critical) |
+
+**References:**
+- <https://www.bluetooth.com/specifications/specs/core-specification-6-0/>
+- <https://github.com/google/eddystone>
+- <https://owlink.org/wp-content/uploads/2019/10/Continuity.pdf>
+
+---
 
 ### `scanners/ble_debug_ecdh`
 
@@ -91,6 +113,25 @@ Scan for BlueBorne vulnerable devices (CVE-2017-*)
 - <CVE-2017-0781>
 - <CVE-2017-0782>
 - <CVE-2017-1000251>
+
+---
+
+### `scanners/char_permission_audit`
+
+**GATT Characteristic Permission Audit**
+
+Audit stored gatt_topology fingerprints for over-permissive GATT characteristics (writable Device Name, world-readable identity strings, unauthenticated control points)
+
+**Severity:** ℹ️ INFO · **Protocol:** BLE
+
+| Option | Required | Default | Description |
+|---|---|---|---|
+| `target` |  |  | BD_ADDR or stored host id. Default audits every host with a gatt_topology fingerprint. |
+| `min_severity` |  | `info` | Drop findings below this severity (info\|low\|medium\|high\|critical) |
+
+**References:**
+- <https://www.bluetooth.com/specifications/assigned-numbers/>
+- <https://www.bluetooth.com/specifications/specs/core-specification-6-0/>
 
 ---
 
