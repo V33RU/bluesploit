@@ -1,4 +1,4 @@
-# Scanners (11)
+# Scanners (12)
 
 Auto-generated from `modules/scanners/`.  
 Load any module with `use scanners/<name>`.
@@ -23,6 +23,7 @@ Load any module with `use scanners/<name>`.
 | [`scanners/ibeacon_scanner`](#scannersibeacon_scanner) | ℹ️ INFO | - | Discover iBeacons, select a target, run focused security tests |
 | [`scanners/iot_profile_audit`](#scannersiot_profile_audit) | ℹ️ INFO | - | Classify stored BLE devices into IoT categories (wearable, lock, medical, bea… |
 | [`scanners/ll_features_audit`](#scannersll_features_audit) | ℹ️ INFO | - | Audit stored ll_features fingerprints for privacy gaps and BLE 5.x capability… |
+| [`scanners/mesh_provisioning_audit`](#scannersmesh_provisioning_audit) | ℹ️ INFO | - | Audit stored mesh_beacon fingerprints for weak OOB configurations and missing… |
 | [`scanners/vuln_scanner`](#scannersvuln_scanner) | 🟠 **HIGH** | - | Unified BLE+Classic vulnerability scanner, GATT deep analysis + CVE→module ma… |
 
 ---
@@ -239,6 +240,24 @@ Audit stored ll_features fingerprints for privacy gaps and BLE 5.x capability pr
 
 **References:**
 - <https://www.bluetooth.com/specifications/specs/core-specification-6-0/>
+
+---
+
+### `scanners/mesh_provisioning_audit`
+
+**Mesh Provisioning Audit**
+
+Audit stored mesh_beacon fingerprints for weak OOB configurations and missing URI integrity
+
+**Severity:** ℹ️ INFO · **Protocol:** BLE
+
+| Option | Required | Default | Description |
+|---|---|---|---|
+| `target` |  |  | BD_ADDR or host id. Default audits every host with a mesh_beacon fingerprint. |
+| `min_severity` |  | `info` | Drop findings below this severity |
+
+**References:**
+- <https://www.bluetooth.com/specifications/specs/mesh-protocol/>
 
 ---
 
