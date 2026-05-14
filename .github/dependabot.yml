@@ -22,6 +22,12 @@ updates:
       actions:
         patterns:
           - "*"
+    # Major bumps on actions land via SHA pins reviewed by hand. Auto
+    # PRs at this scope produced noise (e.g. checkout v4 -> v6) we
+    # always close.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: "ci"
       include: scope
