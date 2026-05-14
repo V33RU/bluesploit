@@ -210,6 +210,43 @@ class TestCredentials:
         assert len(store.list_credentials(host=h2.address)) == 1
 
 
+class TestLatestCredential:
+    def test_returns_none_when_no_credential_for_host(self, store: Store):
+        h = store.add_host("AA:11:22:33:44:55")
+        assert store.latest_credential(h, "LinkKey") is None
+
+    def test_returns_only_matching_kind(self, store: Store):
+        h = store.add_host("AA:11:22:33:44:55")
+        store.add_credential(h, kind="LinkKey", value="lk")
+        store.add_credential(h, kind="LTK", value="ltk")
+        assert store.latest_credential(h, "LinkKey").value == "lk"
+        assert store.latest_credential(h, "LTK").value == "ltk"
+        assert store.latest_credential(h, "IRK") is None
+
+    def test_picks_most_recent_by_id(self, store: Store):
+        # Two LinkKey rows for the same host. Ordering is created_at DESC,
+        # id DESC, so the second insert wins even when the timestamps tie.
+        h = store.add_host("AA:11:22:33:44:55")
+        store.add_credential(h, kind="LinkKey", value="OLD")
+        store.add_credential(h, kind="LinkKey", value="NEW")
+        assert store.latest_credential(h, "LinkKey").value == "NEW"
+
+    def test_workspace_scoped(self, tmp_path: Path):
+        from core.store import Store as _S
+        a = _S(path=tmp_path / "x.db", workspace="alpha")
+        b = _S(path=tmp_path / "x.db", workspace="beta")
+        try:
+            h_a = a.add_host("AA:11:22:33:44:55")
+            a.add_credential(h_a, kind="LinkKey", value="from-alpha")
+            # In workspace beta the host doesn't even exist; lookup by
+            # address should auto-create the host (consistent with other
+            # add_* helpers) and then return None for the credential.
+            assert b.latest_credential("AA:11:22:33:44:55", "LinkKey") is None
+        finally:
+            a.close()
+            b.close()
+
+
 # Singleton accessor ---------------------------------------------------------
 
 

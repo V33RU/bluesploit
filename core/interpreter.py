@@ -234,8 +234,59 @@ class BlueSploitInterpreter(cmd.Cmd):
 
         if self.current_module.set_option(option, value):
             print_success(f"{option} => {value}")
+            # If target just landed on a stored host, pre-fill any
+            # credential-shaped options the loaded module declares.
+            if option.lower() == "target":
+                self._apply_host_credentials(value)
         else:
             print_error(f"Unknown option: {option}")
+
+    # Option-name to credential-kind mapping for the auto-fill on `set target`.
+    # Module option names are lowercased before lookup.
+    _CREDENTIAL_AUTOFILL: Dict[str, str] = {
+        "link_key":   "LinkKey",
+        "linkkey":    "LinkKey",
+        "ltk":        "LTK",
+        "long_term_key": "LTK",
+        "irk":        "IRK",
+        "csrk":       "CSRK",
+        "pin":        "PIN",
+    }
+
+    def _apply_host_credentials(self, address: str) -> None:
+        """Pre-fill credential-shaped options from the store for the given host.
+
+        Called after `set target` resolves to a stored host address. Walks
+        the loaded module's options, and for any whose lowercased name
+        matches one of the known credential aliases, looks up the latest
+        credential of that kind for the host and sets the option. Operator
+        can override with an explicit `set` afterwards.
+        """
+        if not self.current_module:
+            return
+        try:
+            from core.store import get_store
+            from core.utils.bt import validate_bd_addr
+            store = get_store()
+        except Exception:
+            return
+        if not validate_bd_addr(address):
+            return
+        host = store.get_host(address)
+        if host is None:
+            return
+        for opt_name in self.current_module.options:
+            kind = self._CREDENTIAL_AUTOFILL.get(opt_name.lower())
+            if kind is None:
+                continue
+            cred = store.latest_credential(host, kind)
+            if cred is None:
+                continue
+            if self.current_module.set_option(opt_name, cred.value):
+                print_info(
+                    f"auto-filled {opt_name} from credentials#{cred.id} "
+                    f"({kind})"
+                )
 
     def _resolve_target(self, value: str) -> Optional[str]:
         """
@@ -523,6 +574,85 @@ class BlueSploitInterpreter(cmd.Cmd):
         expanded = os.path.expanduser(text)
         candidates = glob.glob(expanded + "*")
         return [c + ("/" if os.path.isdir(c) else "") for c in candidates]
+
+    def do_creds(self, args: str) -> None:
+        """
+        List credentials recorded in the engagement store.
+
+        Usage:
+            creds                List every credential in the current workspace.
+            creds <filter>       Substring filter on host address, host name,
+                                 or credential kind (case-insensitive).
+
+        Credentials feed `set target <id>` auto-fill: when the operator
+        points a module at a stored host, any option named link_key, ltk,
+        irk, csrk, or pin is pre-filled from the most recent matching
+        credential for that host.
+        """
+        try:
+            from core.store import get_store
+            store = get_store()
+        except Exception as e:
+            print_error(f"Store unavailable: {e}")
+            return
+
+        creds = store.list_credentials()
+        q = args.strip().lower()
+
+        if q:
+            from core.store import Host as _Host
+            host_cache: Dict[int, Optional[_Host]] = {}
+            filtered = []
+            for c in creds:
+                if q in c.kind.lower():
+                    filtered.append(c)
+                    continue
+                if c.host_id is None:
+                    continue
+                if c.host_id not in host_cache:
+                    host_cache[c.host_id] = store.get_host_by_id(c.host_id)
+                h = host_cache[c.host_id]
+                if h is not None and (
+                    q in h.address.lower() or (h.name and q in h.name.lower())
+                ):
+                    filtered.append(c)
+            creds = filtered
+
+        if not creds:
+            if q:
+                print_info(f"No credentials match '{q}'")
+            else:
+                print_info(
+                    "No credentials recorded yet. Run a post-exploitation "
+                    "module like 'post/link_key_dump'."
+                )
+            return
+
+        header = (
+            f"  {'ID':<5} {'Host':<19} {'Kind':<14} "
+            f"{'Value':<34} {'Captured'}"
+        )
+        sep = "  " + "-" * (len(header) - 2)
+        print()
+        print(header)
+        print(sep)
+        for c in creds:
+            if c.host_id is None:
+                host_repr = "(orphan)"
+            else:
+                h = store.get_host_by_id(c.host_id)
+                host_repr = h.address if h else "(missing)"
+            value = c.value or ""
+            value = value if len(value) <= 32 else value[:30] + ".."
+            captured = (c.created_at or "").replace("T", " ").rstrip("Z+0:")
+            print(
+                f"  {c.id:<5} {host_repr:<19} {c.kind:<14} "
+                f"{value:<34} {captured}"
+            )
+        print(
+            f"\n  Total: {len(creds)} credential(s) in workspace "
+            f"'{store.workspace}'\n"
+        )
 
     def do_hosts(self, args: str) -> None:
         """
