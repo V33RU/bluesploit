@@ -1,4 +1,4 @@
-# Scanners (5)
+# Scanners (7)
 
 Auto-generated from `modules/scanners/`.  
 Load any module with `use scanners/<name>`.
@@ -14,7 +14,9 @@ Load any module with `use scanners/<name>`.
 | Module | Severity | CVE | Description |
 |---|---|---|---|
 | [`scanners/ble_debug_ecdh`](#scannersble_debug_ecdh) | 🟠 **HIGH** | - | Detect Bluetooth devices that use the published BT SIG debug ECDH key pair, p… |
+| [`scanners/ble_pairing_audit`](#scannersble_pairing_audit) | ℹ️ INFO | - | Audit stored SMP pairing-feature fingerprints for JustWorks, legacy pairing, … |
 | [`scanners/blueborne_scan`](#scannersblueborne_scan) | 🟠 **HIGH** | - | Scan for BlueBorne vulnerable devices (CVE-2017-*) |
+| [`scanners/cve_match`](#scannerscve_match) | ℹ️ INFO | - | Match stored fingerprints (lmp_features, ll_features, smp_pairing) against th… |
 | [`scanners/hidden_scanner`](#scannershidden_scanner) | ℹ️ INFO | - | Find non-discoverable Bluetooth devices (BR/EDR + LE) |
 | [`scanners/ibeacon_scanner`](#scannersibeacon_scanner) | ℹ️ INFO | - | Discover iBeacons, select a target, run focused security tests |
 | [`scanners/vuln_scanner`](#scannersvuln_scanner) | 🟠 **HIGH** | - | Unified BLE+Classic vulnerability scanner, GATT deep analysis + CVE→module ma… |
@@ -45,6 +47,28 @@ Detect Bluetooth devices that use the published BT SIG debug ECDH key pair, prod
 
 ---
 
+### `scanners/ble_pairing_audit`
+
+**BLE Pairing Audit**
+
+Audit stored SMP pairing-feature fingerprints for JustWorks, legacy pairing, key-size downgrade, and CTKD weaknesses
+
+**Severity:** ℹ️ INFO · **Protocol:** BLE
+
+| Option | Required | Default | Description |
+|---|---|---|---|
+| `target` |  |  | BD_ADDR or stored host id. Default audits every host in the workspace. |
+| `min_severity` |  | `info` | Drop findings below this severity (info\|low\|medium\|high\|critical) |
+| `min_confidence` |  | `low` | Drop findings below this confidence (low\|medium\|high) |
+
+**References:**
+- <https://www.bluetooth.com/specifications/specs/core-specification-6-0/>
+- <https://www.usenix.org/conference/woot13/workshop-program/presentation/ryan>
+- <https://nvd.nist.gov/vuln/detail/CVE-2019-9506>
+- <https://nvd.nist.gov/vuln/detail/CVE-2020-15802>
+
+---
+
 ### `scanners/blueborne_scan`
 
 **scanners/classic/blueborne_scan**
@@ -67,6 +91,25 @@ Scan for BlueBorne vulnerable devices (CVE-2017-*)
 - <CVE-2017-0781>
 - <CVE-2017-0782>
 - <CVE-2017-1000251>
+
+---
+
+### `scanners/cve_match`
+
+**CVE Match Scanner**
+
+Match stored fingerprints (lmp_features, ll_features, smp_pairing) against the curated Bluetooth CVE catalog
+
+**Severity:** ℹ️ INFO · **Protocol:** DUAL
+
+| Option | Required | Default | Description |
+|---|---|---|---|
+| `target` |  |  | BD_ADDR or stored host id to scan. Default scans every host in the workspace. |
+| `min_confidence` |  | `low` | Filter findings by signature confidence: low \| medium \| high |
+
+**References:**
+- <data/signatures/bluetooth_cves.json>
+- <data/signatures/SOURCE.md>
 
 ---
 

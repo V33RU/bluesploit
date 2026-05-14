@@ -1,4 +1,4 @@
-# Reconnaissance (8)
+# Reconnaissance (10)
 
 Auto-generated from `modules/recon/`.  
 Load any module with `use recon/<name>`.
@@ -15,6 +15,8 @@ Load any module with `use recon/<name>`.
 |---|---|---|---|
 | [`recon/adv_parser`](#reconadv_parser) | ℹ️ INFO | - | Deep BLE advertisement analysis, Apple Continuity, Eddystone, iBeacon, Fast P… |
 | [`recon/ble_pairing_features`](#reconble_pairing_features) | ℹ️ INFO | - | Read SMP Pairing Features (IO cap, AuthReq, key dist) from a remote LE device |
+| [`recon/ble_scan_full`](#reconble_scan_full) | ℹ️ INFO | - | Active BLE scan with full advertising payload decoding (address type, flags, … |
+| [`recon/ble_target_enum`](#reconble_target_enum) | ℹ️ INFO | - | Connect to one BLE target and walk every service / characteristic / descripto… |
 | [`recon/discovery`](#recondiscovery) | ℹ️ INFO | - | Passive full-spectrum Bluetooth discovery, Classic + BLE |
 | [`recon/gatt_enum`](#recongatt_enum) | ℹ️ INFO | - | Enumerate GATT services and characteristics + device identity |
 | [`recon/ll_features`](#reconll_features) | ℹ️ INFO | - | Read BLE Link Layer FeatureSet of a remote LE device |
@@ -67,6 +69,48 @@ Read SMP Pairing Features (IO cap, AuthReq, key dist) from a remote LE device
 
 **References:**
 - <https://www.bluetooth.com/specifications/specs/core-specification/>
+
+---
+
+### `recon/ble_scan_full`
+
+**BLE Full Scanner**
+
+Active BLE scan with full advertising payload decoding (address type, flags, service UUIDs, manufacturer data, service data, TX power, appearance)
+
+**Severity:** ℹ️ INFO · **Protocol:** BLE
+
+| Option | Required | Default | Description |
+|---|---|---|---|
+| `timeout` |  | `10` | Scan duration in seconds |
+| `interface` |  | `hci0` | HCI adapter (Linux only, e.g. hci0) |
+| `min_rssi` |  |  | Drop devices weaker than this RSSI (e.g. -85). Empty = keep all. |
+
+**References:**
+- <https://bleak.readthedocs.io/en/latest/api/scanner.html>
+- <https://www.bluetooth.com/specifications/specs/core-specification-6-0/>
+
+---
+
+### `recon/ble_target_enum`
+
+**BLE Target Enumeration**
+
+Connect to one BLE target and walk every service / characteristic / descriptor, mirage-style
+
+**Severity:** ℹ️ INFO · **Protocol:** BLE
+
+| Option | Required | Default | Description |
+|---|---|---|---|
+| `target` | ✓ |  | Target BLE BD_ADDR |
+| `interface` |  | `hci0` | HCI adapter (Linux only, e.g. hci0) |
+| `timeout` |  | `20` | Connect + discover timeout in seconds |
+| `read_values` |  | `True` | Read every readable characteristic value (true/false) |
+| `read_descriptors` |  | `True` | Read every descriptor value (true/false) |
+
+**References:**
+- <https://bleak.readthedocs.io/en/latest/api/client.html>
+- <https://www.bluetooth.com/specifications/specs/core-specification-6-0/>
 
 ---
 
