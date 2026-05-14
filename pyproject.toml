@@ -139,6 +139,9 @@ warn_unused_ignores = false
 warn_return_any = false
 allow_untyped_defs = true
 check_untyped_defs = false
+# Allow `def f(x: str = None)` style. Codebase predates PEP 484
+# strict-Optional defaults; tightening is a Phase 4 task per the roadmap.
+implicit_optional = true
 exclude = "(new-add-ons|build|dist)"
 
 [tool.pytest.ini_options]

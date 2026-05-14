@@ -495,9 +495,9 @@ class HardwareManager:
             lines.append(f"{d.name:<35} {d.interface:<15} {avail:<10} {caps_short}")
 
         total = len(self._devices)
-        avail = len(self.available_devices())
+        avail_count = len(self.available_devices())
         lines.append("─" * 90)
-        lines.append(f"Total: {total} device(s) detected, {avail} available")
+        lines.append(f"Total: {total} device(s) detected, {avail_count} available")
         return "\n".join(lines)
 
 

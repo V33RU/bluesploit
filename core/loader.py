@@ -189,10 +189,9 @@ class ModuleLoader:
                     results.add(module_path)
                     continue
 
-                # CVE match
+                # CVE match (ModuleInfo.cve is Optional[List[str]])
                 if module.info.cve:
-                    cve_list = module.info.cve if isinstance(module.info.cve, list) else [module.info.cve]
-                    if any(query_lower in c.lower() for c in cve_list):
+                    if any(query_lower in c.lower() for c in module.info.cve):
                         results.add(module_path)
                         continue
 
