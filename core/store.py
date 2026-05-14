@@ -554,6 +554,27 @@ class Store:
             rows = self._conn.execute(sql, params).fetchall()
         return [_row_to_credential(r) for r in rows]
 
+    def latest_credential(
+        self,
+        host: Union[Host, str, int],
+        kind: str,
+    ) -> Optional[Credential]:
+        """Return the most recently captured credential of `kind` for the host.
+
+        Used by the interpreter to auto-fill module options like `link_key`
+        when the operator runs `set target <id>` against a host the framework
+        already has credentials for.
+        """
+        host_id = self._resolve_host_id(host)
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT * FROM credentials "
+                "WHERE host_id = ? AND kind = ? AND workspace = ? "
+                "ORDER BY created_at DESC, id DESC LIMIT 1",
+                (host_id, kind, self.workspace),
+            ).fetchone()
+        return _row_to_credential(row) if row else None
+
     # Internal ---------------------------------------------------------------
 
     def _resolve_host_id(
