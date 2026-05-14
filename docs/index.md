@@ -52,7 +52,8 @@ Perform reconnaissance, vulnerability scanning, and exploitation against:
 | [Installation](installation.md) | Install on Linux (any distro) and macOS |
 | [Quick Start](quick-start.md) | First scan + first exploit in 60 seconds |
 | [Video Tutorials](videos.md) | Walkthroughs and demos on YouTube |
-| [Console Commands](console-commands.md) | REPL reference (`use`, `set`, `run`, …) |
+| [Console Commands](console-commands.md) | REPL reference (`use`, `set`, `run`, ...) |
+| [Engagement State](engagement-state.md) | Persistent store: hosts, creds, workspaces |
 | [Module Categories](module-categories.md) | What lives in `exploits/`, `scanners/`, etc. |
 | [Hardware Setup](hardware-setup.md) | Ubertooth, HackRF, nRF52840, BTLEJack, YARD Stick One |
 | [Writing Modules](writing-modules.md) | Author your own exploit / scanner |

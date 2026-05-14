@@ -66,12 +66,58 @@ The class name should be `Scanner`, `DoS`, `Recon`, `Auxiliary`, or `Post` respe
 
 ## Conventions
 
-- **One module per file.** File name = module name (`my_exploit.py` → `exploits/my_exploit`).
+- **One module per file.** File name = module name (`my_exploit.py` -> `exploits/my_exploit`).
 - **Use `print_info` / `print_ok` / `print_err`** from `core.utils.printer`, never `print()` directly.
 - **Validate inputs** in `check()`, not deep inside `run()`.
 - **Gate platform-specific code** with `import sys; if sys.platform != "linux": ...`.
-- **Reuse `core/hardware.py`** for adapter access, don't open raw HCI sockets directly unless you must.
-- **Keep module options small.** If a module needs >8 options, it's probably two modules.
+- **Reuse `core/utils/bt.py`** for raw HCI / BD_ADDR / L2CAP plumbing instead of hand-rolling socket and struct code in every module.
+- **Reuse `core/hardware.py`** for adapter access, do not open raw HCI sockets directly unless you must.
+- **Keep module options small.** If a module needs >8 options, it is probably two modules.
+
+---
+
+## Writing to the engagement store
+
+Every module has a lazy `self.store` that points at the active workspace's
+SQLite-backed state. Use it instead of inventing a per-module `output_file`
+option, so downstream modules and the `hosts` / `creds` console commands
+can see what you produced.
+
+```python
+# Recon module recording discovered devices
+def run(self):
+    for d in discovered_devices:
+        self.store.add_host(
+            address=d.address,
+            name=d.name,
+            rssi=d.rssi,
+            manufacturer=d.vendor,
+        )
+
+# Post-exploitation module recording a recovered credential
+def run(self):
+    link_key = self._extract_link_key(...)
+    self.store.add_credential(
+        host=self.get_option("target"),    # address or stored host id
+        kind="LinkKey",
+        value=link_key.hex(),
+        metadata=json.dumps({"pin_length": 4}),
+    )
+```
+
+Available helpers on `self.store`:
+
+| Method                                                            | Use                                       |
+|-------------------------------------------------------------------|-------------------------------------------|
+| `add_host(address, name=None, rssi=None, manufacturer=None)`      | Record / update a discovered device       |
+| `add_credential(host, kind, value, metadata=None)`                | Persist a key/PIN tied to a host          |
+| `add_loot(host, kind, data, source=None)`                         | Persist arbitrary bytes (PCAP, GATT dump) |
+| `list_hosts() / list_credentials() / list_loot()`                 | Read back rows in the active workspace    |
+| `latest_credential(host, kind)`                                   | Drives `set target` autofill              |
+
+Recognized credential kinds: `LinkKey`, `LTK`, `IRK`, `CSRK`, `PIN`,
+`PeripheralLTK`. Other strings are accepted and stored verbatim; only
+the standard kinds trigger `set target` autofill on a downstream module.
 
 ---
 

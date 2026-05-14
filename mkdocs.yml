@@ -83,6 +83,7 @@ nav:
     - Legal Disclaimer: legal-disclaimer.md
   - Usage:
     - Console Commands: console-commands.md
+    - Engagement State: engagement-state.md
     - Module Categories: module-categories.md
   - Modules:
     - Exploits: exploits.md
