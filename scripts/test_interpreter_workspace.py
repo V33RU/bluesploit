@@ -47,8 +47,9 @@ class TestDoWorkspaceList:
         # active workspace row should show counts in the same line
         lines = [ln for ln in out.splitlines() if DEFAULT_WORKSPACE in ln]
         assert any("2" in ln for ln in lines), f"expected 2 hosts in: {lines}"
-        # active marker present
-        assert any(ln.strip().startswith("*") for ln in lines)
+        # active marker present somewhere on the default's row (rich-style
+        # ASCII tables put it in a column, not at line start)
+        assert any("*" in ln for ln in lines)
 
 
 class TestDoWorkspaceUse:
