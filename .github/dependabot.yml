@@ -1,0 +1,50 @@
+# Dependabot config: keep the supply chain current without sudden surprises.
+#
+# Two ecosystems:
+#   - github-actions: bumps SHA-pinned actions in .github/workflows/
+#   - pip:            bumps Python deps declared in pyproject.toml
+#
+# Updates are opened as PRs we review like any other change. Grouped to
+# avoid PR floods, and labelled so they are easy to filter.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"
+    groups:
+      actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "ci"
+      include: scope
+
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "python"
+    groups:
+      runtime-deps:
+        dependency-type: production
+      dev-deps:
+        dependency-type: development
+    # Ignore major bumps automatically; we review those by hand.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    commit-message:
+      prefix: "deps"
+      include: scope

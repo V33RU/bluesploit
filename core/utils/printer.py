@@ -5,8 +5,8 @@ Professional UI for Bluetooth Exploitation Framework
 
 import os
 import re
-import sys
 import shutil
+import sys
 from datetime import datetime
 
 
@@ -21,7 +21,7 @@ class Colors:
     MAGENTA = '\033[95m'
     CYAN = '\033[96m'
     WHITE = '\033[97m'
-    
+
     # Dark variants
     DARK_RED = '\033[31m'
     DARK_GREEN = '\033[32m'
@@ -30,7 +30,7 @@ class Colors:
     DARK_MAGENTA = '\033[35m'
     DARK_CYAN = '\033[36m'
     DARK_GREY = '\033[90m'
-    
+
     # Styles
     RESET = '\033[0m'
     BOLD = '\033[1m'
@@ -39,7 +39,7 @@ class Colors:
     UNDERLINE = '\033[4m'
     BLINK = '\033[5m'
     REVERSE = '\033[7m'
-    
+
     # Background
     BG_BLACK = '\033[40m'
     BG_RED = '\033[41m'
@@ -70,12 +70,12 @@ def center_text(text: str, width: int = None) -> str:
 
 def print_banner(version: str) -> None:
     """Display the professional BlueSploit banner"""
-    
+
     C = Colors
-    
+
     # Clear screen
     print("\033[2J\033[H", end="")
-    
+
     banner = f"""
 {C.CYAN}    ╔═════════════════════════════════════════════════════════════════════════════════╗
     ║                                                                                 ║
@@ -113,7 +113,7 @@ def print_banner(version: str) -> None:
 def print_banner_minimal(version: str) -> None:
     """Minimal banner for smaller terminals"""
     C = Colors
-    
+
     banner = f"""
 {C.CYAN}╔═══════════════════════════════════════════════════════╗
 ║  {C.BOLD}{C.WHITE}BLUESPLOIT{C.RESET}{C.CYAN} - Bluetooth Pentest Framework        ║
@@ -126,7 +126,7 @@ def print_banner_minimal(version: str) -> None:
 def print_module_banner(module_name: str, module_type: str) -> None:
     """Print banner when loading a module"""
     C = Colors
-    
+
     type_colors = {
         "exploits": C.RED,
         "scanners": C.GREEN,
@@ -134,9 +134,9 @@ def print_module_banner(module_name: str, module_type: str) -> None:
         "auxiliary": C.MAGENTA,
         "payloads": C.BLUE
     }
-    
+
     color = type_colors.get(module_type, C.CYAN)
-    
+
     print(f"""
 {C.DARK_GREY}┌─────────────────────────────────────────────────────────┐{C.RESET}
 {C.DARK_GREY}│{C.RESET} {color}◆{C.RESET} Module: {C.BOLD}{C.WHITE}{module_name}{C.RESET}
@@ -191,35 +191,35 @@ def print_vuln(message: str, severity: str = "HIGH") -> None:
 def print_table(headers: list, rows: list, title: str = None) -> None:
     """Print a formatted table with borders"""
     C = Colors
-    
+
     if not headers or not rows:
         return
-    
+
     # Calculate column widths
     widths = [len(str(h)) for h in headers]
     for row in rows:
         for i, cell in enumerate(row):
             if i < len(widths):
                 widths[i] = max(widths[i], len(str(cell)))
-    
+
     # Total width
     total_width = sum(widths) + (len(widths) * 3) + 1
-    
+
     # Print title if provided
     if title:
         print(f"\n  {C.CYAN}{'═' * total_width}{C.RESET}")
         print(f"  {C.CYAN}{C.BOLD}{title}{C.RESET}")
         print(f"  {C.CYAN}{'═' * total_width}{C.RESET}")
-    
+
     # Print header
     header_line = f"  {C.DARK_GREY}│{C.RESET}"
     for i, h in enumerate(headers):
         header_line += f" {C.BOLD}{C.WHITE}{str(h):<{widths[i]}}{C.RESET} {C.DARK_GREY}│{C.RESET}"
-    
+
     print(f"  {C.DARK_GREY}┌{'┬'.join('─' * (w + 2) for w in widths)}┐{C.RESET}")
     print(header_line)
     print(f"  {C.DARK_GREY}├{'┼'.join('─' * (w + 2) for w in widths)}┤{C.RESET}")
-    
+
     # Print rows
     for row in rows:
         row_line = f"  {C.DARK_GREY}│{C.RESET}"
@@ -227,7 +227,7 @@ def print_table(headers: list, rows: list, title: str = None) -> None:
             if i < len(widths):
                 row_line += f" {str(cell):<{widths[i]}} {C.DARK_GREY}│{C.RESET}"
         print(row_line)
-    
+
     print(f"  {C.DARK_GREY}└{'┴'.join('─' * (w + 2) for w in widths)}┘{C.RESET}")
 
 
@@ -235,10 +235,10 @@ def print_device(address: str, name: str = None, rssi: int = None, extra: str = 
     """Print a discovered device"""
     C = Colors
     name_str = name if name else "Unknown"
-    
+
     output = f"  {C.GREEN}[+]{C.RESET} {C.CYAN}{address}{C.RESET}"
     output += f" - {C.WHITE}{name_str}{C.RESET}"
-    
+
     if rssi is not None:
         if rssi > -50:
             rssi_color = C.GREEN
@@ -247,10 +247,10 @@ def print_device(address: str, name: str = None, rssi: int = None, extra: str = 
         else:
             rssi_color = C.RED
         output += f" [{rssi_color}{rssi} dBm{C.RESET}]"
-    
+
     if extra:
         output += f" {C.DARK_GREY}{extra}{C.RESET}"
-    
+
     print(output)
 
 
@@ -259,33 +259,33 @@ def print_service(uuid: str, name: str = None, handle: int = None) -> None:
     C = Colors
     name_str = name if name else "Unknown Service"
     handle_str = f"0x{handle:04x}" if handle is not None else ""
-    
+
     print(f"  {C.MAGENTA}├──◆ Service:{C.RESET} {C.WHITE}{uuid}{C.RESET} {C.DARK_GREY}{handle_str}{C.RESET}")
     print(f"  {C.DARK_GREY}│   └─ {name_str}{C.RESET}")
 
 
-def print_characteristic(uuid: str, properties: list, handle: int = None, 
+def print_characteristic(uuid: str, properties: list, handle: int = None,
                          vuln_flag: str = None) -> None:
     """Print a discovered characteristic"""
     C = Colors
     handle_str = f"0x{handle:04x}" if handle is not None else ""
     props_str = ", ".join(properties) if properties else "none"
-    
+
     print(f"  {C.CYAN}│   ├──○ Char:{C.RESET} {uuid} {C.DARK_GREY}{handle_str}{C.RESET}")
     print(f"  {C.DARK_GREY}│   │   Props: {props_str}{C.RESET}")
-    
+
     if vuln_flag:
         print(f"  {C.RED}│   │   ⚠ {vuln_flag}{C.RESET}")
 
 
-def progress_bar(current: int, total: int, prefix: str = "", suffix: str = "", 
+def progress_bar(current: int, total: int, prefix: str = "", suffix: str = "",
                  length: int = 40) -> None:
     """Print a professional progress bar"""
     C = Colors
-    
+
     percent = current / total if total > 0 else 0
     filled = int(length * percent)
-    
+
     # Gradient effect
     bar = ""
     for i in range(length):
@@ -298,10 +298,10 @@ def progress_bar(current: int, total: int, prefix: str = "", suffix: str = "",
                 bar += f"{C.GREEN}█{C.RESET}"
         else:
             bar += f"{C.DARK_GREY}░{C.RESET}"
-    
-    print(f"\r  {prefix} [{bar}] {C.WHITE}{percent*100:>5.1f}%{C.RESET} {suffix}", 
+
+    print(f"\r  {prefix} [{bar}] {C.WHITE}{percent*100:>5.1f}%{C.RESET} {suffix}",
           end="", flush=True)
-    
+
     if current >= total:
         print()
 
@@ -319,27 +319,27 @@ def print_box(content: list, title: str = None, color: str = None) -> None:
     C = Colors
     if color is None:
         color = C.CYAN
-    
+
     max_len = max(len(line) for line in content) if content else 20
     if title:
         max_len = max(max_len, len(title) + 4)
-    
+
     print(f"\n  {color}╔{'═' * (max_len + 2)}╗{C.RESET}")
-    
+
     if title:
         print(f"  {color}║{C.RESET} {C.BOLD}{C.WHITE}{title:<{max_len}}{C.RESET} {color}║{C.RESET}")
         print(f"  {color}╠{'═' * (max_len + 2)}╣{C.RESET}")
-    
+
     for line in content:
         print(f"  {color}║{C.RESET} {line:<{max_len}} {color}║{C.RESET}")
-    
+
     print(f"  {color}╚{'═' * (max_len + 2)}╝{C.RESET}")
 
 
 def print_exploit_success(target: str, exploit: str) -> None:
     """Print exploit success banner"""
     C = Colors
-    
+
     print(f"""
   {C.GREEN}╔══════════════════════════════════════════════════════════╗
   ║                                                          ║
@@ -356,7 +356,7 @@ def print_scan_header(scan_type: str, target: str = None) -> None:
     """Print scan start header"""
     C = Colors
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
+
     print(f"""
   {C.CYAN}┌─────────────────────────────────────────────────────────────┐{C.RESET}
   {C.CYAN}│{C.RESET} {C.BOLD}{C.WHITE}◉ {scan_type}{C.RESET}

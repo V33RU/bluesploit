@@ -2,36 +2,37 @@
 BlueSploit Module: BLE Pairing Features Probe
 
 Sends an SMP Pairing Request to a remote BLE device and parses the
-Pairing Response to expose the peer's pairing capabilities — IO
+Pairing Response to expose the peer's pairing capabilities, IO
 Capability, OOB data flag, AuthReq (Bonding / MITM / Secure Connections /
 Keypress / CT2), Maximum Encryption Key Size, and Initiator/Responder
 Key Distribution flags.
 
-This is a passive intelligence probe — the connection is dropped
+This is a passive intelligence probe, the connection is dropped
 before any actual key exchange takes place.
 """
 
-import os
-import select
-import socket
 import struct
-import time
-from typing import Optional
 
 from core.base import BTProtocol, ModuleInfo, ModuleOption, ReconModule, Severity
+from core.utils.bt import (
+    HCIError,
+    SMP_CID,
+    auto_addr_type,
+    disconnect,
+    le_create_connection,
+    open_hci,
+    recv_l2cap,
+    require_root,
+    send_acl_l2cap,
+)
 from core.utils.printer import (
-    Colors, print_error, print_info, print_success, print_warning,
+    Colors,
+    print_error,
+    print_info,
+    print_success,
+    print_warning,
 )
 
-AF_BLUETOOTH    = 31
-BTPROTO_HCI     = 1
-HCI_COMMAND_PKT = 0x01
-HCI_ACL_PKT     = 0x02
-HCI_EVENT_PKT   = 0x04
-HCI_LE_META     = 0x3E
-LE_CONN_COMPLETE= 0x01
-
-SMP_CID             = 0x0006
 SMP_PAIRING_REQ     = 0x01
 SMP_PAIRING_RSP     = 0x02
 SMP_PAIRING_FAILED  = 0x05
@@ -94,8 +95,10 @@ class Module(ReconModule):
         ))
 
     def run(self) -> bool:
-        if os.geteuid() != 0:
-            print_error("Root required for raw HCI socket access")
+        try:
+            require_root()
+        except PermissionError as e:
+            print_error(str(e))
             return False
 
         target = self.get_option("target")
@@ -112,14 +115,8 @@ class Module(ReconModule):
             claim_ar = 0x0D
 
         if addr_type == "auto":
-            msb = int(target.split(":")[0], 16) >> 6
-            if msb in (0b11, 0b01):
-                addr_type = "random"
-                print_info(f"Auto-detected address type: random "
-                           f"({'Static Random' if msb == 0b11 else 'Resolvable Private'})")
-            else:
-                addr_type = "public"
-                print_info("Auto-detected address type: public")
+            addr_type = auto_addr_type(target)
+            print_info(f"Auto-detected address type: {addr_type}")
 
         peer_at = 0x01 if addr_type == "random" else 0x00
 
@@ -127,27 +124,29 @@ class Module(ReconModule):
         print_info(f"Interface: {iface}")
         print_info(f"We claim : IO={IO_NAMES.get(claim_io)}  auth_req=0x{claim_ar:02X}")
 
-        hci = self._open_hci(iface)
-        if not hci:
+        try:
+            hci = open_hci(iface)
+        except HCIError as e:
+            print_error(str(e))
             return False
 
         handle = None
         try:
-            handle = self._le_create_connection(hci, target, peer_at)
+            handle = le_create_connection(hci, target, peer_at)
             if handle is None:
                 print_error("LE connection failed")
                 return False
             print_success(f"LE connected (handle=0x{handle:04x})")
 
-            # Build Pairing Request: opcode + io_cap + oob + auth_req
-            #                       + max_key_size + init_key_dist + resp_key_dist
-            pairing_req = struct.pack("BBBBBBB",
+            pairing_req = struct.pack(
+                "BBBBBBB",
                 SMP_PAIRING_REQ, claim_io, 0x00, claim_ar,
-                16, 0x0F, 0x0F)
+                16, 0x0F, 0x0F,
+            )
             print_info(f"Sending SMP Pairing Request: {pairing_req.hex()}")
-            self._send_smp(hci, handle, pairing_req)
+            send_acl_l2cap(hci, handle, SMP_CID, pairing_req)
 
-            resp = self._recv_smp(hci, timeout=8)
+            resp = recv_l2cap(hci, SMP_CID, timeout=8)
             if resp is None:
                 print_error("No SMP response")
                 return False
@@ -164,12 +163,11 @@ class Module(ReconModule):
                 return False
 
             self._decode_pairing_response(resp, target)
-
             return True
 
         finally:
             if handle is not None:
-                self._disconnect(hci, handle)
+                disconnect(hci, handle)
             hci.close()
 
     def _decode_pairing_response(self, resp: bytes, target: str):
@@ -202,12 +200,12 @@ class Module(ReconModule):
         self._print_keydist(resp_kd)
 
         if not sc and (mitm or bonding):
-            print_warning("Peer accepts Legacy Pairing — vulnerable to passive eavesdrop "
+            print_warning("Peer accepts Legacy Pairing, vulnerable to passive eavesdrop "
                           "(crackle / KNOB-style downgrade)")
         if not mitm:
-            print_warning("Peer does NOT require MITM protection — JustWorks attack possible")
+            print_warning("Peer does NOT require MITM protection, JustWorks attack possible")
         if max_key < 16:
-            print_warning(f"Peer accepts {max_key}-byte key — KNOB-style downgrade possible")
+            print_warning(f"Peer accepts {max_key}-byte key, KNOB-style downgrade possible")
 
         self.add_result({
             "target": target,
@@ -234,67 +232,3 @@ class Module(ReconModule):
     def _yn(b: bool) -> str:
         c = Colors.GREEN if b else Colors.DARK_GREY
         return f"{c}{'yes' if b else 'no'}{Colors.RESET}"
-
-    # ── HCI / SMP socket plumbing ─────────────────────────────────────────
-
-    def _open_hci(self, iface: str) -> Optional[socket.socket]:
-        try:
-            hci = socket.socket(AF_BLUETOOTH, socket.SOCK_RAW, BTPROTO_HCI)
-            dev_id = int(iface.replace("hci", ""))
-            hci.bind((dev_id,))
-            return hci
-        except OSError as e:
-            print_error(f"HCI open failed on {iface}: {e}")
-            return None
-
-    def _hci_cmd(self, hci, ogf, ocf, params=b''):
-        opcode = (ogf << 10) | ocf
-        pkt = struct.pack("<BHB", HCI_COMMAND_PKT, opcode, len(params)) + params
-        hci.setblocking(True); hci.send(pkt); hci.setblocking(False)
-
-    def _le_create_connection(self, hci, target, peer_at, timeout=12.0):
-        addr = bytes(int(x, 16) for x in reversed(target.split(":")))
-        params = struct.pack("<HHBB6sBHHHHHH",
-            0x0060, 0x0030, 0x00, peer_at, addr, 0x00,
-            0x0006, 0x000C, 0x0000, 0x00C8, 0x0000, 0x0000)
-        self._hci_cmd(hci, 0x08, 0x000D, params)
-        deadline = time.time() + timeout
-        while time.time() < deadline:
-            r, _, _ = select.select([hci], [], [], 0.5)
-            if not r:
-                continue
-            pkt = hci.recv(255)
-            if (pkt and pkt[0] == HCI_EVENT_PKT and pkt[1] == HCI_LE_META
-                    and len(pkt) >= 7 and pkt[3] == LE_CONN_COMPLETE
-                    and pkt[4] == 0x00):
-                return struct.unpack_from("<H", pkt, 5)[0] & 0x0FFF
-        return None
-
-    def _send_smp(self, hci, handle, data):
-        l2cap = struct.pack("<HH", len(data), SMP_CID) + data
-        acl   = struct.pack("<HH", handle | (0x00 << 12), len(l2cap)) + l2cap
-        hci.setblocking(True); hci.send(bytes([HCI_ACL_PKT]) + acl); hci.setblocking(False)
-
-    def _recv_smp(self, hci, timeout=5.0) -> Optional[bytes]:
-        deadline = time.time() + timeout
-        while time.time() < deadline:
-            r, _, _ = select.select([hci], [], [], 0.5)
-            if not r:
-                continue
-            pkt = hci.recv(512)
-            if not pkt or pkt[0] != HCI_ACL_PKT or len(pkt) < 10:
-                continue
-            l2_off = 5
-            if len(pkt) < l2_off + 4:
-                continue
-            l2_cid = struct.unpack_from("<H", pkt, l2_off + 2)[0]
-            if l2_cid == SMP_CID and len(pkt) > l2_off + 4:
-                return pkt[l2_off + 4:]
-        return None
-
-    def _disconnect(self, hci, handle: int):
-        params = struct.pack("<HB", handle, 0x13)
-        try:
-            self._hci_cmd(hci, 0x01, 0x0006, params)
-        except Exception:
-            pass

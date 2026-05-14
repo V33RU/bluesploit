@@ -4,14 +4,19 @@ Provides the interactive Metasploit-style command-line interface
 """
 
 import cmd
-import sys
 import readline
-from typing import Optional, List
-from core.loader import ModuleLoader
+import sys
+from typing import List, Optional
+
 from core.base import BaseModule, ModuleType
+from core.loader import ModuleLoader
 from core.utils.printer import (
-    print_success, print_error, print_warning,
-    print_info, print_status, Colors
+    Colors,
+    print_error,
+    print_info,
+    print_status,
+    print_success,
+    print_warning,
 )
 
 

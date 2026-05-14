@@ -3,11 +3,12 @@ BlueSploit Module Loader
 Dynamically loads and manages modules from the modules directory
 """
 
+import importlib.util
 import os
 import sys
-import importlib.util
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Any, Dict, List, Optional
+
 from core.base import BaseModule, ModuleType
 
 
@@ -101,7 +102,7 @@ class ModuleLoader:
             elif len(matches) == 1:
                 module_path = matches[0]
             elif len(matches) > 1:
-                print(f"[\033[93m!\033[0m] Ambiguous module path. Matches:")
+                print("[\033[93m!\033[0m] Ambiguous module path. Matches:")
                 for m in sorted(matches):
                     print(f"      {m}")
                 return None

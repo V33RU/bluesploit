@@ -28,12 +28,11 @@ Each HardwareDevice object exposes:
 
 import os
 import re
-import subprocess
 import shutil
+import subprocess
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import List, Optional, Dict, Any, Set
-
+from typing import Any, Dict, List, Optional, Set
 
 # ──────────────────────────────────────────────────────────────
 # Enums

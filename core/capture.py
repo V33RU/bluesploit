@@ -9,8 +9,8 @@ Backends (tried in order):
 """
 
 import os
-import signal
 import shutil
+import signal
 import subprocess
 import time
 from typing import Optional

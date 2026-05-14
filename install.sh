@@ -198,8 +198,15 @@ if ! python3 -c 'import sys; sys.exit(0 if sys.prefix != sys.base_prefix else 1)
     fi
 fi
 
-# Robust pybluez install — pybluez2 0.46 sdist on PyPI ships broken
-# (missing btmodule.h header → fails to build). Try sources in order.
+# pybluez2 0.46 sdist on PyPI ships broken (missing btmodule.h header,
+# fails to build). Try sources in order, all pinned for supply chain safety.
+#
+# Update the pinned SHA here when bumping. Look up current HEAD with:
+#   curl -s https://api.github.com/repos/pybluez/pybluez/commits/master \
+#       | python3 -c "import json,sys; print(json.load(sys.stdin)['sha'])"
+PYBLUEZ_GIT_SHA="82cbba8a1ebd4c1e3442dfafd8581d58c50fa39e"  # 2023-12-21
+PYBLUEZ2_PINNED_VERSION="0.30"
+
 install_pybluez() {
     if [ "$OS" != "Linux" ]; then
         echo -e "${YELLOW}[!] Classic BT (pybluez) only supported on Linux${NC}"
@@ -207,27 +214,27 @@ install_pybluez() {
     fi
     echo -e "${YELLOW}[*] Installing pybluez (Classic BT bindings)...${NC}"
 
-    # Source 1: maintained pybluez fork on GitHub (Python 3.12 compatible)
-    if $PIP install $PIP_FLAGS "git+https://github.com/pybluez/pybluez.git#egg=pybluez" 2>/dev/null; then
-        echo -e "${GREEN}[+] pybluez installed from GitHub fork${NC}"
+    # Source 1: maintained pybluez repo on GitHub, pinned to a commit SHA.
+    # NEVER install from the moving 'master' ref, a takeover or commit
+    # injection at upstream would yield code execution on every install.
+    local pybluez_url="git+https://github.com/pybluez/pybluez.git@${PYBLUEZ_GIT_SHA}#egg=pybluez"
+    if $PIP install $PIP_FLAGS "$pybluez_url" 2>/dev/null; then
+        echo -e "${GREEN}[+] pybluez installed from GitHub (pinned @${PYBLUEZ_GIT_SHA:0:12})${NC}"
         return 0
     fi
 
-    # Source 2: pinned older pybluez2 release (0.30 still builds cleanly)
-    if $PIP install $PIP_FLAGS "pybluez2==0.30" 2>/dev/null; then
-        echo -e "${GREEN}[+] pybluez2 0.30 installed (pinned working version)${NC}"
+    # Source 2: pinned older pybluez2 release (0.30 still builds cleanly).
+    if $PIP install $PIP_FLAGS "pybluez2==${PYBLUEZ2_PINNED_VERSION}" 2>/dev/null; then
+        echo -e "${GREEN}[+] pybluez2 ${PYBLUEZ2_PINNED_VERSION} installed${NC}"
         return 0
     fi
 
-    # Source 3: latest pybluez2 (may fail on 0.46 — known broken)
-    if $PIP install $PIP_FLAGS pybluez2 2>/dev/null; then
-        echo -e "${GREEN}[+] pybluez2 latest installed${NC}"
-        return 0
-    fi
-
-    # Source 4: system package (apt) — install at OS level
+    # Source 3: system package (apt), install at OS level, signed by distro.
+    # We deliberately skip "pip install pybluez2" without a version pin,
+    # the risk of a hijacked future release at unknown version is too high
+    # given how rarely this codepath is exercised.
     if command -v apt-get >/dev/null 2>&1; then
-        echo -e "${YELLOW}[*] All pip sources failed — falling back to apt python3-bluez${NC}"
+        echo -e "${YELLOW}[*] All pip sources failed, falling back to apt python3-bluez${NC}"
         if $SUDO apt-get install -y python3-bluez 2>/dev/null; then
             echo -e "${GREEN}[+] python3-bluez installed via apt${NC}"
             echo -e "${YELLOW}[!] You may need 'python3 -m venv --system-site-packages env' to use it${NC}"
@@ -241,18 +248,24 @@ install_pybluez() {
     return 1
 }
 
+# All install paths read from requirements.txt or pyproject.toml ".[dev]".
+# Both are version-pinned (see pyproject.toml), so transient pip installs
+# of unpinned packages would only weaken supply chain protection. Don't
+# add them here.
 case $INSTALL_TYPE in
     basic)
         $PIP install $PIP_FLAGS -r requirements.txt
         ;;
     full)
+        # requirements.txt already covers rich/cmd2/scapy (pinned).
         $PIP install $PIP_FLAGS -r requirements.txt
-        $PIP install $PIP_FLAGS rich cmd2 scapy
         install_pybluez
         ;;
     dev)
+        # Pulls dev tools from the [dev] extra in pyproject.toml, all
+        # pinned with == there.
         $PIP install $PIP_FLAGS -r requirements.txt
-        $PIP install $PIP_FLAGS pytest pytest-asyncio black flake8
+        $PIP install $PIP_FLAGS ".[dev]"
         ;;
     classic)
         $PIP install $PIP_FLAGS -r requirements.txt
