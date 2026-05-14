@@ -60,13 +60,16 @@ def _list_modules():
 
 def _start_console():
     """Start the interactive console"""
+    from core.banner import collect_stats, format_stats_line, pick_tip
     from core.interpreter import BlueSploitInterpreter
     from core.utils.printer import print_banner, print_info
 
     print_banner(__version__)
 
     interp = BlueSploitInterpreter()
-    print_info(f"Loaded {interp.loader.module_count} modules")
+    stats = collect_stats(interp.loader, __version__)
+    print(format_stats_line(stats))
+    print(f"  tip: {pick_tip()}")
     print()
 
     try:

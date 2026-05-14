@@ -964,10 +964,56 @@ class BlueSploitInterpreter(cmd.Cmd):
         print("\033[2J\033[H", end="")
 
     def do_banner(self, _: str) -> None:
-        """Display the BlueSploit banner"""
+        """Display the BlueSploit banner, with stats and a random tip."""
+        import bluesploit as _bluesploit
+        from core.banner import collect_stats, format_stats_line, pick_tip
         from core.utils.printer import print_banner
-        print_banner("1.0.0")
-        print_info(f"Loaded {self.loader.module_count} modules")
+
+        version = getattr(_bluesploit, "__version__", "")
+        print_banner(version or "1.0.0")
+        stats = collect_stats(self.loader, version or "")
+        print(format_stats_line(stats))
+        print(f"  tip: {pick_tip()}")
+        print()
+
+    def do_whatsnew(self, _: str) -> None:
+        """
+        Show the most recent module additions in the repo.
+
+        Usage:
+            whatsnew
+
+        Reads `git log` for commits that introduced files under
+        `modules/` and lists the 10 newest. Useful to spot what landed
+        since the last time you pulled.
+        """
+        from core.banner import collect_module_additions
+        from core.ui.tables import Column, render_table
+
+        adds = collect_module_additions(limit=10)
+        if not adds:
+            print_info(
+                "No module additions found (not a git checkout, "
+                "or git not on PATH)."
+            )
+            return
+
+        cols = [
+            Column("Date",   style="dim",     no_wrap=True),
+            Column("Commit", style="magenta", no_wrap=True),
+            Column("Module", style="cyan"),
+        ]
+        rows = [(a["date"], a["hash"], a["path"]) for a in adds]
+        render_table(cols, rows, title="Recently added modules")
+        print()
+
+    def do_tips(self, _: str) -> None:
+        """Print every operator tip surfaced under the boot banner."""
+        from core.banner import TIPS
+
+        print()
+        for i, t in enumerate(TIPS, 1):
+            print(f"  {i:>2}. {t}")
         print()
 
     def do_reload(self, _: str) -> None:
@@ -1127,7 +1173,9 @@ class BlueSploitInterpreter(cmd.Cmd):
         ("Utility",           "history",   "Show command history",           "history"),
         ("Utility",           "clear",     "Clear the screen",               "clear"),
         ("Utility",           "reload",    "Reload modules from disk",       "reload"),
-        ("Utility",           "banner",    "Print the banner",               "banner"),
+        ("Utility",           "banner",    "Print the banner with stats",    "banner"),
+        ("Utility",           "whatsnew",  "Recent module additions",        "whatsnew"),
+        ("Utility",           "tips",      "List operator tips",             "tips"),
         ("Utility",           "exit",      "Leave BlueSploit",               "exit"),
     ]
 
