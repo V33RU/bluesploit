@@ -29,6 +29,16 @@ class BlueSploitInterpreter(cmd.Cmd):
 
     doc_header = "Commands (type help <command>):"
 
+    # Default values for the framework-wide options touched by setg/unsetg.
+    # Order matters here: it doubles as the iteration order for `setg` with
+    # no args. unsetg restores the option to whatever value lives here.
+    _DEFAULT_GLOBAL_OPTIONS: Dict[str, Any] = {
+        "interface": "hci0",
+        "verbose": False,
+        "timeout": 10,
+        "pcap_file": None,
+    }
+
     def __init__(self):
         super().__init__()
         self.loader = ModuleLoader()
@@ -39,16 +49,42 @@ class BlueSploitInterpreter(cmd.Cmd):
         self.history_file = ".bluesploit_history"
         self._load_history()
 
-        # Global options (applied to all modules via setg)
-        self.global_options = {
-            "interface": "hci0",
-            "verbose": False,
-            "timeout": 10,
-            "pcap_file": None,
-        }
+        # Global options (applied to all modules via setg). Start from the
+        # defaults, then overlay any values persisted in the Store so they
+        # survive across restarts.
+        self.global_options: Dict[str, Any] = dict(self._DEFAULT_GLOBAL_OPTIONS)
+        self._load_persisted_globals()
 
         # Set initial prompt
         self._update_prompt()
+
+    def _load_persisted_globals(self) -> None:
+        """Overlay self.global_options with values persisted in the Store.
+
+        Each value comes back as a string; coerce based on the default's
+        declared type (bool, int, or leave as string). Unknown keys are
+        kept verbatim so future options carried over from older sessions
+        still appear in `setg` listings.
+        """
+        try:
+            from core.store import get_store
+            persisted = get_store().list_globals()
+        except Exception:
+            return
+        for name, raw in persisted.items():
+            self.global_options[name] = self._coerce_global(name, raw)
+
+    def _coerce_global(self, name: str, raw_value: str) -> Any:
+        """Coerce a stored string into the type that matches the option default."""
+        default = self._DEFAULT_GLOBAL_OPTIONS.get(name)
+        if isinstance(default, bool):
+            return raw_value.lower() in ("true", "1", "yes")
+        if isinstance(default, int) and not isinstance(default, bool):
+            try:
+                return int(raw_value)
+            except ValueError:
+                return default
+        return raw_value
 
     def _load_history(self) -> None:
         """Load command history from file"""
@@ -749,8 +785,16 @@ class BlueSploitInterpreter(cmd.Cmd):
 
     def do_setg(self, args: str) -> None:
         """
-        Set a global option
-        Usage: setg <option> <value>
+        Set a global option, persisted across sessions.
+
+        Usage:
+            setg                       List every global option and its value.
+            setg <option> <value>      Set and persist a global option.
+
+        Globals are applied to module options at run time when the operator
+        has not explicitly set them on the loaded module. Values survive
+        across restarts via the engagement store; use `unsetg <option>` to
+        restore the default.
         """
         parts = args.split(maxsplit=1)
         if len(parts) < 2:
@@ -760,21 +804,84 @@ class BlueSploitInterpreter(cmd.Cmd):
             return
 
         option, raw_value = parts
-        if option in self.global_options:
-            coerced: Any = raw_value
-            if isinstance(self.global_options[option], bool):
-                coerced = raw_value.lower() in ('true', '1', 'yes')
-            elif isinstance(self.global_options[option], int):
-                try:
-                    coerced = int(raw_value)
-                except ValueError:
-                    print_error(f"Invalid integer value: {raw_value}")
-                    return
-
-            self.global_options[option] = coerced
-            print_success(f"Global: {option} => {coerced}")
-        else:
+        if option not in self.global_options:
             print_error(f"Unknown global option: {option}")
+            return
+
+        coerced: Any = self._coerce_global(option, raw_value)
+        # The coercer never raises, but explicitly reject non-numeric input
+        # for int options so the user gets a clear message instead of a
+        # silently-reverted default.
+        default = self._DEFAULT_GLOBAL_OPTIONS.get(option)
+        if isinstance(default, int) and not isinstance(default, bool):
+            try:
+                int(raw_value)
+            except ValueError:
+                print_error(f"Invalid integer value: {raw_value}")
+                return
+
+        self.global_options[option] = coerced
+        try:
+            from core.store import get_store
+            get_store().set_global(option, coerced)
+        except Exception as e:
+            print_warning(f"Persist failed (in-memory only): {e}")
+        print_success(f"Global: {option} => {coerced}")
+
+    def complete_setg(
+        self, text: str, line: str, begidx: int, endidx: int
+    ) -> List[str]:
+        """Complete option names for `setg`. Value position returns []."""
+        preceding = line[:begidx].split()
+        if len(preceding) > 1:
+            return []
+        t = text.lower()
+        return [k for k in self.global_options if k.lower().startswith(t)]
+
+    def do_unsetg(self, args: str) -> None:
+        """
+        Clear a persisted global option and restore its default value.
+
+        Usage:
+            unsetg <option>
+
+        Removes the override from the engagement store and resets the
+        live value back to the framework default.
+        """
+        option = (args or "").strip()
+        if not option:
+            print_error("Usage: unsetg <option>")
+            return
+        if option not in self._DEFAULT_GLOBAL_OPTIONS:
+            print_error(f"Unknown global option: {option}")
+            return
+        self.global_options[option] = self._DEFAULT_GLOBAL_OPTIONS[option]
+        try:
+            from core.store import get_store
+            removed = get_store().unset_global(option)
+        except Exception as e:
+            print_warning(f"Store update failed (in-memory only): {e}")
+            removed = False
+        if removed:
+            print_success(
+                f"Cleared: {option} (restored to default "
+                f"{self.global_options[option]!r})"
+            )
+        else:
+            print_info(
+                f"{option} had no persisted value; "
+                f"left at default {self.global_options[option]!r}"
+            )
+
+    def complete_unsetg(
+        self, text: str, line: str, begidx: int, endidx: int
+    ) -> List[str]:
+        """Complete option names for `unsetg`."""
+        preceding = line[:begidx].split()
+        if len(preceding) > 1:
+            return []
+        t = text.lower()
+        return [k for k in self._DEFAULT_GLOBAL_OPTIONS if k.lower().startswith(t)]
 
     def do_help(self, arg: str) -> None:
         """Show help information"""

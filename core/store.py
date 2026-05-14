@@ -32,7 +32,7 @@ import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable, List, Optional, Union
+from typing import Dict, Iterable, List, Optional, Union
 
 SCHEMA_VERSION = 1
 DEFAULT_WORKSPACE = "default"
@@ -251,6 +251,44 @@ class Store:
                 "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
                 (key, value),
             )
+
+    # Globals (setg-style persistent options) --------------------------------
+    #
+    # Stored as meta rows under the `global:<name>` key namespace. Values are
+    # serialized as strings, the interpreter handles coercion back to its
+    # declared type using the option's default.
+
+    _GLOBAL_PREFIX = "global:"
+
+    def set_global(self, name: str, value: object) -> None:
+        """Persist a global option keyed by name."""
+        name = (name or "").strip()
+        if not name:
+            raise ValueError("global option name must be non-empty")
+        self._write_meta(f"{self._GLOBAL_PREFIX}{name}", str(value))
+
+    def unset_global(self, name: str) -> bool:
+        """Forget a persisted global option. Returns True if a row was deleted."""
+        name = (name or "").strip()
+        if not name:
+            return False
+        with self._lock, self._conn:
+            cur = self._conn.execute(
+                "DELETE FROM meta WHERE key = ?", (f"{self._GLOBAL_PREFIX}{name}",)
+            )
+        return cur.rowcount > 0
+
+    def list_globals(self) -> Dict[str, str]:
+        """Return all persisted global options as `{name: raw_string_value}`."""
+        out: Dict[str, str] = {}
+        prefix = self._GLOBAL_PREFIX
+        with self._lock:
+            for row in self._conn.execute(
+                "SELECT key, value FROM meta WHERE key LIKE ?",
+                (prefix + "%",),
+            ):
+                out[row["key"][len(prefix):]] = row["value"]
+        return out
 
     # Workspaces -------------------------------------------------------------
 
