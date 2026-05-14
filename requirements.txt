@@ -22,43 +22,44 @@
 #   install.sh checks for this automatically on Darwin.
 # ═══════════════════════════════════════════════════════════════════════
 
-# ── Core BLE ──────────────────────────────────────────────────────────
-bleak>=0.21.0                  # BLE scanning + GATT (cross-platform)
+# NOTE: versions pinned with == to match pyproject.toml. Source of truth
+# is pyproject.toml; bump there first, then mirror here.
 
-# ── Bluetooth Classic (BR/EDR) ────────────────────────────────────────
-# Modules: bluebugging, bluesnarfing, bluefrag, knob, bias, badchoice,
-#          badkarma, blueborne_*, braktooth, bluffs, keystroke_injection
-#
-# NOTE: pybluez2 0.46 sdist on PyPI is broken (missing btmodule.h header).
-# If the line below fails, run ./install.sh --classic — it falls back to
-# the maintained pybluez GitHub fork or apt python3-bluez automatically.
+# Core BLE
+bleak==3.0.1                   # BLE scanning + GATT (cross-platform)
+
+# Bluetooth Classic (BR/EDR)
+# pybluez2 0.46 sdist on PyPI is broken (missing btmodule.h header).
+# Run ./install.sh --classic, it installs from the maintained upstream
+# fork or falls back to apt python3-bluez.
 # Manual fix:
 #   sudo apt install libbluetooth-dev bluez build-essential
 #   pip install git+https://github.com/pybluez/pybluez.git#egg=pybluez
-# pybluez2>=0.46               # DISABLED — broken sdist; installed via install.sh
 
-# ── Packet Crafting & Crypto ──────────────────────────────────────────
-scapy>=2.5.0                   # BT/BLE frame construction + injection
-cryptography>=41.0.0           # Key derivation (E0/E3), AES analysis
+# Packet Crafting & Crypto
+scapy==2.7.0                   # BT/BLE frame construction + injection
+cryptography==47.0.0           # Key derivation (E0/E3), AES analysis
 
-# ── BLE Low-Level ────────────────────────────────────────────────────
+# BLE Low-Level
 # Modules: sweyntooth, ble_pairing_downgrade, ble_sc_bypass
-bluepy>=1.3.0                  # Raw BLE + GATT handle access (Linux)
+bluepy==1.3.0                  # Raw BLE + GATT handle access (Linux)
 
-# ── Hardware Dongles ─────────────────────────────────────────────────
-pyserial>=3.5                  # nRF Sniffer, BTLEJack, YARD Stick One
-btlejack>=1.2                  # BLE connection hijacking (micro:bit)
+# Hardware Dongles
+pyserial==3.5                  # nRF Sniffer, BTLEJack, YARD Stick One
+btlejack==2.1.1                # BLE connection hijacking (micro:bit)
 
-# ── UI ───────────────────────────────────────────────────────────────
-rich>=13.0.0                   # Colour tables, progress bars
-cmd2>=2.4.0                    # Advanced REPL (history, scripting)
+# UI (declared for future use; not yet imported by the codebase)
+rich==15.0.0                   # Colour tables, progress bars
+cmd2==3.5.1                    # Advanced REPL (history, scripting)
 
-# ── Async Utilities ──────────────────────────────────────────────────
-asyncio-dgram>=2.1.1           # Async UDP/datagram support
+# Async Utilities (declared for future use; not yet imported)
+asyncio-dgram==3.0.0           # Async UDP/datagram support
 
-# ── Development (uncomment for dev/CI) ───────────────────────────────
-# pytest>=7.0.0
-# pytest-asyncio>=0.21.0
-# black>=23.0.0
-# flake8>=6.0.0
-# mypy>=1.5.0
+# Development (uncomment for dev/CI, or use pip install ".[dev]")
+# pytest==8.3.4
+# pytest-asyncio==0.24.0
+# pytest-cov==6.0.0
+# pytest-mock==3.14.0
+# black==24.10.0
+# ruff==0.15.12
+# mypy==1.13.0
