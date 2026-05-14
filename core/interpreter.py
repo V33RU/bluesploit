@@ -4,6 +4,7 @@ Provides the interactive Metasploit-style command-line interface
 """
 
 import cmd
+import os
 import readline
 import sys
 from typing import Any, Dict, List, Optional
@@ -408,6 +409,84 @@ class BlueSploitInterpreter(cmd.Cmd):
             t = text.lower()
             return [n for n in names if n.lower().startswith(t)]
         return []
+
+    def do_resource(self, args: str) -> None:
+        """
+        Run console commands from a script file.
+
+        Usage:
+            resource <path>            Execute every command in <path>.
+
+        The file is read line by line, blank lines and lines starting with
+        `#` are skipped, every other line runs through the same dispatcher
+        the interactive REPL uses. Errors on one line are printed and the
+        rest of the script continues; this matches how operators usually
+        iterate during an engagement.
+
+        Example file (saved as discover.rc):
+            # quick recon pass
+            workspace use lab
+            use recon/discovery
+            set interface hci0
+            run
+            back
+            hosts
+
+        Run with:  `resource discover.rc`
+        """
+        path = (args or "").strip()
+        if not path:
+            print_error("Usage: resource <file>")
+            return
+
+        path = os.path.expanduser(path)
+        try:
+            with open(path, encoding="utf-8") as f:
+                lines = f.readlines()
+        except FileNotFoundError:
+            print_error(f"Resource file not found: {path}")
+            return
+        except OSError as e:
+            print_error(f"Cannot read {path}: {e}")
+            return
+
+        print_info(f"Running resource script: {path}")
+        ran = 0
+        failed = 0
+        for lineno, raw in enumerate(lines, start=1):
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            print(f"  {Colors.DARK_GREY}[{lineno}]{Colors.RESET} {line}")
+            try:
+                stop = self.onecmd(line)
+            except Exception as e:
+                failed += 1
+                print_error(f"line {lineno}: {e}")
+                continue
+            ran += 1
+            if stop:
+                print_info(f"Script halted at line {lineno} (command requested exit)")
+                break
+
+        summary = f"Resource script done: {ran} command(s) run"
+        if failed:
+            summary += f", {failed} failed"
+        print_success(summary)
+
+    def complete_resource(
+        self, text: str, line: str, begidx: int, endidx: int
+    ) -> List[str]:
+        """Tab-complete filesystem paths for the resource argument.
+
+        Directories get a trailing slash so completion keeps walking into
+        them; everything else is returned as-is so readline displays
+        whatever glob found.
+        """
+        import glob
+        expanded = os.path.expanduser(text)
+        candidates = glob.glob(expanded + "*")
+        return [c + ("/" if os.path.isdir(c) else "") for c in candidates]
 
     def do_hosts(self, args: str) -> None:
         """
