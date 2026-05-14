@@ -1098,36 +1098,161 @@ class BlueSploitInterpreter(cmd.Cmd):
         t = text.lower()
         return [k for k in self._DEFAULT_GLOBAL_OPTIONS if k.lower().startswith(t)]
 
+    # Help catalog. Ordering inside each category controls the order in which
+    # rows show up in `help` output. Tuples are (category, command, summary,
+    # example). New commands should land here so they appear in `help`.
+    _COMMAND_HELP: List[tuple] = [
+        ("Module navigation", "use",       "Load a module by path",          "use exploits/knob"),
+        ("Module navigation", "back",      "Leave the current module",       "back"),
+        ("Module navigation", "search",    "Search modules by term",         "search knob"),
+        ("Module navigation", "show",      "List modules or a category",     "show exploits"),
+
+        ("Module options",    "options",   "Show current option values",     "options"),
+        ("Module options",    "info",      "Show module metadata",           "info"),
+        ("Module options",    "set",       "Set an option (target is smart)", "set target AA:BB:CC:DD:EE:FF"),
+        ("Module options",    "unset",     "Clear an option",                "unset target"),
+        ("Module options",    "check",     "Non-destructive pre-flight",     "check"),
+        ("Module options",    "run",       "Execute the module",             "run"),
+
+        ("Engagement state",  "hosts",     "List stored hosts",              "hosts alpha"),
+        ("Engagement state",  "creds",     "List stored credentials",        "creds LinkKey"),
+        ("Engagement state",  "workspace", "Manage engagement workspaces",   "workspace use clientA"),
+
+        ("Persistence",       "setg",      "Set a persistent global option", "setg interface hci1"),
+        ("Persistence",       "unsetg",    "Clear a persistent global",      "unsetg interface"),
+
+        ("Automation",        "resource",  "Run commands from a file",       "resource setup.rc"),
+
+        ("Utility",           "help",      "This help; pass a command name", "help workspace"),
+        ("Utility",           "history",   "Show command history",           "history"),
+        ("Utility",           "clear",     "Clear the screen",               "clear"),
+        ("Utility",           "reload",    "Reload modules from disk",       "reload"),
+        ("Utility",           "banner",    "Print the banner",               "banner"),
+        ("Utility",           "exit",      "Leave BlueSploit",               "exit"),
+    ]
+
     def do_help(self, arg: str) -> None:
-        """Show help information"""
-        if arg:
-            super().do_help(arg)
-        else:
-            print(f"""
-  {Colors.CYAN}Core Commands{Colors.RESET}
-  =============
-    use <module>      Load a module
-    back              Unload current module
-    search <keyword>  Search modules (name, description, CVE)
-    show <type>       Show modules/options
+        """Show help information.
 
-  {Colors.CYAN}Module Commands{Colors.RESET}
-  ===============
-    set <opt> <val>   Set module option
-    unset <option>    Clear module option
-    options           Show module options
-    info              Show module info
-    run / exploit     Execute module
-    check             Check if vulnerable
+        Usage:
+            help                 Tabular overview of every command, grouped
+                                 by category, with a short example per row.
+            help <command>       Summary, example, and full docstring for
+                                 one command.
+            help <module/path>   Module metadata + options table. Accepts a
+                                 full path (`exploits/knob`) or a substring
+                                 that resolves to one module.
+        """
+        arg = (arg or "").strip()
+        if not arg:
+            self._render_help_overview()
+            return
 
-  {Colors.CYAN}Utility Commands{Colors.RESET}
-  ================
-    clear             Clear screen
-    reload            Reload modules
-    setg <opt> <val>  Set global option
-    banner            Show banner
-    exit / quit       Exit BlueSploit
-""")
+        # Module path lookup: explicit path or a substring that the loader
+        # can resolve. Try this before command lookup so a name collision
+        # never hides a module from `help`.
+        if "/" in arg or self._looks_like_module(arg):
+            if self._render_module_help(arg):
+                return
+
+        if any(name == arg.lower() for _, name, _, _ in self._COMMAND_HELP):
+            self._render_command_help(arg.lower())
+            return
+
+        # Anything else: cmd.Cmd's default (looks for `help_<arg>` / `do_<arg>.__doc__`).
+        super().do_help(arg)
+
+    def _looks_like_module(self, arg: str) -> bool:
+        """Heuristic: do any indexed modules match this fragment?"""
+        try:
+            return any(arg in p for p in self.loader.list_all())
+        except Exception:
+            return False
+
+    def _render_help_overview(self) -> None:
+        """Group every catalog entry by category and render one rich table per group."""
+        from core.ui.tables import Column, render_table
+        by_category: Dict[str, List[tuple]] = {}
+        order: List[str] = []
+        for cat, name, summary, example in self._COMMAND_HELP:
+            if cat not in by_category:
+                by_category[cat] = []
+                order.append(cat)
+            by_category[cat].append((name, summary, example))
+
+        columns = [
+            Column("Command", style="cyan", no_wrap=True),
+            Column("What"),
+            Column("Example", style="dim"),
+        ]
+        print()
+        for cat in order:
+            render_table(columns, by_category[cat], title=cat)
+            print()
+        print_info(
+            "Type 'help <command>' for details, or 'help <module/path>' "
+            "for module info."
+        )
+
+    def _render_command_help(self, command: str) -> None:
+        """One-command detail: summary, example, docstring."""
+        entry = next(e for e in self._COMMAND_HELP if e[1] == command)
+        _, name, summary, example = entry
+        print()
+        print(f"  {Colors.CYAN}{name}{Colors.RESET}  {summary}")
+        print(f"  Example: {example}")
+        method = getattr(self, f"do_{name}", None)
+        if method and method.__doc__:
+            print()
+            for line in method.__doc__.strip().splitlines():
+                # Normalize indent: strip leading 8-space block of the
+                # docstring, keep tabular indents inside Usage blocks.
+                if line.startswith("        "):
+                    print(f"  {line[8:]}")
+                else:
+                    print(f"  {line.strip()}")
+        print()
+
+    def _render_module_help(self, path: str) -> bool:
+        """Module metadata + options as a small rich table. Returns True
+        when a module was found and rendered; False so the caller can
+        fall through to other lookups otherwise."""
+        module = self.loader.load(path)
+        if not module:
+            return False
+
+        info = module.info
+        print()
+        print(f"  {Colors.CYAN}{info.name}{Colors.RESET}")
+        if info.description:
+            print(f"  {info.description}")
+        print()
+        print(f"  Authors  : {', '.join(info.author)}")
+        print(f"  Protocol : {info.protocol.value}")
+        print(f"  Severity : {info.severity.value}")
+        if info.cve:
+            cve_str = ", ".join(info.cve) if isinstance(info.cve, list) else str(info.cve)
+            print(f"  CVE      : {cve_str}")
+        if info.references:
+            print("  References:")
+            for r in info.references:
+                print(f"    {r}")
+
+        if module.options:
+            from core.ui.tables import Column, render_table
+            cols = [
+                Column("Option",      style="cyan",  no_wrap=True),
+                Column("Required",    justify="center", no_wrap=True),
+                Column("Current",     style="green", no_wrap=True),
+                Column("Description"),
+            ]
+            rows = []
+            for name, opt in module.options.items():
+                cur = "" if opt.value is None else str(opt.value)
+                rows.append((name, "yes" if opt.required else "no", cur, opt.description))
+            print()
+            render_table(cols, rows, title="Options")
+        return True
 
     def do_exit(self, _: str) -> bool:
         """Exit BlueSploit"""
