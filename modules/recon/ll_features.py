@@ -18,12 +18,15 @@ from core.utils.bt import (
     HCIError,
     LE_READ_FEATURES_COMPL,
     auto_addr_type,
+    bitmap_to_dict,
     decode_bitmap,
+    decode_company_id,
+    decode_lmp_version,
     disconnect,
     hci_cmd,
-    bitmap_to_dict,
     le_create_connection,
     open_hci,
+    read_remote_version,
     require_root,
     wait_le_meta,
 )
@@ -147,6 +150,32 @@ class Module(ReconModule):
                 return False
             print_success(f"LE connected (handle=0x{handle:04x})")
 
+            fp = {
+                "target": target,
+                "addr_type": addr_type,
+            }
+
+            # Read_Remote_Version_Information on the LE link returns the
+            # LE LL controller version. Same HCI opcode as BR/EDR; some
+            # peripherals reject it before encryption, tolerate failure.
+            version_info = read_remote_version(hci, handle)
+            if version_info is not None:
+                ll_v, manuf, subv = version_info
+                v_label = decode_lmp_version(ll_v)
+                m_label = decode_company_id(manuf)
+                print_success(
+                    f"LE controller version: {v_label} (0x{ll_v:02X})  "
+                    f"manufacturer: {m_label} (0x{manuf:04X})  "
+                    f"subversion: 0x{subv:04X}"
+                )
+                fp["ll_version"] = ll_v
+                fp["ll_version_label"] = v_label
+                fp["manufacturer_id"] = manuf
+                fp["manufacturer_label"] = m_label
+                fp["ll_subversion"] = subv
+            else:
+                print_info("Read_Remote_Version_Information unavailable, continuing")
+
             features = self._read_le_features(hci, handle)
             if features is None:
                 print_error("LE_Read_Remote_Used_Features failed")
@@ -155,12 +184,8 @@ class Module(ReconModule):
             print_success(f"LL FeatureSet: {features.hex()}")
             self._decode(features)
 
-            fp = {
-                "target": target,
-                "addr_type": addr_type,
-                "ll_features_hex": features.hex(),
-                "ll_features_bits": bitmap_to_dict(features, LL_FEATURES),
-            }
+            fp["ll_features_hex"] = features.hex()
+            fp["ll_features_bits"] = bitmap_to_dict(features, LL_FEATURES)
             self.add_result(fp)
             self._persist_fingerprint(target, fp)
             return True

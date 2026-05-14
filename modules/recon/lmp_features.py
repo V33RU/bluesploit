@@ -27,9 +27,12 @@ from core.utils.bt import (
     bd_addr_bytes,
     bitmap_to_dict,
     decode_bitmap,
+    decode_company_id,
+    decode_lmp_version,
     disconnect,
     hci_cmd,
     open_hci,
+    read_remote_version,
     require_root,
     wait_event,
 )
@@ -182,6 +185,28 @@ class Module(ReconModule):
                 return False
             print_success(f"Connected (handle=0x{handle:04x})")
 
+            result = {"target": target}
+
+            # Read_Remote_Version_Information. Some controllers reject this
+            # for unauthenticated ACL; tolerate failure and continue.
+            version_info = read_remote_version(hci, handle)
+            if version_info is not None:
+                lmp_v, manuf, subv = version_info
+                v_label = decode_lmp_version(lmp_v)
+                m_label = decode_company_id(manuf)
+                print_success(
+                    f"LMP version: {v_label} (0x{lmp_v:02X})  "
+                    f"manufacturer: {m_label} (0x{manuf:04X})  "
+                    f"subversion: 0x{subv:04X}"
+                )
+                result["lmp_version"] = lmp_v
+                result["lmp_version_label"] = v_label
+                result["manufacturer_id"] = manuf
+                result["manufacturer_label"] = m_label
+                result["lmp_subversion"] = subv
+            else:
+                print_info("Read_Remote_Version_Information unavailable, continuing")
+
             page0 = self._read_remote_features(hci, handle)
             if page0 is None:
                 print_error("Read_Remote_Features failed")
@@ -189,8 +214,8 @@ class Module(ReconModule):
 
             print_success(f"LMP features (page 0): {page0.hex()}")
             self._decode_features(page0, LMP_FEATURES_PAGE0, "Page 0")
-            result = {"target": target, "page_0_hex": page0.hex(),
-                      "page_0_bits": bitmap_to_dict(page0, LMP_FEATURES_PAGE0)}
+            result["page_0_hex"] = page0.hex()
+            result["page_0_bits"] = bitmap_to_dict(page0, LMP_FEATURES_PAGE0)
 
             if mode in ("extended", "full"):
                 ext = page0[7] & 0x80  # extended features bit
