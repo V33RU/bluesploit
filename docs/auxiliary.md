@@ -1,4 +1,4 @@
-# Auxiliary (10)
+# Auxiliary (13)
 
 Auto-generated from `modules/auxiliary/`.  
 Load any module with `use auxiliary/<name>`.
@@ -17,6 +17,9 @@ Load any module with `use auxiliary/<name>`.
 | [`auxiliary/ble_rpa_deanon`](#auxiliaryble_rpa_deanon) | 🟡 MEDIUM | CVE-2020-35473 | Exploit BLE RPA response side-channel to track and de-anonymize devices acros… |
 | [`auxiliary/btlejack_capture`](#auxiliarybtlejack_capture) | 🟠 **HIGH** | - | BTLEJack BLE connection following, hijacking, and injection |
 | [`auxiliary/btsnoop_collect`](#auxiliarybtsnoop_collect) | ℹ️ INFO | - | Enable, pull, or watch Android's Bluetooth HCI snoop log via ADB |
+| [`auxiliary/crypto/irk_entropy`](#auxiliarycryptoirk_entropy) | ℹ️ INFO | - | Analyze a 16-byte IRK for entropy + run the Core Spec `ah` resolution against… |
+| [`auxiliary/crypto/key_quality`](#auxiliarycryptokey_quality) | ℹ️ INFO | - | Statistical quality analysis of a hex-encoded BLE key blob (LTK, IRK, link ke… |
+| [`auxiliary/crypto/passkey_check`](#auxiliarycryptopasskey_check) | ℹ️ INFO | - | Audit a 6-digit BLE Passkey for weak / sequential / repeated patterns |
 | [`auxiliary/hw_detect`](#auxiliaryhw_detect) | ℹ️ INFO | - | Detect connected Bluetooth testing hardware and check dependencies |
 | [`auxiliary/incoming_monitor`](#auxiliaryincoming_monitor) | ℹ️ INFO | - | Print incoming BR/EDR + BLE connection attempts from nearby devices |
 | [`auxiliary/local_spoof`](#auxiliarylocal_spoof) | ℹ️ INFO | - | Spoof local adapter hostname, alias, Class of Device, or BD_ADDR |
@@ -116,6 +119,62 @@ Enable, pull, or watch Android's Bluetooth HCI snoop log via ADB
 | `output` |  | `/tmp/btsnoop_hci.log` | Local output PCAP/log path |
 | `remote_path` |  |  | Override remote snoop path (auto-detect if empty) |
 | `capture_seconds` |  | `30` | Wait time after enable before pull (full mode) |
+
+---
+
+### `auxiliary/crypto/irk_entropy`
+
+**IRK Entropy + RPA Resolution**
+
+Analyze a 16-byte IRK for entropy + run the Core Spec `ah` resolution against observed Resolvable Private Addresses
+
+**Severity:** ℹ️ INFO · **Protocol:** BLE
+
+| Option | Required | Default | Description |
+|---|---|---|---|
+| `irk` | ✓ |  | 16-byte IRK as hex (colons / 0x prefix accepted) |
+| `byte_order` |  | `msb` | IRK byte order: msb (spec text) or lsb (over-the-air, common in btsnoop) |
+| `rpas` |  |  | Comma-separated RPA list to test resolution against. Empty = use hosts from the workspace. |
+
+**References:**
+- <https://www.bluetooth.com/specifications/specs/core-specification-6-0/>
+
+---
+
+### `auxiliary/crypto/key_quality`
+
+**Key Quality Analyzer**
+
+Statistical quality analysis of a hex-encoded BLE key blob (LTK, IRK, link key, CSRK)
+
+**Severity:** ℹ️ INFO · **Protocol:** DUAL
+
+| Option | Required | Default | Description |
+|---|---|---|---|
+| `key` | ✓ |  | Key bytes as hex (with or without colons / 0x prefix) |
+| `expected_length` |  |  | Expected byte length (e.g. 16 for AES-128 keys). Empty = accept any length. |
+
+**References:**
+- <https://www.bluetooth.com/specifications/specs/core-specification-6-0/>
+- <https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-22r1a.pdf>
+
+---
+
+### `auxiliary/crypto/passkey_check`
+
+**Passkey Quality Check**
+
+Audit a 6-digit BLE Passkey for weak / sequential / repeated patterns
+
+**Severity:** ℹ️ INFO · **Protocol:** BLE
+
+| Option | Required | Default | Description |
+|---|---|---|---|
+| `passkey` | ✓ |  | 6-digit passkey to audit (digits only) |
+
+**References:**
+- <https://www.bluetooth.com/specifications/specs/core-specification-6-0/>
+- <https://www.usenix.org/conference/woot13/workshop-program/presentation/ryan>
 
 ---
 
