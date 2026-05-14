@@ -1,4 +1,4 @@
-# Reconnaissance (10)
+# Reconnaissance (11)
 
 Auto-generated from `modules/recon/`.  
 Load any module with `use recon/<name>`.
@@ -21,6 +21,7 @@ Load any module with `use recon/<name>`.
 | [`recon/gatt_enum`](#recongatt_enum) | ℹ️ INFO | - | Enumerate GATT services and characteristics + device identity |
 | [`recon/ll_features`](#reconll_features) | ℹ️ INFO | - | Read BLE Link Layer FeatureSet of a remote LE device |
 | [`recon/lmp_features`](#reconlmp_features) | ℹ️ INFO | - | Read LMP feature pages of a remote BR/EDR device via HCI |
+| [`recon/mesh_beacon_scan`](#reconmesh_beacon_scan) | ℹ️ INFO | - | Passive scan for Mesh Unprovisioned Device Beacons (UUID 0x1827) and Secure N… |
 | [`recon/oui_lookup`](#reconoui_lookup) | ℹ️ INFO | - | Bluetooth MAC Address OUI Manufacturer Lookup |
 | [`recon/sdp_enum`](#reconsdp_enum) | ℹ️ INFO | - | Advanced SDP enumerator, risk + CVE map, PnP decode, L2CAP probe |
 
@@ -188,6 +189,24 @@ Read LMP feature pages of a remote BR/EDR device via HCI
 
 **References:**
 - <https://www.bluetooth.com/specifications/specs/core-specification/>
+
+---
+
+### `recon/mesh_beacon_scan`
+
+**Bluetooth Mesh Beacon Scanner**
+
+Passive scan for Mesh Unprovisioned Device Beacons (UUID 0x1827) and Secure Network Beacons (UUID 0x1828) with full PDU decoding
+
+**Severity:** ℹ️ INFO · **Protocol:** BLE
+
+| Option | Required | Default | Description |
+|---|---|---|---|
+| `timeout` |  | `20` | Scan duration in seconds |
+| `interface` |  | `hci0` | HCI adapter (Linux only, e.g. hci0) |
+
+**References:**
+- <https://www.bluetooth.com/specifications/specs/mesh-protocol/>
 
 ---
 

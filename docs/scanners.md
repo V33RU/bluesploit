@@ -1,4 +1,4 @@
-# Scanners (9)
+# Scanners (10)
 
 Auto-generated from `modules/scanners/`.  
 Load any module with `use scanners/<name>`.
@@ -21,6 +21,7 @@ Load any module with `use scanners/<name>`.
 | [`scanners/cve_match`](#scannerscve_match) | ℹ️ INFO | - | Match stored fingerprints (lmp_features, ll_features, smp_pairing) against th… |
 | [`scanners/hidden_scanner`](#scannershidden_scanner) | ℹ️ INFO | - | Find non-discoverable Bluetooth devices (BR/EDR + LE) |
 | [`scanners/ibeacon_scanner`](#scannersibeacon_scanner) | ℹ️ INFO | - | Discover iBeacons, select a target, run focused security tests |
+| [`scanners/mesh_provisioning_audit`](#scannersmesh_provisioning_audit) | ℹ️ INFO | - | Audit stored mesh_beacon fingerprints for weak OOB configurations and missing… |
 | [`scanners/vuln_scanner`](#scannersvuln_scanner) | 🟠 **HIGH** | - | Unified BLE+Classic vulnerability scanner, GATT deep analysis + CVE→module ma… |
 
 ---
@@ -202,6 +203,24 @@ Discover iBeacons, select a target, run focused security tests
 **References:**
 - <https://developer.apple.com/ibeacon/>
 - <Bluetooth Core 5.4 Vol 6 Part B (LL advertising, addr types)>
+
+---
+
+### `scanners/mesh_provisioning_audit`
+
+**Mesh Provisioning Audit**
+
+Audit stored mesh_beacon fingerprints for weak OOB configurations and missing URI integrity
+
+**Severity:** ℹ️ INFO · **Protocol:** BLE
+
+| Option | Required | Default | Description |
+|---|---|---|---|
+| `target` |  |  | BD_ADDR or host id. Default audits every host with a mesh_beacon fingerprint. |
+| `min_severity` |  | `info` | Drop findings below this severity |
+
+**References:**
+- <https://www.bluetooth.com/specifications/specs/mesh-protocol/>
 
 ---
 
