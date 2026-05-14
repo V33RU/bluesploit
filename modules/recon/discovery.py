@@ -840,12 +840,28 @@ class Module(ReconModule):
 
         all_devices = self._merge(classic_devices, ble_devices)
 
+        saved_to_store = 0
         for d in all_devices:
             self.add_device(Target(
                 address=d.address, name=d.name,
                 rssi=d.rssi, manufacturer=d.vendor,
             ))
             self.add_result(d)
+            # Persist to the engagement store so exploit modules can do
+            # `set target <id>` from `hosts` without retyping addresses.
+            # Best-effort, never fail discovery on a store hiccup.
+            try:
+                self.store.add_host(
+                    address=d.address,
+                    name=d.name,
+                    rssi=d.rssi,
+                    manufacturer=d.vendor,
+                )
+                saved_to_store += 1
+            except Exception:
+                pass
+        if saved_to_store:
+            print_info(f"Recorded {saved_to_store} host(s) in store")
 
         print()
         # When live mode is on, the per-device rows were already streamed -

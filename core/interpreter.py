@@ -174,6 +174,8 @@ class BlueSploitInterpreter(cmd.Cmd):
         Set a module option
         Usage: set <option> <value>
         Example: set target AA:BB:CC:DD:EE:FF
+                 set target 3                  (host id from `hosts`)
+                 set target alpha              (substring match on name or address)
         """
         if not self.current_module:
             print_error("No module loaded. Use 'use <module>' first")
@@ -185,20 +187,89 @@ class BlueSploitInterpreter(cmd.Cmd):
             return
 
         option, value = parts
+        if option.lower() == "target":
+            resolved = self._resolve_target(value)
+            if resolved is None:
+                return  # ambiguous, helpful message already printed
+            if resolved != value:
+                print_info(f"Resolved '{value}' to {resolved}")
+                value = resolved
+
         if self.current_module.set_option(option, value):
             print_success(f"{option} => {value}")
         else:
             print_error(f"Unknown option: {option}")
 
+    def _resolve_target(self, value: str) -> Optional[str]:
+        """
+        Resolve a `set target` value via the engagement store.
+
+        Accepts a full BD_ADDR (returned as-is), a numeric host id
+        (e.g. `3`), or a substring matched against stored host addresses
+        and names. Returns the resolved BD_ADDR, the original value when
+        no store lookup applies, or None if the lookup was ambiguous.
+        """
+        from core.utils.bt import validate_bd_addr
+        if validate_bd_addr(value):
+            return value
+
+        try:
+            from core.store import get_store
+            store = get_store()
+        except Exception:
+            return value
+
+        if value.isdigit():
+            host = store.get_host_by_id(int(value))
+            if host is not None:
+                return host.address
+            print_warning(f"No host with id {value} in store")
+            return value
+
+        q = value.lower()
+        matches = [
+            h for h in store.list_hosts()
+            if q in h.address.lower() or (h.name and q in h.name.lower())
+        ]
+        if not matches:
+            return value
+        if len(matches) == 1:
+            return matches[0].address
+        print_warning(f"Ambiguous target '{value}', candidates:")
+        for h in matches:
+            label = h.name or ""
+            print(f"  [{h.id}] {h.address}  {label}")
+        return None
+
     def complete_set(self, text: str, line: str, begidx: int, endidx: int) -> List[str]:
-        """Tab completion for set command"""
+        """Tab completion for `set`. Completes option names, and for
+        `set target <TAB>` completes addresses from the store."""
         if not self.current_module:
             return []
 
-        options = list(self.current_module.options.keys())
-        if text:
-            return [o for o in options if o.lower().startswith(text.lower())]
-        return options
+        # Detect whether we are completing the option name (2nd word) or the
+        # value (3rd word). cmd uses split() on the line up to begidx.
+        preceding = line[:begidx].split()
+        if len(preceding) <= 1:
+            options = list(self.current_module.options.keys())
+            if text:
+                return [o for o in options if o.lower().startswith(text.lower())]
+            return options
+
+        option_name = preceding[1].lower() if len(preceding) >= 2 else ""
+        if option_name == "target":
+            try:
+                from core.store import get_store
+                hosts = get_store().list_hosts()
+            except Exception:
+                return []
+            candidates = [h.address for h in hosts]
+            if text:
+                t = text.upper()
+                return [c for c in candidates if c.upper().startswith(t)]
+            return candidates
+
+        return []
 
     def do_unset(self, option: str) -> None:
         """
@@ -225,6 +296,60 @@ class BlueSploitInterpreter(cmd.Cmd):
             return
 
         self.current_module.show_options()
+
+    def do_hosts(self, args: str) -> None:
+        """
+        List hosts recorded in the engagement store.
+
+        Usage:
+            hosts                List all hosts in the current workspace.
+            hosts <filter>       List hosts whose address or name contains
+                                 the substring (case-insensitive).
+
+        Hosts are populated by recon and scanner modules. Use the ID
+        column with `set target <id>` to point a module at a stored host
+        without retyping the BD_ADDR.
+        """
+        try:
+            from core.store import get_store
+            store = get_store()
+        except Exception as e:
+            print_error(f"Store unavailable: {e}")
+            return
+
+        hosts = store.list_hosts()
+        q = args.strip().lower()
+        if q:
+            hosts = [
+                h for h in hosts
+                if q in h.address.lower() or (h.name and q in h.name.lower())
+            ]
+
+        if not hosts:
+            if q:
+                print_info(f"No hosts match '{q}'")
+            else:
+                print_info("No hosts recorded yet. Run a recon module first.")
+            return
+
+        header = (
+            f"  {'ID':<5} {'Address':<19} {'Name':<26} "
+            f"{'RSSI':<6} {'Vendor':<18} {'Last seen'}"
+        )
+        sep = "  " + "-" * (len(header) - 2)
+        print()
+        print(header)
+        print(sep)
+        for h in hosts:
+            name = (h.name or "")[:25]
+            vendor = (h.manufacturer or "")[:17]
+            rssi = "" if h.rssi is None else str(h.rssi)
+            seen = (h.last_seen or "").replace("T", " ").rstrip("Z+0:")
+            print(
+                f"  {h.id:<5} {h.address:<19} {name:<26} "
+                f"{rssi:<6} {vendor:<18} {seen}"
+            )
+        print(f"\n  Total: {len(hosts)} host(s) in workspace '{store.workspace}'\n")
 
     def do_info(self, _: str) -> None:
         """Show detailed information about current module"""
