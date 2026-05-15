@@ -347,6 +347,7 @@ class Module(ReconModule):
         for svc in topology["services"]:
             self._render_service_detail(svc)
 
+        self._render_stats(topology["services"])
         if cap_ident:
             self._render_attack_surface(topology["services"])
 
@@ -569,16 +570,39 @@ class Module(ReconModule):
             print(f"\n  {C.YELLOW}WRITABLE ({len(writable)}):{C.RESET}")
             for c in writable:
                 perm = ",".join(c.get("permissions") or [])
-                label = c.get("name") or _strip_uuid(c.get("uuid", ""))
-                print(f"    {C.YELLOW}>{C.RESET} {c.get('uuid16') or _strip_uuid(c.get('uuid',''))}"
-                      f"  [{perm}]  {label}")
+                uuid_label = c.get("uuid16") or _strip_uuid(c.get("uuid", ""))[:16]
+                name = c.get("name") or "(vendor)"
+                print(f"    {C.YELLOW}>{C.RESET} {uuid_label}  [{perm}]  {name}")
 
         if notifiable:
             print(f"\n  {C.MAGENTA}NOTIFY/INDICATE ({len(notifiable)}):{C.RESET}")
             for c in notifiable:
-                label = c.get("name") or _strip_uuid(c.get("uuid", ""))
-                print(f"    {C.MAGENTA}>{C.RESET} {c.get('uuid16') or _strip_uuid(c.get('uuid',''))}"
-                      f"  {label}")
+                uuid_label = c.get("uuid16") or _strip_uuid(c.get("uuid", ""))[:16]
+                name = c.get("name") or "(vendor)"
+                print(f"    {C.MAGENTA}>{C.RESET} {uuid_label}  {name}")
+
+    def _render_stats(self, services: List[Dict[str, Any]]) -> None:
+        """Print a one-line summary of totals after all service detail tables."""
+        total_chars = readable = writable = notify = 0
+        for svc in services:
+            for c in svc.get("characteristics") or []:
+                total_chars += 1
+                props = [p.lower() for p in c.get("properties") or []]
+                if "read" in props:
+                    readable += 1
+                if "write" in props or "write-without-response" in props:
+                    writable += 1
+                if "notify" in props or "indicate" in props:
+                    notify += 1
+        C = Colors
+        print(
+            f"\n  {C.CYAN}{'─' * 70}{C.RESET}\n"
+            f"  Services: {len(services)}   "
+            f"Characteristics: {total_chars}   "
+            f"{C.GREEN}Readable: {readable}{C.RESET}   "
+            f"{C.YELLOW}Writable: {writable}{C.RESET}   "
+            f"{C.MAGENTA}Notify/Indicate: {notify}{C.RESET}"
+        )
 
     def _render_services_summary(self, services: List[Dict[str, Any]]) -> None:
         cols = [
