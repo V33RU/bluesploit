@@ -376,7 +376,7 @@ class Module(ReconModule):
     """
 
     info = ModuleInfo(
-        name="recon/discovery",
+        name="Bluetooth Discovery",
         description="Passive full-spectrum Bluetooth discovery, Classic + BLE",
         author=["BlueSploit"],
         protocol=BTProtocol.BOTH,

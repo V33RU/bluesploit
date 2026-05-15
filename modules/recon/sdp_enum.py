@@ -419,7 +419,7 @@ class Module(ScannerModule):
     """
 
     info = ModuleInfo(
-        name="recon/sdp_enum",
+        name="SDP Enumerator",
         description="Advanced SDP enumerator, risk + CVE map, PnP decode, L2CAP probe",
         author=["BlueSploit"],
         protocol=BTProtocol.CLASSIC,
