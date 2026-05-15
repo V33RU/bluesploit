@@ -18,7 +18,7 @@ Load any module with `use recon/<name>`.
 | [`recon/ble_scan_full`](#reconble_scan_full) | ℹ️ INFO | - | Active BLE scan with full advertising payload decoding (address type, flags, … |
 | [`recon/ble_target_enum`](#reconble_target_enum) | ℹ️ INFO | - | Connect to one BLE target and walk every service / characteristic / descripto… |
 | [`recon/discovery`](#recondiscovery) | ℹ️ INFO | - | Passive full-spectrum Bluetooth discovery, Classic + BLE |
-| [`recon/gatt_enum`](#recongatt_enum) | ℹ️ INFO | - | Enumerate GATT services and characteristics + device identity |
+| [`recon/gatt_enum`](#recongatt_enum) | ℹ️ INFO | - | Enumerate GATT services and characteristics + device identity (deprecated - u… |
 | [`recon/ll_features`](#reconll_features) | ℹ️ INFO | - | Read BLE Link Layer FeatureSet of a remote LE device |
 | [`recon/lmp_features`](#reconlmp_features) | ℹ️ INFO | - | Read LMP feature pages of a remote BR/EDR device via HCI |
 | [`recon/mesh_beacon_scan`](#reconmesh_beacon_scan) | ℹ️ INFO | - | Passive scan for Mesh Unprovisioned Device Beacons (UUID 0x1827) and Secure N… |
@@ -97,7 +97,7 @@ Active BLE scan with full advertising payload decoding (address type, flags, ser
 
 **BLE Target Enumeration**
 
-Connect to one BLE target and walk every service / characteristic / descriptor, mirage-style
+Connect to one BLE target and walk every service / characteristic / descriptor, mirage-style, with device identity header (manufacturer, chipset, LL version)
 
 **Severity:** ℹ️ INFO · **Protocol:** BLE
 
@@ -108,6 +108,7 @@ Connect to one BLE target and walk every service / characteristic / descriptor, 
 | `timeout` |  | `20` | Connect + discover timeout in seconds |
 | `read_values` |  | `True` | Read every readable characteristic value (true/false) |
 | `read_descriptors` |  | `True` | Read every descriptor value (true/false) |
+| `capture_identity` |  | `True` | Capture device identity header (manufacturer, chipset, LL version) from Device Information + system tools (true/false) |
 
 **References:**
 - <https://bleak.readthedocs.io/en/latest/api/client.html>
@@ -134,18 +135,18 @@ Passive full-spectrum Bluetooth discovery, Classic + BLE
 
 ### `recon/gatt_enum`
 
-**scanners/ble/gatt_enum**
+**GATT Enumerator (use recon/ble_target_enum)**
 
-Enumerate GATT services and characteristics + device identity
+Enumerate GATT services and characteristics + device identity (deprecated - use recon/ble_target_enum which now includes all features)
 
 **Severity:** ℹ️ INFO · **Protocol:** BLE
 
 | Option | Required | Default | Description |
 |---|---|---|---|
-| `target` | ✓ |  | Target BD_ADDR (XX:XX:XX:XX:XX:XX) |
+| `target` | ✓ |  | Target BLE BD_ADDR |
+| `interface` |  | `hci0` | HCI adapter (Linux only, e.g. hci0) |
 | `timeout` |  | `15` | Connection timeout in seconds |
-| `read_values` |  | `True` | Attempt to read characteristic values |
-| `output_file` |  |  | Save results to JSON file |
+| `read_values` |  | `True` | Read characteristic values (true/false) |
 
 **References:**
 - <https://www.bluetooth.com/specifications/gatt/>

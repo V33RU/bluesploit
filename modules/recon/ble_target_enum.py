@@ -8,18 +8,25 @@ values. Output mirrors the mirage `ble_connect|ble_discover` table
 shape so the operator sees one row per characteristic with full
 context.
 
+Optionally captures a device identity header (manufacturer, model,
+serial, firmware, chipset, LL version) from the Device Information
+service and from system tools (hcitool, bluetoothctl). This subsumes
+the legacy `recon/gatt_enum` module, which is now a thin wrapper.
+
 REQUIRES bleak + a working Bluetooth adapter. No demo mode.
 
-The output is intentionally chatty: one summary services table, then
-one detailed table per service. Standard SIG-assigned UUIDs are
-resolved to their short names via `core/ble_meta`; vendor-defined
-UUIDs render as the raw UUID128 (matching mirage).
+References
+    https://bleak.readthedocs.io/en/latest/api/client.html
+    https://www.bluetooth.com/specifications/specs/core-specification-6-0/
 """
 
 from __future__ import annotations
 
 import asyncio
 import json
+import re
+import struct
+import subprocess
 from typing import Any, Dict, List, Optional, Tuple
 
 from core.base import (
@@ -38,18 +45,209 @@ from core.ble_meta import (
 )
 from core.ui.tables import Column, render_table
 from core.utils.printer import (
+    Colors,
     print_error,
     print_info,
     print_success,
     print_warning,
 )
 
+# ---------------------------------------------------------------------------
+# Device-identity capture helpers (merged from recon/gatt_enum)
+# ---------------------------------------------------------------------------
+
+# SIG 16-bit characteristic UUIDs that feed the identity block.
+_IDENTITY_CHARS: Dict[str, str] = {
+    "2a00": "device_name",
+    "2a23": "system_id",
+    "2a24": "model",
+    "2a25": "serial",
+    "2a26": "firmware",
+    "2a27": "hardware",
+    "2a28": "software",
+    "2a29": "manufacturer",
+    "2a50": "pnp_id_raw",
+}
+
+# Bluetooth SIG company identifiers -> chipset vendor label.
+_CHIPSET_VENDORS: Dict[int, str] = {
+    0x0059: "Nordic Semiconductor",
+    0x000F: "Broadcom",
+    0x000D: "Texas Instruments",
+    0x0002: "Intel",
+    0x001D: "Qualcomm Atheros",
+    0x0822: "Espressif",
+    0x038F: "Espressif Systems",
+    0x0131: "Huawei Technologies",
+    0x0157: "Xiaomi / LYWSD",
+    0x004C: "Apple",
+    0x0006: "Microsoft",
+    0x0075: "Samsung",
+    0x00E0: "Google",
+    0x054C: "Sony",
+    0x0087: "Garmin",
+    0x03DA: "Bose",
+    0x012D: "GN Audio (Jabra)",
+    0x012E: "MediaTek",
+    0x0310: "Wyze Labs",
+    0x0499: "Ruuvi Innovations",
+    0x0603: "Sonos",
+}
+
+# Manufacturer name substrings -> probable chipset label.
+_MFR_CHIPSET_HINTS: Dict[str, str] = {
+    "nordic":       "Nordic Semiconductor nRF5x",
+    "dialog":       "Dialog Semiconductor DA14xxx",
+    "texas":        "Texas Instruments CC264x",
+    "ti ":          "Texas Instruments CC264x",
+    "silicon labs": "Silicon Labs EFR32",
+    "silabs":       "Silicon Labs EFR32",
+    "telink":       "Telink TLSR",
+    "realtek":      "Realtek RTL8762",
+    "beken":        "Beken BK36xx",
+    "mediatek":     "MediaTek MT25xx",
+    "qualcomm":     "Qualcomm QCC",
+    "cypress":      "Infineon/Cypress CYW43xxx",
+    "broadcom":     "Broadcom BCM",
+    "espressif":    "Espressif ESP32",
+    "esp":          "Espressif ESP32",
+    "nxp":          "NXP KW4x",
+    "kaha":         "Realtek RTL8762 (KaHa platform)",
+    "huawei":       "HiSilicon BLE SoC",
+    "xiaomi":       "Beken / MediaTek platform",
+}
+
+# LMP Subversion value -> exact chipset model.
+_LMP_SUBVER_CHIPSET: Dict[int, str] = {
+    0x8762: "Realtek RTL8762",
+    0x8763: "Realtek RTL8763",
+    0x8761: "Realtek RTL8761",
+    0x1000: "Nordic nRF51xxx",
+    0x0001: "Nordic nRF52xxx",
+    0x000D: "Nordic nRF52840",
+    0x0048: "Texas Instruments CC2640",
+    0x0051: "Texas Instruments CC2642",
+    0x6109: "Qualcomm QCC512x",
+    0x9908: "Dialog DA14531",
+    0x22BB: "Silicon Labs EFR32BG22",
+}
+
+# OUI prefix (6 uppercase hex chars) -> chipset / SoC vendor.
+_OUI_CHIPSET: Dict[str, str] = {
+    "F4CE36": "Nordic Semiconductor",
+    "5091F7": "Nordic Semiconductor",
+    "240AC4": "Espressif ESP32",
+    "246FAB": "Espressif ESP32",
+    "30AEA4": "Espressif ESP32",
+    "3C71BF": "Espressif ESP32",
+    "5CCF7F": "Espressif ESP32",
+    "84CCA8": "Espressif ESP32",
+    "001A8A": "Samsung Electro-Mechanics",
+    "001E10": "Huawei Technologies",
+    "000F00": "Broadcom",
+}
+
+
+def _decode_pnp_id(raw: bytes) -> Dict[str, Any]:
+    """Parse PnP ID (0x2A50, 7 bytes) per GATT spec and return a
+    structured dict including chipset vendor if known."""
+    if len(raw) < 7:
+        return {}
+    src, vid, pid, ver = struct.unpack_from("<BHHH", raw)
+    src_label = "BT SIG" if src == 1 else "USB" if src == 2 else f"src={src}"
+    vendor = _CHIPSET_VENDORS.get(vid, f"0x{vid:04X}")
+    major, minor, patch = (ver >> 8) & 0xFF, (ver >> 4) & 0x0F, ver & 0x0F
+    return {
+        "vendor_id_source": src_label,
+        "vendor_id":        vid,
+        "vendor_name":      vendor,
+        "product_id":       pid,
+        "version":          f"{major}.{minor}.{patch}",
+        "chipset":          vendor,
+    }
+
+
+def _infer_chipset(manufacturer: Optional[str], addr: str) -> Optional[str]:
+    """Infer BLE chipset from manufacturer name string or address OUI."""
+    if manufacturer:
+        mlow = manufacturer.lower()
+        for hint, label in _MFR_CHIPSET_HINTS.items():
+            if hint in mlow:
+                return label
+    oui = addr.replace(":", "").upper()[:6]
+    return _OUI_CHIPSET.get(oui)
+
+
+def _parse_hci_version_lines(lines: List[str], info: Dict[str, Any]) -> None:
+    """Extract LMP Version / Subversion / Manufacturer from hcitool output."""
+    for line in lines:
+        ls = line.strip()
+        if ls.startswith("LMP Version:"):
+            m = re.search(
+                r"(\d+\.\d+)\s+\(0x[0-9a-fA-F]+\)\s+LMP Subversion:\s+0x([0-9a-fA-F]+)", ls
+            )
+            if m:
+                info["lmp_version"]  = m.group(1)
+                raw_sub              = int(m.group(2), 16)
+                info["lmp_subver"]   = f"0x{raw_sub:04X}"
+                if raw_sub in _LMP_SUBVER_CHIPSET:
+                    info["chipset_exact"] = _LMP_SUBVER_CHIPSET[raw_sub]
+        elif ls.startswith("Manufacturer:"):
+            info["ll_manufacturer"] = ls.split(":", 1)[1].strip()
+
+
+def _get_ll_info(addr: str) -> Dict[str, Any]:
+    """Query hcitool and bluetoothctl for cached LL/LMP version and name.
+
+    Tries in order: hcitool leinfo -> hcitool info -> bluetoothctl info.
+    All subprocess calls are best-effort; failures are silently ignored.
+    """
+    info: Dict[str, Any] = {
+        "lmp_version": None, "lmp_subver": None,
+        "ll_manufacturer": None, "bt_name": None,
+        "appearance": None, "chipset_exact": None,
+    }
+    for cmd in (["hcitool", "leinfo", addr], ["hcitool", "info", addr]):
+        try:
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+            if r.returncode == 0 and "LMP Version" in r.stdout:
+                _parse_hci_version_lines(r.stdout.splitlines(), info)
+                break
+        except Exception:
+            pass
+    try:
+        r = subprocess.run(
+            ["bluetoothctl", "info", addr],
+            capture_output=True, text=True, timeout=6,
+        )
+        for line in r.stdout.splitlines():
+            ls = line.strip()
+            if ls.startswith(("Name:", "Alias:")) and not info["bt_name"]:
+                info["bt_name"] = ls.split(":", 1)[1].strip()
+            elif ls.startswith("Appearance:"):
+                info["appearance"] = ls.split(":", 1)[1].strip()
+    except Exception:
+        pass
+    return info
+
+
+def _read_str(raw: bytes) -> str:
+    try:
+        return raw.decode("utf-8").strip("\x00").strip()
+    except Exception:
+        return raw.hex()
+
+
+# ---------------------------------------------------------------------------
+# Module
+# ---------------------------------------------------------------------------
+
 
 class Module(ReconModule):
 
     info = ModuleInfo(
         name="BLE Target Enumeration",
-        description="Connect to one BLE target and walk every service / characteristic / descriptor, mirage-style",
+        description="Connect to one BLE target and walk every service / characteristic / descriptor, mirage-style, with device identity header (manufacturer, chipset, LL version)",
         author=["BlueSploit"],
         protocol=BTProtocol.BLE,
         severity=Severity.INFO,
@@ -89,6 +287,12 @@ class Module(ReconModule):
             description="Read every descriptor value (true/false)",
             default=True,
         ))
+        self.add_option(ModuleOption(
+            name="capture_identity",
+            required=False,
+            description="Capture device identity header (manufacturer, chipset, LL version) from Device Information + system tools (true/false)",
+            default=True,
+        ))
 
     def run(self) -> bool:
         try:
@@ -106,6 +310,7 @@ class Module(ReconModule):
         timeout = float(self.get_option("timeout") or 20)
         read_values = _coerce_bool(self.get_option("read_values"), default=True)
         read_descs = _coerce_bool(self.get_option("read_descriptors"), default=True)
+        cap_ident = _coerce_bool(self.get_option("capture_identity"), default=True)
 
         print_info(f"Connecting to {target} on {interface} (timeout={timeout:.0f}s)")
 
@@ -132,9 +337,18 @@ class Module(ReconModule):
             f"Connected and discovered {len(topology['services'])} service(s)"
         )
 
+        # Build and display device identity header.
+        if cap_ident:
+            identity = self._capture_identity(target, topology)
+            topology["identity"] = identity
+            self._render_identity(identity)
+
         self._render_services_summary(topology["services"])
         for svc in topology["services"]:
             self._render_service_detail(svc)
+
+        if cap_ident:
+            self._render_attack_surface(topology["services"])
 
         self._persist(target, topology)
         return True
@@ -160,8 +374,6 @@ class Module(ReconModule):
                 return None
 
             services_view: List[Dict[str, Any]] = []
-            # bleak.services is a BleakGATTServiceCollection; iterate
-            # in handle order so output is stable.
             services_sorted = sorted(
                 list(client.services), key=lambda s: getattr(s, "handle", 0)
             )
@@ -193,7 +405,6 @@ class Module(ReconModule):
                             value_hex_char = None
 
                     value_handle = getattr(char, "handle", None)
-                    # BLE convention: declaration handle is value handle minus one.
                     decl_handle = value_handle - 1 if value_handle is not None else None
 
                     chars.append({
@@ -208,9 +419,6 @@ class Module(ReconModule):
                         "descriptors": descs,
                     })
 
-                # Service handle range: start is the service's own
-                # handle, end is the highest descriptor / char value
-                # handle inside it (matches mirage's display).
                 start_handle = getattr(svc, "handle", None)
                 end_handle = start_handle
                 for c in chars:
@@ -233,7 +441,144 @@ class Module(ReconModule):
                 "services": services_view,
             }
 
+    # -- device identity capture --------------------------------------------
+
+    def _capture_identity(
+        self, target: str, topology: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Build the device identity dict from GATT characteristic values
+        already in `topology` (read during enumeration) plus system tools."""
+        identity: Dict[str, Any] = {
+            "bd_addr": target.upper(),
+            "device_name": None, "manufacturer": None,
+            "model": None, "serial": None,
+            "firmware": None, "hardware": None,
+            "software": None, "system_id": None,
+            "pnp": None, "chipset": None,
+            "ll_version": None, "ll_subver": None,
+            "ll_manufacturer": None, "appearance": None,
+        }
+
+        # Pull values already captured during GATT walk.
+        for svc in topology.get("services") or []:
+            for char in svc.get("characteristics") or []:
+                u16 = short_uuid(str(char.get("uuid", "")))
+                if u16 is None:
+                    continue
+                key = _IDENTITY_CHARS.get(f"{u16:04x}")
+                if not key:
+                    continue
+                hex_val = char.get("value_hex")
+                if not hex_val:
+                    continue
+                try:
+                    raw = bytes.fromhex(hex_val)
+                except ValueError:
+                    continue
+                if key == "pnp_id_raw":
+                    pnp = _decode_pnp_id(raw)
+                    if pnp:
+                        identity["pnp"] = pnp
+                        identity["chipset"] = pnp.get("chipset")
+                else:
+                    identity[key] = _read_str(raw)
+
+        # Supplement with system-tool data (best-effort).
+        ll = _get_ll_info(target)
+        if ll.get("bt_name") and not identity["device_name"]:
+            identity["device_name"] = ll["bt_name"]
+        if ll.get("lmp_version"):
+            identity["ll_version"]      = ll["lmp_version"]
+            identity["ll_subver"]       = ll.get("lmp_subver")
+            identity["ll_manufacturer"] = ll.get("ll_manufacturer")
+        if ll.get("chipset_exact") and not identity["chipset"]:
+            identity["chipset"] = ll["chipset_exact"]
+        if ll.get("appearance"):
+            identity["appearance"] = ll["appearance"]
+
+        # OUI / manufacturer-string chipset inference fallback.
+        if not identity["chipset"]:
+            identity["chipset"] = _infer_chipset(
+                identity.get("manufacturer"), target
+            )
+
+        return identity
+
     # -- output -------------------------------------------------------------
+
+    def _render_identity(self, identity: Dict[str, Any]) -> None:
+        C = Colors
+        print(f"\n  {C.BOLD}DEVICE IDENTITY{C.RESET}")
+        print(f"  {C.CYAN}{'─' * 70}{C.RESET}")
+
+        def row(label: str, value: Any, color: str = "") -> None:
+            if value is None or value == "":
+                return
+            v = str(value)
+            print(f"  {label:<16}: {color}{v}{C.RESET if color else ''}")
+
+        row("BD_ADDR",      identity["bd_addr"],             C.WHITE)
+        row("Device Name",  identity.get("device_name"),     C.GREEN)
+        row("Appearance",   identity.get("appearance"))
+        row("Manufacturer", identity.get("manufacturer"))
+        row("Model",        identity.get("model"))
+        row("Serial",       identity.get("serial"))
+        row("Firmware",     identity.get("firmware"),         C.YELLOW)
+        row("Hardware",     identity.get("hardware"))
+        row("Software",     identity.get("software"))
+        row("System ID",    identity.get("system_id"))
+
+        pnp = identity.get("pnp")
+        if pnp:
+            row(
+                "PnP ID",
+                f"VID={pnp['vendor_id_source']} 0x{pnp['vendor_id']:04X} "
+                f"({pnp['vendor_name']})  "
+                f"PID=0x{pnp['product_id']:04X}  "
+                f"Ver={pnp['version']}",
+            )
+
+        row("Chipset",      identity.get("chipset"),          C.CYAN)
+
+        if identity.get("ll_version"):
+            ver = identity["ll_version"]
+            if identity.get("ll_subver"):
+                ver += f"  (subver {identity['ll_subver']})"
+            if identity.get("ll_manufacturer"):
+                ver += f"  / {identity['ll_manufacturer']}"
+            row("LL/LMP Ver",   ver,                          C.CYAN)
+
+        print(f"  {C.CYAN}{'─' * 70}{C.RESET}\n")
+
+    def _render_attack_surface(self, services: List[Dict[str, Any]]) -> None:
+        """Print a short attack-surface summary: writable + notify chars."""
+        writable, notifiable = [], []
+        for svc in services:
+            for c in svc.get("characteristics") or []:
+                props = [p.lower() for p in c.get("properties") or []]
+                if "write" in props or "write-without-response" in props:
+                    writable.append(c)
+                if "notify" in props or "indicate" in props:
+                    notifiable.append(c)
+
+        if not writable and not notifiable:
+            return
+
+        C = Colors
+        if writable:
+            print(f"\n  {C.YELLOW}WRITABLE ({len(writable)}):{C.RESET}")
+            for c in writable:
+                perm = ",".join(c.get("permissions") or [])
+                label = c.get("name") or _strip_uuid(c.get("uuid", ""))
+                print(f"    {C.YELLOW}>{C.RESET} {c.get('uuid16') or _strip_uuid(c.get('uuid',''))}"
+                      f"  [{perm}]  {label}")
+
+        if notifiable:
+            print(f"\n  {C.MAGENTA}NOTIFY/INDICATE ({len(notifiable)}):{C.RESET}")
+            for c in notifiable:
+                label = c.get("name") or _strip_uuid(c.get("uuid", ""))
+                print(f"    {C.MAGENTA}>{C.RESET} {c.get('uuid16') or _strip_uuid(c.get('uuid',''))}"
+                      f"  {label}")
 
     def _render_services_summary(self, services: List[Dict[str, Any]]) -> None:
         cols = [
@@ -328,7 +673,6 @@ def _coerce_bool(value: Any, default: bool) -> bool:
 
 
 def _uuid16_hex(uuid128: str) -> str:
-    """Return `0xNNNN` for a SIG short UUID, empty string otherwise."""
     s = short_uuid(uuid128)
     if s is None:
         return ""
@@ -336,7 +680,6 @@ def _uuid16_hex(uuid128: str) -> str:
 
 
 def _strip_uuid(uuid128: str) -> str:
-    """Hex-only form of the UUID, no dashes, matching mirage's display."""
     return uuid128.replace("-", "").lower()
 
 
