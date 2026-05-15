@@ -403,7 +403,7 @@ class Module(ScannerModule):
     """
 
     info = ModuleInfo(
-        name="scanners/oui_lookup",
+        name="OUI Manufacturer Lookup",
         description="Bluetooth MAC Address OUI Manufacturer Lookup",
         author=["BlueSploit"],
         protocol=BTProtocol.BOTH,

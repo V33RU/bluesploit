@@ -293,8 +293,8 @@ class Module(ScannerModule):
     """GATT Service/Characteristic Enumerator with device identity header"""
 
     info = ModuleInfo(
-        name="scanners/ble/gatt_enum",
-        description="Enumerate GATT services and characteristics + device identity",
+        name="GATT Enumerator",
+        description="Enumerate GATT services and characteristics + device identity (manufacturer, chipset, LL version)",
         author=["BlueSploit"],
         protocol=BTProtocol.BLE,
         severity=Severity.INFO,

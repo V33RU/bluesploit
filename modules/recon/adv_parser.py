@@ -399,7 +399,7 @@ class Module(ScannerModule):
     """BLE Advertisement Parser, deep passive decode, no connections"""
 
     info = ModuleInfo(
-        name="scanners/ble/adv_parser",
+        name="BLE Advertisement Parser",
         description="Deep BLE advertisement analysis, Apple Continuity, Eddystone, iBeacon, Fast Pair, risk scoring",
         author=["BlueSploit"],
         protocol=BTProtocol.BLE,
