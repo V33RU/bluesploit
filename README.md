@@ -1,12 +1,12 @@
 # BlueSploit
 
 ![Version](https://img.shields.io/badge/Version-1.0.5-0099ff?style=for-the-badge)
+![Status](https://img.shields.io/badge/Status-Scaffold%20%2F%20Not%20Battle--Tested-orange?style=for-the-badge)
 ![Modules](https://img.shields.io/badge/Modules-160-orange?style=for-the-badge)
-![Tests](https://img.shields.io/badge/Tests-537-success?style=for-the-badge)
 ![Python](https://img.shields.io/badge/Python-3.8+-3776AB?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)
 
-Bluetooth exploitation framework for Classic BR/EDR and BLE. Metasploit-style REPL, 160 modules, persistent engagement store. Built by Mr-IoT.
+Bluetooth framework for Classic BR/EDR and BLE. 160 modules, persistent store. By Mr-IoT.
 
 Docs: [v33ru.github.io/bluesploit](https://v33ru.github.io/bluesploit/) · Latest: [v1.0.5](https://github.com/V33RU/bluesploit/releases/tag/v1.0.5)
 
