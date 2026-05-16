@@ -1,19 +1,7 @@
 """
-BlueSploit Module: CVE Match Scanner
+CVE Match Scanner - offline fingerprint matcher against the curated catalog.
 
-Matches stored device fingerprints against the curated Bluetooth CVE
-database at `data/signatures/bluetooth_cves.json`. Reports honestly:
-
-  - Every finding carries the signature's `confidence` (low / medium /
-    high) so the operator can judge how reliable the fingerprint-only
-    detection is.
-  - When a signature needs a fingerprint kind the operator has not
-    collected yet, the scanner says so and points at the right recon
-    module. It does NOT produce a finding from missing data.
-  - Severity is taken straight from the signature, never inflated.
-
-This module performs no network or HCI activity. It reads what other
-modules have already written to the engagement store.
+Ref: data/signatures/bluetooth_cves.json
 """
 
 import json

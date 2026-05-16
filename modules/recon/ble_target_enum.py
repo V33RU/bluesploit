@@ -1,23 +1,7 @@
 """
-BlueSploit Module: BLE Target Enumeration
+BLE Target Enumeration - GATT topology walker, mirage-style output.
 
-Connects to a single BLE target via bleak and walks the entire GATT
-topology: services, characteristics with both declaration and value
-handles, descriptors, and (when readable + opted in) the current
-values. Output mirrors the mirage `ble_connect|ble_discover` table
-shape so the operator sees one row per characteristic with full
-context.
-
-Optionally captures a device identity header (manufacturer, model,
-serial, firmware, chipset, LL version) from the Device Information
-service and from system tools (hcitool, bluetoothctl). This subsumes
-the legacy `recon/gatt_enum` module, which is now a thin wrapper.
-
-REQUIRES bleak + a working Bluetooth adapter. No demo mode.
-
-References
-    https://bleak.readthedocs.io/en/latest/api/client.html
-    https://www.bluetooth.com/specifications/specs/core-specification-6-0/
+Ref: bleak (https://bleak.readthedocs.io); Core Spec Vol 3 Part G
 """
 
 from __future__ import annotations

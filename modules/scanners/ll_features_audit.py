@@ -1,17 +1,8 @@
 """
-BlueSploit Module: BLE Link-Layer Features Audit
+BLE Link-Layer Features Audit - privacy + 5.x capability profiler.
 
-Reads `ll_features` fingerprints written by `recon/ll_features` and
-surfaces the BLE 5.x capability profile of each peer plus security-
-relevant gaps. Every rule cites the Bluetooth Core Spec section.
-
-Pure consumer of the engagement store. No HCI, no scanning.
-
-References
-    Bluetooth Core Spec v5.4 Vol 6 Part B section 4.6 (LL Feature Set)
-    Bluetooth Core Spec v5.4 Vol 6 Part B section 6 (Privacy)
-    Erratum 11838 (key size negotiation, BLE side)
-    CVE-2018-5383 (Invalid Curve Attack on LE Secure Connections)
+CVE: CVE-2018-5383 (Invalid Curve on LE SC)
+Ref: Core Spec Vol 6 Part B 4.6 (LL Feature Set), 6 (Privacy)
 """
 
 from __future__ import annotations

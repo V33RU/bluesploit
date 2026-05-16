@@ -1,24 +1,7 @@
 """
-BlueSploit Module: IRK Entropy + RPA Resolution Test
+IRK Entropy + RPA Resolution - entropy check + Core Spec `ah` resolver.
 
-Specialized analysis of a 16-byte Identity Resolving Key (IRK).
-Combines two real checks:
-
-  1. Statistical quality (delegates to core/crypto.analyze_key)
-  2. Resolvable Private Address resolution (Core Spec Vol 3 Part H
-     2.2.2 `ah` function). Given the IRK plus one or more observed
-     RPAs, verifies which RPAs the IRK can resolve. This proves
-     identity-level linkage when it succeeds.
-
-Pure local analysis: no HCI, no network. The IRK must come from
-the operator (paired session, captured pcap, or vendor key
-material). RPAs come either from `--rpas` or from the engagement
-store's hosts table (every host whose top two address bits are 01).
-
-References
-    Core Spec v5.4 Vol 3 Part H section 2.2.2 (ah function)
-    Core Spec v5.4 Vol 6 Part B section 1.3.2.2 (RPA format)
-    Vanhoef and Pieters, "Why MAC address randomization is not enough"
+Ref: Core Spec Vol 3 Part H 2.2.2 (ah); Vol 6 Part B 1.3.2.2 (RPA format)
 """
 
 from __future__ import annotations

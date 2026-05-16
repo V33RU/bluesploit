@@ -1,27 +1,7 @@
 """
-BlueSploit Module: Mesh Provisioning Audit
+Mesh Provisioning Audit - OOB / URI hash / IV-update auditor.
 
-Reads `mesh_beacon` fingerprints written by `recon/mesh_beacon_scan`
-and flags configurations that weaken the provisioning ceremony.
-
-Rules cite Mesh Profile sections directly. The audit consumes
-unprovisioned beacons (the ones a node broadcasts before joining a
-mesh) and reports:
-
-  - OOB info missing entirely (operator has no out-of-band channel,
-    must accept Output / No-OOB authentication)
-  - Only weak OOB methods advertised (Number / String / Output)
-  - URI Hash missing (no integrity check on advertised URI)
-
-Plus a separate sweep for the Secure Network Beacon flags: open key
-refresh windows and IV update flags are surfaced as info-level
-context.
-
-Pure consumer of the engagement store. No HCI, no scanning.
-
-References
-    Bluetooth Mesh Profile v1.1 section 3.10.2 (Unprovisioned Device Beacon)
-    Bluetooth Mesh Profile v1.1 section 5.4 (Provisioning Authentication)
+Ref: Mesh Profile v1.1 3.10.2 (Unprovisioned Beacon), 5.4 (Provisioning Auth)
 """
 
 from __future__ import annotations

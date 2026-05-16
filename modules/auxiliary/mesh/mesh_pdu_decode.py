@@ -1,22 +1,7 @@
 """
-BlueSploit Module: Mesh Network PDU Decoder
+Mesh Network PDU Decoder - offline K2 + PECB + AES-CCM decoder.
 
-Offline decoder for a captured Bluetooth Mesh Network PDU. Given the
-encrypted PDU hex plus the NetKey (and optional IV index), runs the
-real Mesh Profile primitives:
-
-  1. K2(NetKey, "00") -> NID, EncryptionKey, PrivacyKey
-  2. Verify the PDU's NID byte matches K2's NID
-  3. PECB deobfuscation to recover CTL || TTL || SEQ || SRC
-  4. AES-CCM decrypt of DST || TransportPDU with the Network Nonce
-  5. Print every field
-
-Real Mesh crypto. Verified against the Mesh Profile v1.1 spec sample
-data (section 8.1.1).
-
-References
-    Bluetooth Mesh Profile v1.1 section 3.4 (Network Layer)
-    Bluetooth Mesh Profile v1.1 section 3.8 (Security primitives)
+Ref: Mesh Profile v1.1 3.4 (Network Layer), 3.8 (Security)
 """
 
 from __future__ import annotations

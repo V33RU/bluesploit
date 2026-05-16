@@ -1,21 +1,7 @@
 """
-BlueSploit Module: IoT Device Profile Audit
+IoT Device Profile Audit - inventory classifier (wearable/lock/beacon).
 
-Classifies stored `gatt_topology` and `adv` fingerprints into known
-IoT device categories (smart lock, wearable, beacon tracker, medical
-sensor) by matching SIG service UUIDs + manufacturer-data prefixes.
-For each match, prints a category note and a pointer to the right
-class of attack module.
-
-This is NOT a vulnerability finding generator. It is an inventory
-classifier on top of the existing recon data. Severity is fixed at
-'info' for every emission. Operators use this to decide which other
-modules to run.
-
-References
-    Bluetooth Assigned Numbers, Service UUIDs
-    Fitbit BLE protocol documentation (public)
-    Apple Watch GATT services (public)
+Ref: Bluetooth Assigned Numbers (Service UUIDs)
 """
 
 from __future__ import annotations

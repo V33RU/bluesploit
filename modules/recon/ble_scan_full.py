@@ -1,19 +1,7 @@
 """
-BlueSploit Module: BLE Full Scanner
+BLE Full Scanner - active scan capturing full advertising payload.
 
-Captures every advertising payload field that bleak exposes, decodes
-manufacturer-specific data via the Bluetooth SIG Company Identifier
-table in `core/utils/bt.py`, and stores the result so downstream
-modules (cve_match, exploits) can read it without re-scanning.
-
-REQUIRES bleak + a working Bluetooth adapter (Linux BlueZ, macOS
-CoreBluetooth, or supported USB dongle). No demo mode: if bleak cannot
-talk to the controller, the module fails with a clear error.
-
-Output is a rich ASCII table, one row per device, plus a per-device
-details block that prints the raw manufacturer / service-data
-payloads in hex. Designed to be human-readable AND parseable by an
-operator reviewing the engagement store later.
+Ref: bleak (https://bleak.readthedocs.io)
 """
 
 from __future__ import annotations

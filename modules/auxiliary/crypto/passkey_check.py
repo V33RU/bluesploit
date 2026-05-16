@@ -1,21 +1,7 @@
 """
-BlueSploit Module: Passkey Quality Check
+Passkey Quality Check - weak 6-digit BLE Passkey detector.
 
-Audits a 6-digit BLE Passkey (Numeric Comparison / Passkey Entry
-SMP variants) against the public list of trivially-weak values and
-basic structural patterns (sequential digits, repeated digits,
-palindromes, calendar dates).
-
-This module does NOT brute-force a passkey from a pairing capture;
-that's a separate offline-attack module that needs the captured
-SMP exchange. Here we just look at the passkey as a string and
-explain why it would lose to a passive observer in approximate
-real-time.
-
-References
-    Core Spec v5.4 Vol 3 Part H section 2.3.5.2 (Passkey Entry)
-    Mike Ryan, "Bluetooth Smart: The Good, the Bad, the Ugly"
-        USENIX WOOT 2013 (6-digit space is searchable)
+Ref: Core Spec Vol 3 Part H 2.3.5.2 (Passkey Entry); Ryan, USENIX WOOT 2013
 """
 
 from __future__ import annotations

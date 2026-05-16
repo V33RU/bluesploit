@@ -1,19 +1,8 @@
 """
-BlueSploit Module: BLE Advertising Anomaly Audit
+BLE Advertising Anomaly Audit - tracking-surface analyzer.
 
-Reads `adv` fingerprints written by `recon/ble_scan_full` and flags
-configurations in the advertising payload that aid passive tracking
-or impersonation. Rules cite Bluetooth Core Spec or public research.
-
-Pure consumer of the engagement store. No HCI, no scanning, no
-re-fetching. Run `recon/ble_scan_full` first.
-
-References
-    Bluetooth Core Spec v5.4 Vol 3 Part C section 11 (Advertising Data)
-    Vanhoef and Pieters, "Why MAC address randomization is not enough"
-        (ESORICS / WiSec 2016, BLE adv tracking)
-    Apple Continuity Protocol reverse-engineering (Heinze et al., 2019)
-    Eddystone-UID specification, github.com/google/eddystone
+Ref: Core Spec Vol 3 Part C 11; Apple Continuity (Heinze et al. 2019);
+     Eddystone (github.com/google/eddystone)
 """
 
 from __future__ import annotations
