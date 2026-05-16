@@ -10,7 +10,7 @@
 ![Tests](https://img.shields.io/badge/Tests-537%20passing-success?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)
 
-A Metasploit-style Bluetooth security testing framework for Classic BR/EDR and BLE, built by Mr-IoT for authorized penetration testing and security research.
+A Metasploit-style Bluetooth security testing framework for Classic BR/EDR and BLE, for authorized penetration testing and security research.
 
 ```
   ██████╗ ██╗     ██╗   ██╗███████╗███████╗██████╗ ██╗      ██████╗ ██╗████████╗
@@ -450,12 +450,6 @@ python3 scripts/validate_modules.py  # module metadata gate
 - **v1.0.1**: bluing parity + HCI bind/struct fixes.
 
 Every merged PR is tagged `vX.Y.Z.devN`; formal releases happen on milestones. Tag, branch, and PR conventions live in [Contributing](https://v33ru.github.io/bluesploit/contributing/).
-
----
-
-## Author
-
-**Mr-IoT**
 
 ---
 
