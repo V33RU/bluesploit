@@ -1,19 +1,7 @@
 """
-BlueSploit Module: GATT Characteristic Permission Audit
+GATT Characteristic Permission Audit - flags risky GATT property combos.
 
-Reads the `gatt_topology` fingerprint written by
-`recon/ble_target_enum` and flags characteristics whose advertised
-GATT properties violate sensible-defaults for their UUID. Each rule
-cites the SIG Assigned Numbers definition of the characteristic and
-explains why the property combination is risky.
-
-Pure consumer of the engagement store: no network, no HCI, no
-re-enumeration. Run `recon/ble_target_enum` against a target first.
-
-References
-    Bluetooth Assigned Numbers (16-bit UUIDs for GATT characteristics)
-    Core Spec v5.4 Vol 3 Part F section 3.3.1 (Characteristic Properties)
-    Core Spec v5.4 Vol 3 Part G section 3.3.1 (sensitive characteristics)
+Ref: Bluetooth Assigned Numbers; Core Spec Vol 3 Part F 3.3.1
 """
 
 from __future__ import annotations

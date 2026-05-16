@@ -1,22 +1,7 @@
 """
-BlueSploit Module: Bluetooth Mesh Beacon Scanner
+Bluetooth Mesh Beacon Scanner - passive Mesh advertising decoder.
 
-Passive bleak-based scan for Bluetooth Mesh advertising beacons. Decodes
-every Unprovisioned Device Beacon and Secure Network Beacon that lands
-in the radio window. No HCI commands, no transmissions; this is purely
-observational.
-
-REQUIRES bleak + a working BLE adapter (Linux BlueZ, macOS CoreBluetooth,
-or supported USB dongle). No demo mode.
-
-Decoded fields per Mesh Profile v1.1 sections 3.10.2 (Unprovisioned
-Device Beacon, AD type 0x29) and 3.10.3 (Secure Network Beacon, AD
-type 0x2B). Mesh Provisioning Service UUID is 0x1827; Mesh Proxy
-Service UUID is 0x1828.
-
-References
-    Bluetooth Mesh Profile v1.1 section 3.10 (Beaconing)
-    Mesh Profile Assigned Numbers (Service UUIDs 0x1827 / 0x1828)
+Ref: Mesh Profile v1.1 3.10 (Beaconing)
 """
 
 from __future__ import annotations

@@ -1,19 +1,7 @@
 """
-BlueSploit Module: Key Quality Analyzer
+Key Quality Analyzer - statistical key audit (entropy, chi-square, weak table).
 
-Statistical analysis of a hex-encoded key blob (LTK, IRK, link key,
-CSRK, etc.). Detects known weak / test keys, repeated-byte runs,
-trivial entropy, and matches against a small fixed table of common
-mistakes.
-
-This is a pure analysis module: it reads a key the operator paste
-in, performs deterministic math (Shannon entropy, byte-frequency
-chi-square, run detection, known-weak table lookup), and prints a
-verdict. No HCI, no scanning, no network.
-
-References
-    Core Spec v5.4 Vol 3 Part H section 2.4 (key derivation)
-    NIST SP 800-22 (statistical tests for random number generators)
+Ref: NIST SP 800-22; Core Spec Vol 3 Part H 2.4
 """
 
 from __future__ import annotations

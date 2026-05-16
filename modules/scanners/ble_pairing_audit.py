@@ -1,32 +1,8 @@
 """
-BlueSploit Module: BLE Pairing Audit
+BLE Pairing Audit - SMP pairing-feature fingerprint analyzer.
 
-Consumes `smp_pairing` fingerprints already collected by
-`recon/ble_pairing_features` and reports configuration weaknesses
-that are public, well-cited, and exploitable in practice.
-
-Every rule references a Bluetooth Core Specification section, a CVE,
-or a peer-reviewed paper. Severity is taken from the rule, never
-inflated. Confidence reflects how reliably the fingerprint alone
-proves the weakness:
-
-    high   - the fingerprint shows the exact bit / value the spec
-             defines as the weakness; no further test needed.
-    medium - the fingerprint strongly suggests the weakness but a
-             second probe (e.g. attempting a downgrade, or watching
-             a real pairing) would confirm.
-    low    - the fingerprint is consistent with the weakness but
-             other factors could explain it.
-
-If the store has no `smp_pairing` fingerprint for a host, the
-scanner says so and points at `recon/ble_pairing_features`. It does
-NOT invent findings from missing data.
-
-References
-    Bluetooth Core Spec v5.4 Vol 3 Part H sections 2.3.5.1, 2.3.6, 3.5.5
-    Mike Ryan, "Bluetooth Smart: The Good, the Bad, the Ugly", USENIX WOOT 2013
-    CVE-2019-9506 (KNOB key-size negotiation)
-    CVE-2020-15802 (BLURtooth cross-transport key derivation)
+CVE: CVE-2019-9506 (KNOB), CVE-2020-15802 (BLURtooth)
+Ref: https://nvd.nist.gov/vuln/detail/CVE-2019-9506
 """
 
 from __future__ import annotations
