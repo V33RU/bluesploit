@@ -53,10 +53,13 @@ fi
 
 # Check if Bluetooth dev headers are already present so we can skip apt
 deps_already_present() {
-    if [ -f /usr/include/bluetooth/bluetooth.h ] && command -v hcitool >/dev/null 2>&1; then
-        return 0
-    fi
-    return 1
+    # bluetooth.h alone is not enough: bluepy also needs glib-2.0 headers
+    # and pkg-config to find them. Issue #46 (Ubuntu 24.04) hit this.
+    command -v hcitool   >/dev/null 2>&1 || return 1
+    command -v pkg-config >/dev/null 2>&1 || return 1
+    [ -f /usr/include/bluetooth/bluetooth.h ] || return 1
+    pkg-config --exists glib-2.0 || return 1
+    return 0
 }
 
 # Install system dependencies based on OS / package manager
