@@ -58,6 +58,26 @@ Persists in `~/.bluesploit/store.db` (override with `BLUESPLOIT_HOME`). Tables: 
 
 Mr-IoT · [MIT License](LICENSE)
 
+## Features
+
+| Feature | Detail |
+|---|---|
+| Modules | 160 across exploits, DoS, scanners, recon, auxiliary, post |
+| Store-driven scanners | Consume `adv`, `gatt_topology`, `lmp_features`, `ll_features`, `smp_pairing`, `mesh_beacon` fingerprints |
+| Engagement state | `~/.bluesploit/store.db` — hosts, creds, loot, fingerprints, workspaces |
+| CVEs | 40+ PoC exploits (2010-2026); 7 NVD-cited signatures for offline matching |
+| BLE crypto | AES-128, `ah` for RPA resolution, key stats |
+| Mesh crypto | K1/K2/K3/K4, AES-CMAC, PECB, AES-CCM (spec-verified) |
+| `set target` | BD_ADDR / host id / name substring; auto-fills creds |
+| Workspaces | Isolated engagements, persisted active workspace |
+| Resource scripts | `resource <file>` replays console commands |
+| Global options | Persistent `setg` / `unsetg` |
+| Install | Linux (apt/dnf/yum/pacman/zypper/apk/xbps/emerge) + macOS |
+| Hardware | Ubertooth One, nRF52840, BTLEJack, HackRF One, YARD Stick One, UD100 |
+| REPL | `use` / `set` / `run` / `check` / `back` |
+| PCAP | Per-run capture via `btmon` / `tcpdump` |
+| Protocols | BR/EDR, BLE, Mesh |
+
 ## Disclaimer
 
 Authorized testing only. Use against equipment you own or have written permission to test. Authors disclaim liability for misuse.
