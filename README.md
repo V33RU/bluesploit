@@ -6,7 +6,7 @@
 ![Python](https://img.shields.io/badge/Python-3.8+-3776AB?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)
 
-Bluetooth framework for Classic BR/EDR and BLE. 160 modules, persistent store. By Mr-IoT.
+Bluetooth framework for Classic BR/EDR and BLE. 160 modules, persistent store.
 
 Docs: [v33ru.github.io/bluesploit](https://v33ru.github.io/bluesploit/) · Latest: [v1.0.5](https://github.com/V33RU/bluesploit/releases/tag/v1.0.5)
 
@@ -48,15 +48,15 @@ Persists in `~/.bluesploit/store.db` (override with `BLUESPLOIT_HOME`). Tables: 
 
 ## Core libraries
 
-- `core/crypto.py` — AES-128, `ah` for RPA resolution, key stats
-- `core/mesh.py` — Mesh K1/K2/K3/K4, AES-CMAC, AES-CCM (spec-verified)
-- `core/cve.py` — CVE signature engine
-- `core/store.py` — SQLite engagement store
-- `core/ble_meta.py` — SIG UUID tables
+- `core/crypto.py`: AES-128, `ah` for RPA resolution, key stats
+- `core/mesh.py`: Mesh K1/K2/K3/K4, AES-CMAC, AES-CCM (spec-verified)
+- `core/cve.py`: CVE signature engine
+- `core/store.py`: SQLite engagement store
+- `core/ble_meta.py`: SIG UUID tables
 
-## Author
+## License
 
-Mr-IoT · [MIT License](LICENSE)
+[MIT](LICENSE)
 
 ## Features
 
@@ -64,7 +64,7 @@ Mr-IoT · [MIT License](LICENSE)
 |---|---|
 | Modules | 160 across exploits, DoS, scanners, recon, auxiliary, post |
 | Store-driven scanners | Consume `adv`, `gatt_topology`, `lmp_features`, `ll_features`, `smp_pairing`, `mesh_beacon` fingerprints |
-| Engagement state | `~/.bluesploit/store.db` — hosts, creds, loot, fingerprints, workspaces |
+| Engagement state | `~/.bluesploit/store.db`, hosts, creds, loot, fingerprints, workspaces |
 | CVEs | 40+ PoC exploits (2010-2026); 7 NVD-cited signatures for offline matching |
 | BLE crypto | AES-128, `ah` for RPA resolution, key stats |
 | Mesh crypto | K1/K2/K3/K4, AES-CMAC, PECB, AES-CCM (spec-verified) |
