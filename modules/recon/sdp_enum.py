@@ -30,6 +30,7 @@ Modes:
 """
 
 import json
+import os
 import re
 import socket
 import subprocess
@@ -39,12 +40,20 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
 from core.base import (
-    BTProtocol, ModuleInfo, ModuleOption, ScannerModule, Severity, Target,
+    BTProtocol,
+    ModuleInfo,
+    ModuleOption,
+    ScannerModule,
+    Severity,
+    Target,
 )
 from core.utils.printer import (
-    Colors, print_error, print_info, print_success, print_warning,
+    Colors,
+    print_error,
+    print_info,
+    print_success,
+    print_warning,
 )
-
 
 # ── Reference tables ──────────────────────────────────────────────────────────
 
@@ -90,6 +99,47 @@ KNOWN_SERVICES: Dict[str, str] = {
     "0x1305": "Video Distribution",
     "0x1400": "HDP",
 }
+
+# Standard L2CAP PSM assignments (Bluetooth Assigned Numbers, fixed channels).
+PSM_NAMES: Dict[int, str] = {
+    0x0001: "SDP",
+    0x0003: "RFCOMM",
+    0x0005: "TCS-BIN",
+    0x0007: "TCS-BIN-CORDLESS",
+    0x000F: "BNEP",
+    0x0011: "HIDP-Control",
+    0x0013: "HIDP-Interrupt",
+    0x0015: "UPnP",
+    0x0017: "AVCTP",
+    0x0019: "AVDTP",
+    0x001B: "AVCTP-Browsing",
+    0x001D: "UDI-C-Plane",
+    0x001F: "ATT",
+    0x0021: "3DSP",
+    0x0023: "LE-PSM-IPSP",
+    0x0025: "OTS",
+}
+
+
+def _decode_bt_version(hex_str: str) -> str:
+    """Decode a Bluetooth profile version field (0xJJMN) to 'J.M.N'."""
+    try:
+        v = int(hex_str, 16)
+    except (ValueError, TypeError):
+        return hex_str or ""
+    major = (v >> 8) & 0xFF
+    minor = (v >> 4) & 0x0F
+    patch = v & 0x0F
+    return f"{major}.{minor}.{patch}" if patch else f"{major}.{minor}"
+
+
+def _decode_psm(psm: Optional[int]) -> str:
+    """'17 (HIDP-Control)' or just '17' when unknown."""
+    if psm is None:
+        return "-"
+    label = PSM_NAMES.get(psm)
+    return f"{psm} ({label})" if label else str(psm)
+
 
 KNOWN_PROTOCOLS: Dict[str, str] = {
     "0x0001": "SDP",       "0x0002": "UDP",        "0x0003": "RFCOMM",
@@ -457,6 +507,10 @@ class Module(ScannerModule):
                 name="xml_attrs", required=False, default=True,
                 description="Also fetch & parse XML attribute records",
             ),
+            "dump_tree": ModuleOption(
+                name="dump_tree", required=False, default=False,
+                description="Append raw `sdptool records --tree` output (every attribute ID per record). Off by default; turn on for deep inspection.",
+            ),
             "timeout": ModuleOption(
                 name="timeout", required=False, default=30,
                 description="Per-command timeout in seconds",
@@ -509,30 +563,50 @@ class Module(ScannerModule):
     # ── Plain-text parser ───────────────────────────────────────────────────
 
     def _parse_browse(self, output: str) -> List[SDPService]:
-        """Parse the human-readable `sdptool browse` output."""
+        """Parse the human-readable `sdptool browse` / `records` output.
+
+        A service record starts with either 'Service Name:' or
+        'Service RecHandle:' (whichever appears first). Many records
+        have no name field; without this both cases the parser used to
+        drop them silently.
+        """
         services: List[SDPService] = []
         cur:      Optional[SDPService] = None
         section:  Optional[str] = None
         raw:      List[str] = []
 
+        def _flush():
+            nonlocal cur, raw
+            if cur is not None:
+                cur.raw = "\n".join(raw)
+                services.append(cur)
+            cur = None
+            raw = []
+
         for line in output.split("\n"):
             stripped = line.rstrip()
             if line.startswith("Service Name:"):
-                if cur:
-                    cur.raw = "\n".join(raw)
-                    services.append(cur)
-                    raw = []
+                # Service Name always starts a new record. (Adjacent records
+                # never share a name in sdptool output.)
+                _flush()
                 cur = SDPService(name=stripped.split(":", 1)[1].strip() or "Unknown")
+                section = None
+                continue
+            if line.startswith("Service RecHandle:"):
+                # RecHandle starts a new record UNLESS the current record
+                # has no handle yet (i.e. we just opened it via Name).
+                if cur is None or cur.record_handle:
+                    _flush()
+                    cur = SDPService(name="")
+                cur.record_handle = stripped.split(":", 1)[1].strip()
+                raw.append(stripped)
                 section = None
                 continue
 
             if cur is None:
                 continue
             raw.append(stripped)
-
-            if stripped.startswith("Service RecHandle:"):
-                cur.record_handle = stripped.split(":", 1)[1].strip()
-            elif stripped.startswith("Service Provider:"):
+            if stripped.startswith("Service Provider:"):
                 cur.provider = stripped.split(":", 1)[1].strip()
             elif stripped.startswith("Service Description:"):
                 cur.description = stripped.split(":", 1)[1].strip()
@@ -566,18 +640,65 @@ class Module(ScannerModule):
                 if m: cur.psm = int(m.group(1))
 
             elif section == "profiles":
-                m = re.search(
-                    r'"([^"]+)".*?\((0x[0-9a-fA-F]+)\).*?Version:\s*(0x[0-9a-fA-F]+)',
-                    stripped)
+                # Real sdptool output puts the Version line below the name:
+                #   "Advanced Audio" (0x110d)
+                #     Version: 0x0103
+                m = re.search(r'"([^"]+)".*?\((0x[0-9a-fA-F]+)\)', stripped)
                 if m:
-                    cur.profiles.append({"name": m.group(1),
-                                         "uuid": m.group(2),
-                                         "version": m.group(3)})
+                    cur.profiles.append({
+                        "name": m.group(1),
+                        "uuid": m.group(2),
+                        "version": "",
+                    })
+                else:
+                    vm = re.search(r"Version:\s*(0x[0-9a-fA-F]+)", stripped)
+                    if vm and cur.profiles:
+                        cur.profiles[-1]["version"] = vm.group(1)
 
-        if cur:
-            cur.raw = "\n".join(raw)
-            services.append(cur)
+        _flush()
         return services
+
+    @staticmethod
+    def _dedupe_services(services: List[SDPService]) -> List[SDPService]:
+        """Merge duplicate records produced by running browse + records.
+
+        Two SDP records are the same record when they share a record
+        handle. When merging, the entry with a non-empty Service Name
+        wins for the name field; everything else is taken from whichever
+        copy has the value.
+        """
+        by_handle: Dict[str, SDPService] = {}
+        order: List[str] = []
+        no_handle: List[SDPService] = []
+        for s in services:
+            if not s.record_handle:
+                no_handle.append(s)
+                continue
+            key = s.record_handle
+            if key not in by_handle:
+                by_handle[key] = s
+                order.append(key)
+                continue
+            cur = by_handle[key]
+            if not cur.name and s.name:
+                cur.name = s.name
+            if not cur.provider and s.provider:
+                cur.provider = s.provider
+            if not cur.description and s.description:
+                cur.description = s.description
+            if not cur.service_classes and s.service_classes:
+                cur.service_classes = s.service_classes
+            if not cur.protocols and s.protocols:
+                cur.protocols = s.protocols
+            if not cur.profiles and s.profiles:
+                cur.profiles = s.profiles
+            if cur.channel is None and s.channel is not None:
+                cur.channel = s.channel
+            if cur.psm is None and s.psm is not None:
+                cur.psm = s.psm
+            if not cur.raw:
+                cur.raw = s.raw
+        return [by_handle[h] for h in order] + no_handle
 
     # ── XML attribute parser (sdptool browse --xml) ─────────────────────────
 
@@ -657,7 +778,7 @@ class Module(ScannerModule):
             return _SEV_ORDER.get(s.risk.severity, 99)
         services = sorted(services, key=_key)
 
-        W = {"#": 4, "NAME": 30, "UUID": 9, "CHAN": 6, "PSM": 7, "REACH": 7, "PROTO": 12, "RISK": 12}
+        W = {"#": 4, "NAME": 30, "UUID": 9, "CHAN": 6, "PSM": 22, "REACH": 7, "PROTO": 12, "RISK": 12}
         total = sum(W.values())
 
         print(f"\n  {C.CYAN}{'═'*(total+2)}{C.RESET}")
@@ -672,10 +793,13 @@ class Module(ScannerModule):
         print("  " + "─" * total)
 
         for idx, s in enumerate(services, 1):
-            name = (s.name[:W["NAME"]-2] + "..") if len(s.name) > W["NAME"] else s.name
+            # Fall back to the primary service class name when the record
+            # has no Service Name attribute.
+            display = s.name or (s.service_classes[0]["name"] if s.service_classes else "(unnamed)")
+            name = (display[:W["NAME"]-2] + "..") if len(display) > W["NAME"] else display
             uuid = s.service_classes[0]["uuid"] if s.service_classes else "-"
             chan = str(s.channel) if s.channel else "-"
-            psm  = str(s.psm)     if s.psm     else "-"
+            psm  = _decode_psm(s.psm)
 
             if s.psm is None:
                 reach = "-"
@@ -709,6 +833,37 @@ class Module(ScannerModule):
 
         print("  " + "─" * total)
 
+    def _print_profiles(self, services: List[SDPService]) -> None:
+        """Show Bluetooth Profile Descriptor entries (name + version) per record.
+
+        Profile versions are useful for matching to CVEs (e.g. HID 1.0 vs
+        1.1, HFP 1.5 vs 1.8). The data is pulled from the Profile
+        Descriptor List attribute of each record.
+        """
+        C = Colors
+        rows = []
+        for s in services:
+            for p in s.profiles or []:
+                label = s.name or (s.service_classes[0]["name"] if s.service_classes else "")
+                raw_ver = p.get("version", "")
+                decoded = _decode_bt_version(raw_ver) if raw_ver else ""
+                ver_cell = f"{raw_ver}" + (f" ({decoded})" if decoded else "")
+                rows.append((label, p.get("name", ""), p.get("uuid", ""), ver_cell))
+        if not rows:
+            return
+        print(f"\n  {C.BOLD}PROFILE VERSIONS{C.RESET}")
+        print(f"  {C.CYAN}{'─' * 78}{C.RESET}")
+        W = {"REC": 22, "PROFILE": 28, "UUID": 10, "VER": 18}
+        hdr = (f"  {C.BOLD}{'RECORD':<{W['REC']}}{'PROFILE':<{W['PROFILE']}}"
+               f"{'UUID':<{W['UUID']}}{'VERSION':<{W['VER']}}{C.RESET}")
+        print(hdr)
+        print("  " + "─" * sum(W.values()))
+        for label, name, uuid, ver in rows:
+            label_t = (label[:W["REC"]-2] + "..") if len(label) > W["REC"] else label
+            name_t  = (name[:W["PROFILE"]-2] + "..") if len(name) > W["PROFILE"] else name
+            print(f"  {label_t:<{W['REC']}}{name_t:<{W['PROFILE']}}"
+                  f"{uuid:<{W['UUID']}}{ver:<{W['VER']}}")
+
     def _print_risk(self, services: List[SDPService]) -> None:
         risky = [s for s in services if s.risk is not None]
         if not risky:
@@ -721,7 +876,8 @@ class Module(ScannerModule):
             r = s.risk
             sev_col = {"CRITICAL": C.RED + C.BOLD, "HIGH": C.RED,
                        "MEDIUM": C.YELLOW,         "LOW": C.GREEN}.get(r.severity, C.WHITE)
-            print(f"\n  {sev_col}[{r.severity}] {s.name}{C.RESET}  "
+            display = s.name or (s.service_classes[0]["name"] if s.service_classes else "(unnamed)")
+            print(f"\n  {sev_col}[{r.severity}] {display}{C.RESET}  "
                   f"{C.DARK_GREY}({s.risk_uuid}){C.RESET}")
             print(f"    {r.summary}")
             if r.cves:
@@ -735,7 +891,7 @@ class Module(ScannerModule):
                 tag = ("open" if s.psm_reachable
                        else "closed" if s.psm_reachable is False
                        else "untested")
-                print(f"    {C.DARK_GREY}L2CAP PSM    :{C.RESET} {s.psm}  ({tag})")
+                print(f"    {C.DARK_GREY}L2CAP PSM    :{C.RESET} {_decode_psm(s.psm)}  ({tag})")
 
     def _print_pnp(self, pnp: Optional[PnPInfo]) -> None:
         if pnp is None:
@@ -746,7 +902,7 @@ class Module(ScannerModule):
         if pnp.vendor_id is not None:
             src = (PNP_VENDOR_SOURCE.get(pnp.vendor_id_source, f"src={pnp.vendor_id_source}")
                    if pnp.vendor_id_source else "src=?")
-            vname = pnp.vendor_name or f"Unknown vendor"
+            vname = pnp.vendor_name or "Unknown vendor"
             print(f"  Vendor      : {C.WHITE}0x{pnp.vendor_id:04X}{C.RESET}  ({src})  → {vname}")
         if pnp.product_id is not None:
             print(f"  Product     : 0x{pnp.product_id:04X}")
@@ -828,6 +984,12 @@ class Module(ScannerModule):
             print_error("sdptool not found, install BlueZ (`sudo apt install bluez`)")
             return False
 
+        if os.geteuid() != 0:
+            print_warning(
+                "sdptool needs root for SDP queries; re-run with sudo or "
+                "results will be empty"
+            )
+
         mode        = (self.get_option("mode") or "full").lower()
         search      = self.get_option("search")
         timeout     = int(self.get_option("timeout"))
@@ -857,15 +1019,25 @@ class Module(ScannerModule):
         else:
             output = self._run_sdptool(["browse", target], timeout)
 
-        if not output:
+        # In full mode also run `sdptool records`. It uses the same output
+        # format but sometimes returns records that browse misses; we
+        # merge them by handle so the operator sees the full set.
+        records_output = None
+        if mode == "full" and not search:
+            records_output = self._run_sdptool(["records", target], timeout)
+
+        combined = (output or "") + "\n" + (records_output or "")
+        if not combined.strip():
             print_warning("No SDP response, device out of range, paired-only, or stack patched")
             return False
 
-        services = self._parse_browse(output)
+        services = self._dedupe_services(self._parse_browse(combined))
         if not services:
-            print_warning("Browse returned data but no services parsed")
+            print_warning("SDP returned data but no service records parsed")
             return False
-        print_success(f"Parsed {len(services)} service record(s)")
+
+        src = "browse + records" if records_output else "browse"
+        print_success(f"Parsed {len(services)} service record(s) ({src})")
 
         # Risk annotation
         self._annotate_risk(services)
@@ -901,8 +1073,18 @@ class Module(ScannerModule):
         self._print_table(target, services)
         if pnp:
             self._print_pnp(pnp)
+        self._print_profiles(services)
         self._print_risk(services)
         self._print_summary(services)
+
+        # Optional deep dump
+        if bool(self.get_option("dump_tree")):
+            tree = self._run_sdptool(["records", "--tree", target], timeout)
+            if tree and tree.strip():
+                print(f"\n  {Colors.BOLD}RECORDS --tree (raw){Colors.RESET}")
+                print(f"  {Colors.CYAN}{'─' * 78}{Colors.RESET}")
+                for line in tree.splitlines():
+                    print(f"  {line}")
 
         # ── Persist ──────────────────────────────────────────────────────
         result = {
@@ -912,19 +1094,19 @@ class Module(ScannerModule):
             "xml":      xml_attrs,
         }
         self.add_result(result)
+        # Register the host once with the union of service-class names so
+        # downstream modules can target it. Target dataclass has no
+        # metadata field, so per-service extras live in self._results.
+        all_services: List[str] = []
         for s in services:
-            self.add_device(Target(
-                address=target,
-                name=s.name,
-                device_type="Bluetooth Classic",
-                metadata={
-                    "channel":         s.channel,
-                    "psm":             s.psm,
-                    "psm_reachable":   s.psm_reachable,
-                    "service_classes": s.service_classes,
-                    "risk":            s.risk.severity if s.risk else None,
-                },
-            ))
+            for c in s.service_classes:
+                all_services.append(c.get("uuid") or c.get("name", ""))
+        self.add_device(Target(
+            address=target,
+            name=next((s.name for s in services if s.name), None),
+            device_type="Bluetooth Classic",
+            services=sorted(set(filter(None, all_services))),
+        ))
 
         if out_file:
             self._save(target, services, pnp, xml_attrs, out_file)

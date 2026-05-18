@@ -14,6 +14,7 @@ Passive sources used:
 
 import asyncio
 import json
+import os
 import re
 import subprocess
 import uuid as _uuid_mod
@@ -21,8 +22,12 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set, Tuple
 
 from core.base import (
-    BTProtocol, ModuleInfo, ModuleOption,
-    ReconModule, Severity, Target,
+    BTProtocol,
+    ModuleInfo,
+    ModuleOption,
+    ReconModule,
+    Severity,
+    Target,
 )
 from core.utils.printer import Colors, print_error, print_info, print_success, print_warning
 
@@ -388,8 +393,8 @@ class Module(ReconModule):
             "timeout": ModuleOption(
                 name="timeout",
                 required=False,
-                description="Scan duration in seconds",
-                default=15,
+                description="Scan duration in seconds per phase (Classic name-resolution can be slow; bump to 30+ when many devices in range)",
+                default=20,
             ),
             "mode": ModuleOption(
                 name="mode",
@@ -427,49 +432,112 @@ class Module(ReconModule):
 
     def _scan_classic(self, iface: str, timeout: int) -> List[Device]:
         found: Dict[str, Device] = {}
+        # hcitool length is in 1.28s units; give the user the full timeout
+        # they asked for, capped at 1.28*48 = ~61s per hcitool call.
         inq_units = min(48, max(4, timeout * 100 // 128))
 
-        try:
-            r = subprocess.run(
-                ["hcitool", "-i", iface, "inq",
-                 "--length", str(inq_units), "--numrsp", "255", "--rssi"],
-                capture_output=True, text=True, timeout=timeout + 8,
+        if os.geteuid() != 0:
+            print_warning(
+                "hcitool inquiry needs root (CAP_NET_RAW), re-run with sudo "
+                "or no Classic devices will appear"
             )
-            for line in r.stdout.splitlines():
-                m = re.match(
-                    r'([0-9A-Fa-f:]{17}).*?class:\s*(\S+)'
-                    r'(?:.*?rssi:\s*(-?\d+))?',
-                    line.strip(), re.IGNORECASE,
+
+        # 1. hcitool inq, address + class. --rssi is unsupported on some
+        # BlueZ builds (Ubuntu 24.04+); retry without it on rejection.
+        # Match lenient: any line with a BD_ADDR, optional class/rssi.
+        def _try_inq(extra: List[str]) -> Optional[str]:
+            try:
+                r = subprocess.run(
+                    ["hcitool", "-i", iface, "inq",
+                     "--length", str(inq_units), "--numrsp", "255"] + extra,
+                    capture_output=True, text=True, timeout=timeout + 8,
                 )
-                if m:
-                    addr = m.group(1).upper()
-                    cod  = m.group(2)
-                    rssi = int(m.group(3)) if m.group(3) else None
-                    found[addr] = Device(
-                        address=addr, rssi=rssi,
-                        protocol="CLASSIC",
-                        vendor=_oui_vendor(addr),
-                        dev_class=_decode_cod(cod),
-                    )
+                if "unrecognized option" in r.stderr:
+                    return None
+                return r.stdout
+            except FileNotFoundError:
+                return ""
+            except (subprocess.TimeoutExpired, Exception):
+                return ""
+
+        try:
+            out = _try_inq(["--rssi"])
+            if out is None:
+                out = _try_inq([])
+            if out is None:
+                out = ""
+            for line in out.splitlines():
+                bd = re.search(r'\b([0-9A-Fa-f]{2}(?::[0-9A-Fa-f]{2}){5})\b', line)
+                if not bd:
+                    continue
+                addr = bd.group(1).upper()
+                cod_m = re.search(r'class:\s*(\S+)', line, re.IGNORECASE)
+                rssi_m = re.search(r'rssi:\s*(-?\d+)', line, re.IGNORECASE)
+                found[addr] = Device(
+                    address=addr,
+                    rssi=int(rssi_m.group(1)) if rssi_m else None,
+                    protocol="CLASSIC",
+                    vendor=_oui_vendor(addr),
+                    dev_class=_decode_cod(cod_m.group(1)) if cod_m else "BT Device",
+                )
         except FileNotFoundError:
             print_warning("hcitool not found, Classic scan skipped (apt install bluez)")
             return []
-        except (subprocess.TimeoutExpired, Exception):
-            pass
 
+        # 2. hcitool scan, addresses + names. --flush is also unsupported
+        # on some builds; retry without it.
+        def _try_scan(extra: List[str]) -> Optional[str]:
+            try:
+                r = subprocess.run(
+                    ["hcitool", "-i", iface, "scan",
+                     "--length", str(inq_units)] + extra,
+                    capture_output=True, text=True, timeout=timeout + 8,
+                )
+                if "unrecognized option" in r.stderr or "Invalid option" in r.stderr:
+                    return None
+                return r.stdout
+            except (subprocess.TimeoutExpired, Exception):
+                return ""
+
+        out = _try_scan(["--flush"])
+        if out is None:
+            out = _try_scan([])
+        if out is None:
+            out = ""
+        for line in out.splitlines():
+            m = re.match(r'([0-9A-Fa-f:]{17})\s+(.*)', line.strip(), re.IGNORECASE)
+            if m:
+                addr = m.group(1).upper()
+                name = m.group(2).strip() or None
+                if addr in found:
+                    if name:
+                        found[addr].name = name
+                else:
+                    found[addr] = Device(
+                        address=addr, name=name,
+                        protocol="CLASSIC",
+                        vendor=_oui_vendor(addr),
+                        dev_class="BT Device",
+                    )
+
+        # 3. Read BlueZ's own cache via bluetoothctl. Picks up devices that
+        # hcitool scan timed out on (name resolution is slow per device).
         try:
             r = subprocess.run(
-                ["hcitool", "-i", iface, "scan", "--flush",
-                 "--length", str(inq_units)],
-                capture_output=True, text=True, timeout=timeout + 8,
+                ["bluetoothctl", "devices"],
+                capture_output=True, text=True, timeout=6,
             )
             for line in r.stdout.splitlines():
-                m = re.match(r'([0-9A-Fa-f:]{17})\s+(.*)', line.strip(), re.IGNORECASE)
+                m = re.match(
+                    r'\s*Device\s+([0-9A-Fa-f:]{17})\s*(.*)$',
+                    line, re.IGNORECASE,
+                )
                 if m:
                     addr = m.group(1).upper()
                     name = m.group(2).strip() or None
                     if addr in found:
-                        found[addr].name = name
+                        if name and not found[addr].name:
+                            found[addr].name = name
                     else:
                         found[addr] = Device(
                             address=addr, name=name,
@@ -477,7 +545,7 @@ class Module(ReconModule):
                             vendor=_oui_vendor(addr),
                             dev_class="BT Device",
                         )
-        except (subprocess.TimeoutExpired, Exception):
+        except (FileNotFoundError, subprocess.TimeoutExpired, Exception):
             pass
 
         return list(found.values())
