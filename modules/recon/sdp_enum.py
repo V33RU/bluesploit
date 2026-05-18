@@ -30,6 +30,7 @@ Modes:
 """
 
 import json
+import os
 import re
 import socket
 import subprocess
@@ -39,12 +40,20 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
 from core.base import (
-    BTProtocol, ModuleInfo, ModuleOption, ScannerModule, Severity, Target,
+    BTProtocol,
+    ModuleInfo,
+    ModuleOption,
+    ScannerModule,
+    Severity,
+    Target,
 )
 from core.utils.printer import (
-    Colors, print_error, print_info, print_success, print_warning,
+    Colors,
+    print_error,
+    print_info,
+    print_success,
+    print_warning,
 )
-
 
 # ── Reference tables ──────────────────────────────────────────────────────────
 
@@ -509,30 +518,50 @@ class Module(ScannerModule):
     # ── Plain-text parser ───────────────────────────────────────────────────
 
     def _parse_browse(self, output: str) -> List[SDPService]:
-        """Parse the human-readable `sdptool browse` output."""
+        """Parse the human-readable `sdptool browse` / `records` output.
+
+        A service record starts with either 'Service Name:' or
+        'Service RecHandle:' (whichever appears first). Many records
+        have no name field; without this both cases the parser used to
+        drop them silently.
+        """
         services: List[SDPService] = []
         cur:      Optional[SDPService] = None
         section:  Optional[str] = None
         raw:      List[str] = []
 
+        def _flush():
+            nonlocal cur, raw
+            if cur is not None:
+                cur.raw = "\n".join(raw)
+                services.append(cur)
+            cur = None
+            raw = []
+
         for line in output.split("\n"):
             stripped = line.rstrip()
             if line.startswith("Service Name:"):
-                if cur:
-                    cur.raw = "\n".join(raw)
-                    services.append(cur)
-                    raw = []
+                # Service Name always starts a new record. (Adjacent records
+                # never share a name in sdptool output.)
+                _flush()
                 cur = SDPService(name=stripped.split(":", 1)[1].strip() or "Unknown")
+                section = None
+                continue
+            if line.startswith("Service RecHandle:"):
+                # RecHandle starts a new record UNLESS the current record
+                # has no handle yet (i.e. we just opened it via Name).
+                if cur is None or cur.record_handle:
+                    _flush()
+                    cur = SDPService(name="")
+                cur.record_handle = stripped.split(":", 1)[1].strip()
+                raw.append(stripped)
                 section = None
                 continue
 
             if cur is None:
                 continue
             raw.append(stripped)
-
-            if stripped.startswith("Service RecHandle:"):
-                cur.record_handle = stripped.split(":", 1)[1].strip()
-            elif stripped.startswith("Service Provider:"):
+            if stripped.startswith("Service Provider:"):
                 cur.provider = stripped.split(":", 1)[1].strip()
             elif stripped.startswith("Service Description:"):
                 cur.description = stripped.split(":", 1)[1].strip()
@@ -574,9 +603,7 @@ class Module(ScannerModule):
                                          "uuid": m.group(2),
                                          "version": m.group(3)})
 
-        if cur:
-            cur.raw = "\n".join(raw)
-            services.append(cur)
+        _flush()
         return services
 
     # ── XML attribute parser (sdptool browse --xml) ─────────────────────────
@@ -746,7 +773,7 @@ class Module(ScannerModule):
         if pnp.vendor_id is not None:
             src = (PNP_VENDOR_SOURCE.get(pnp.vendor_id_source, f"src={pnp.vendor_id_source}")
                    if pnp.vendor_id_source else "src=?")
-            vname = pnp.vendor_name or f"Unknown vendor"
+            vname = pnp.vendor_name or "Unknown vendor"
             print(f"  Vendor      : {C.WHITE}0x{pnp.vendor_id:04X}{C.RESET}  ({src})  → {vname}")
         if pnp.product_id is not None:
             print(f"  Product     : 0x{pnp.product_id:04X}")
@@ -827,6 +854,12 @@ class Module(ScannerModule):
         if not self._have_sdptool():
             print_error("sdptool not found, install BlueZ (`sudo apt install bluez`)")
             return False
+
+        if os.geteuid() != 0:
+            print_warning(
+                "sdptool needs root for SDP queries; re-run with sudo or "
+                "results will be empty"
+            )
 
         mode        = (self.get_option("mode") or "full").lower()
         search      = self.get_option("search")
