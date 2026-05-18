@@ -606,6 +606,46 @@ class Module(ScannerModule):
         _flush()
         return services
 
+    @staticmethod
+    def _dedupe_services(services: List[SDPService]) -> List[SDPService]:
+        """Merge duplicate records produced by running browse + records.
+
+        Two SDP records are the same record when they share a record
+        handle. When merging, the entry with a non-empty Service Name
+        wins for the name field; everything else is taken from whichever
+        copy has the value.
+        """
+        by_handle: Dict[str, SDPService] = {}
+        order: List[str] = []
+        no_handle: List[SDPService] = []
+        for s in services:
+            if not s.record_handle:
+                no_handle.append(s)
+                continue
+            key = s.record_handle
+            if key not in by_handle:
+                by_handle[key] = s
+                order.append(key)
+                continue
+            cur = by_handle[key]
+            if not cur.name and s.name:
+                cur.name = s.name
+            if not cur.provider and s.provider:
+                cur.provider = s.provider
+            if not cur.description and s.description:
+                cur.description = s.description
+            if not cur.service_classes and s.service_classes:
+                cur.service_classes = s.service_classes
+            if not cur.protocols and s.protocols:
+                cur.protocols = s.protocols
+            if cur.channel is None and s.channel is not None:
+                cur.channel = s.channel
+            if cur.psm is None and s.psm is not None:
+                cur.psm = s.psm
+            if not cur.raw:
+                cur.raw = s.raw
+        return [by_handle[h] for h in order] + no_handle
+
     # ── XML attribute parser (sdptool browse --xml) ─────────────────────────
 
     def _parse_xml_records(self, xml_text: str) -> Dict[str, Dict[str, str]]:
@@ -890,15 +930,25 @@ class Module(ScannerModule):
         else:
             output = self._run_sdptool(["browse", target], timeout)
 
-        if not output:
+        # In full mode also run `sdptool records`. It uses the same output
+        # format but sometimes returns records that browse misses; we
+        # merge them by handle so the operator sees the full set.
+        records_output = None
+        if mode == "full" and not search:
+            records_output = self._run_sdptool(["records", target], timeout)
+
+        combined = (output or "") + "\n" + (records_output or "")
+        if not combined.strip():
             print_warning("No SDP response, device out of range, paired-only, or stack patched")
             return False
 
-        services = self._parse_browse(output)
+        services = self._dedupe_services(self._parse_browse(combined))
         if not services:
-            print_warning("Browse returned data but no services parsed")
+            print_warning("SDP returned data but no service records parsed")
             return False
-        print_success(f"Parsed {len(services)} service record(s)")
+
+        src = "browse + records" if records_output else "browse"
+        print_success(f"Parsed {len(services)} service record(s) ({src})")
 
         # Risk annotation
         self._annotate_risk(services)
