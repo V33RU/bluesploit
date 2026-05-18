@@ -739,7 +739,10 @@ class Module(ScannerModule):
         print("  " + "─" * total)
 
         for idx, s in enumerate(services, 1):
-            name = (s.name[:W["NAME"]-2] + "..") if len(s.name) > W["NAME"] else s.name
+            # Fall back to the primary service class name when the record
+            # has no Service Name attribute.
+            display = s.name or (s.service_classes[0]["name"] if s.service_classes else "(unnamed)")
+            name = (display[:W["NAME"]-2] + "..") if len(display) > W["NAME"] else display
             uuid = s.service_classes[0]["uuid"] if s.service_classes else "-"
             chan = str(s.channel) if s.channel else "-"
             psm  = str(s.psm)     if s.psm     else "-"
@@ -788,7 +791,8 @@ class Module(ScannerModule):
             r = s.risk
             sev_col = {"CRITICAL": C.RED + C.BOLD, "HIGH": C.RED,
                        "MEDIUM": C.YELLOW,         "LOW": C.GREEN}.get(r.severity, C.WHITE)
-            print(f"\n  {sev_col}[{r.severity}] {s.name}{C.RESET}  "
+            display = s.name or (s.service_classes[0]["name"] if s.service_classes else "(unnamed)")
+            print(f"\n  {sev_col}[{r.severity}] {display}{C.RESET}  "
                   f"{C.DARK_GREY}({s.risk_uuid}){C.RESET}")
             print(f"    {r.summary}")
             if r.cves:
@@ -995,19 +999,19 @@ class Module(ScannerModule):
             "xml":      xml_attrs,
         }
         self.add_result(result)
+        # Register the host once with the union of service-class names so
+        # downstream modules can target it. Target dataclass has no
+        # metadata field, so per-service extras live in self._results.
+        all_services: List[str] = []
         for s in services:
-            self.add_device(Target(
-                address=target,
-                name=s.name,
-                device_type="Bluetooth Classic",
-                metadata={
-                    "channel":         s.channel,
-                    "psm":             s.psm,
-                    "psm_reachable":   s.psm_reachable,
-                    "service_classes": s.service_classes,
-                    "risk":            s.risk.severity if s.risk else None,
-                },
-            ))
+            for c in s.service_classes:
+                all_services.append(c.get("uuid") or c.get("name", ""))
+        self.add_device(Target(
+            address=target,
+            name=next((s.name for s in services if s.name), None),
+            device_type="Bluetooth Classic",
+            services=sorted(set(filter(None, all_services))),
+        ))
 
         if out_file:
             self._save(target, services, pnp, xml_attrs, out_file)
