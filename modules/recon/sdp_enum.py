@@ -100,6 +100,47 @@ KNOWN_SERVICES: Dict[str, str] = {
     "0x1400": "HDP",
 }
 
+# Standard L2CAP PSM assignments (Bluetooth Assigned Numbers, fixed channels).
+PSM_NAMES: Dict[int, str] = {
+    0x0001: "SDP",
+    0x0003: "RFCOMM",
+    0x0005: "TCS-BIN",
+    0x0007: "TCS-BIN-CORDLESS",
+    0x000F: "BNEP",
+    0x0011: "HIDP-Control",
+    0x0013: "HIDP-Interrupt",
+    0x0015: "UPnP",
+    0x0017: "AVCTP",
+    0x0019: "AVDTP",
+    0x001B: "AVCTP-Browsing",
+    0x001D: "UDI-C-Plane",
+    0x001F: "ATT",
+    0x0021: "3DSP",
+    0x0023: "LE-PSM-IPSP",
+    0x0025: "OTS",
+}
+
+
+def _decode_bt_version(hex_str: str) -> str:
+    """Decode a Bluetooth profile version field (0xJJMN) to 'J.M.N'."""
+    try:
+        v = int(hex_str, 16)
+    except (ValueError, TypeError):
+        return hex_str or ""
+    major = (v >> 8) & 0xFF
+    minor = (v >> 4) & 0x0F
+    patch = v & 0x0F
+    return f"{major}.{minor}.{patch}" if patch else f"{major}.{minor}"
+
+
+def _decode_psm(psm: Optional[int]) -> str:
+    """'17 (HIDP-Control)' or just '17' when unknown."""
+    if psm is None:
+        return "-"
+    label = PSM_NAMES.get(psm)
+    return f"{psm} ({label})" if label else str(psm)
+
+
 KNOWN_PROTOCOLS: Dict[str, str] = {
     "0x0001": "SDP",       "0x0002": "UDP",        "0x0003": "RFCOMM",
     "0x0004": "TCP",       "0x0005": "TCS-BIN",    "0x0006": "TCS-AT",
@@ -737,7 +778,7 @@ class Module(ScannerModule):
             return _SEV_ORDER.get(s.risk.severity, 99)
         services = sorted(services, key=_key)
 
-        W = {"#": 4, "NAME": 30, "UUID": 9, "CHAN": 6, "PSM": 7, "REACH": 7, "PROTO": 12, "RISK": 12}
+        W = {"#": 4, "NAME": 30, "UUID": 9, "CHAN": 6, "PSM": 22, "REACH": 7, "PROTO": 12, "RISK": 12}
         total = sum(W.values())
 
         print(f"\n  {C.CYAN}{'═'*(total+2)}{C.RESET}")
@@ -758,7 +799,7 @@ class Module(ScannerModule):
             name = (display[:W["NAME"]-2] + "..") if len(display) > W["NAME"] else display
             uuid = s.service_classes[0]["uuid"] if s.service_classes else "-"
             chan = str(s.channel) if s.channel else "-"
-            psm  = str(s.psm)     if s.psm     else "-"
+            psm  = _decode_psm(s.psm)
 
             if s.psm is None:
                 reach = "-"
@@ -804,12 +845,15 @@ class Module(ScannerModule):
         for s in services:
             for p in s.profiles or []:
                 label = s.name or (s.service_classes[0]["name"] if s.service_classes else "")
-                rows.append((label, p.get("name", ""), p.get("uuid", ""), p.get("version", "")))
+                raw_ver = p.get("version", "")
+                decoded = _decode_bt_version(raw_ver) if raw_ver else ""
+                ver_cell = f"{raw_ver}" + (f" ({decoded})" if decoded else "")
+                rows.append((label, p.get("name", ""), p.get("uuid", ""), ver_cell))
         if not rows:
             return
         print(f"\n  {C.BOLD}PROFILE VERSIONS{C.RESET}")
         print(f"  {C.CYAN}{'─' * 78}{C.RESET}")
-        W = {"REC": 22, "PROFILE": 28, "UUID": 10, "VER": 10}
+        W = {"REC": 22, "PROFILE": 28, "UUID": 10, "VER": 18}
         hdr = (f"  {C.BOLD}{'RECORD':<{W['REC']}}{'PROFILE':<{W['PROFILE']}}"
                f"{'UUID':<{W['UUID']}}{'VERSION':<{W['VER']}}{C.RESET}")
         print(hdr)
@@ -847,7 +891,7 @@ class Module(ScannerModule):
                 tag = ("open" if s.psm_reachable
                        else "closed" if s.psm_reachable is False
                        else "untested")
-                print(f"    {C.DARK_GREY}L2CAP PSM    :{C.RESET} {s.psm}  ({tag})")
+                print(f"    {C.DARK_GREY}L2CAP PSM    :{C.RESET} {_decode_psm(s.psm)}  ({tag})")
 
     def _print_pnp(self, pnp: Optional[PnPInfo]) -> None:
         if pnp is None:
