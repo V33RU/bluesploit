@@ -14,6 +14,7 @@ Passive sources used:
 
 import asyncio
 import json
+import os
 import re
 import subprocess
 import uuid as _uuid_mod
@@ -21,8 +22,12 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set, Tuple
 
 from core.base import (
-    BTProtocol, ModuleInfo, ModuleOption,
-    ReconModule, Severity, Target,
+    BTProtocol,
+    ModuleInfo,
+    ModuleOption,
+    ReconModule,
+    Severity,
+    Target,
 )
 from core.utils.printer import Colors, print_error, print_info, print_success, print_warning
 
@@ -429,13 +434,37 @@ class Module(ReconModule):
         found: Dict[str, Device] = {}
         inq_units = min(48, max(4, timeout * 100 // 128))
 
-        try:
-            r = subprocess.run(
-                ["hcitool", "-i", iface, "inq",
-                 "--length", str(inq_units), "--numrsp", "255", "--rssi"],
-                capture_output=True, text=True, timeout=timeout + 8,
+        if os.geteuid() != 0:
+            print_warning(
+                "hcitool inquiry needs root (CAP_NET_RAW), re-run with sudo "
+                "or no Classic devices will appear"
             )
-            for line in r.stdout.splitlines():
+
+        # Try `hcitool inq` first. The --rssi flag is unsupported on some
+        # BlueZ versions (Ubuntu 24.04+), so we attempt with it and fall
+        # back to plain inq if it's rejected.
+        def _try_inq(extra: List[str]) -> Optional[str]:
+            try:
+                r = subprocess.run(
+                    ["hcitool", "-i", iface, "inq",
+                     "--length", str(inq_units), "--numrsp", "255"] + extra,
+                    capture_output=True, text=True, timeout=timeout + 8,
+                )
+                if "unrecognized option" in r.stderr:
+                    return None
+                return r.stdout
+            except FileNotFoundError:
+                return ""
+            except (subprocess.TimeoutExpired, Exception):
+                return ""
+
+        try:
+            out = _try_inq(["--rssi"])
+            if out is None:
+                out = _try_inq([])
+            if out is None:
+                out = ""
+            for line in out.splitlines():
                 m = re.match(
                     r'([0-9A-Fa-f:]{17}).*?class:\s*(\S+)'
                     r'(?:.*?rssi:\s*(-?\d+))?',
@@ -454,31 +483,41 @@ class Module(ReconModule):
         except FileNotFoundError:
             print_warning("hcitool not found, Classic scan skipped (apt install bluez)")
             return []
-        except (subprocess.TimeoutExpired, Exception):
-            pass
 
-        try:
-            r = subprocess.run(
-                ["hcitool", "-i", iface, "scan", "--flush",
-                 "--length", str(inq_units)],
-                capture_output=True, text=True, timeout=timeout + 8,
-            )
-            for line in r.stdout.splitlines():
-                m = re.match(r'([0-9A-Fa-f:]{17})\s+(.*)', line.strip(), re.IGNORECASE)
-                if m:
-                    addr = m.group(1).upper()
-                    name = m.group(2).strip() or None
-                    if addr in found:
-                        found[addr].name = name
-                    else:
-                        found[addr] = Device(
-                            address=addr, name=name,
-                            protocol="CLASSIC",
-                            vendor=_oui_vendor(addr),
-                            dev_class="BT Device",
-                        )
-        except (subprocess.TimeoutExpired, Exception):
-            pass
+        # hcitool scan picks up names; --flush is not supported on every
+        # BlueZ build either, so try with then without.
+        def _try_scan(extra: List[str]) -> Optional[str]:
+            try:
+                r = subprocess.run(
+                    ["hcitool", "-i", iface, "scan",
+                     "--length", str(inq_units)] + extra,
+                    capture_output=True, text=True, timeout=timeout + 8,
+                )
+                if "unrecognized option" in r.stderr or "Invalid option" in r.stderr:
+                    return None
+                return r.stdout
+            except (subprocess.TimeoutExpired, Exception):
+                return ""
+
+        out = _try_scan(["--flush"])
+        if out is None:
+            out = _try_scan([])
+        if out is None:
+            out = ""
+        for line in out.splitlines():
+            m = re.match(r'([0-9A-Fa-f:]{17})\s+(.*)', line.strip(), re.IGNORECASE)
+            if m:
+                addr = m.group(1).upper()
+                name = m.group(2).strip() or None
+                if addr in found:
+                    found[addr].name = name
+                else:
+                    found[addr] = Device(
+                        address=addr, name=name,
+                        protocol="CLASSIC",
+                        vendor=_oui_vendor(addr),
+                        dev_class="BT Device",
+                    )
 
         return list(found.values())
 
