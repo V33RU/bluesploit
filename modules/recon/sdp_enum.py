@@ -466,6 +466,10 @@ class Module(ScannerModule):
                 name="xml_attrs", required=False, default=True,
                 description="Also fetch & parse XML attribute records",
             ),
+            "dump_tree": ModuleOption(
+                name="dump_tree", required=False, default=False,
+                description="Append raw `sdptool records --tree` output (every attribute ID per record). Off by default; turn on for deep inspection.",
+            ),
             "timeout": ModuleOption(
                 name="timeout", required=False, default=30,
                 description="Per-command timeout in seconds",
@@ -595,13 +599,20 @@ class Module(ScannerModule):
                 if m: cur.psm = int(m.group(1))
 
             elif section == "profiles":
-                m = re.search(
-                    r'"([^"]+)".*?\((0x[0-9a-fA-F]+)\).*?Version:\s*(0x[0-9a-fA-F]+)',
-                    stripped)
+                # Real sdptool output puts the Version line below the name:
+                #   "Advanced Audio" (0x110d)
+                #     Version: 0x0103
+                m = re.search(r'"([^"]+)".*?\((0x[0-9a-fA-F]+)\)', stripped)
                 if m:
-                    cur.profiles.append({"name": m.group(1),
-                                         "uuid": m.group(2),
-                                         "version": m.group(3)})
+                    cur.profiles.append({
+                        "name": m.group(1),
+                        "uuid": m.group(2),
+                        "version": "",
+                    })
+                else:
+                    vm = re.search(r"Version:\s*(0x[0-9a-fA-F]+)", stripped)
+                    if vm and cur.profiles:
+                        cur.profiles[-1]["version"] = vm.group(1)
 
         _flush()
         return services
@@ -638,6 +649,8 @@ class Module(ScannerModule):
                 cur.service_classes = s.service_classes
             if not cur.protocols and s.protocols:
                 cur.protocols = s.protocols
+            if not cur.profiles and s.profiles:
+                cur.profiles = s.profiles
             if cur.channel is None and s.channel is not None:
                 cur.channel = s.channel
             if cur.psm is None and s.psm is not None:
@@ -778,6 +791,34 @@ class Module(ScannerModule):
             print(row)
 
         print("  " + "─" * total)
+
+    def _print_profiles(self, services: List[SDPService]) -> None:
+        """Show Bluetooth Profile Descriptor entries (name + version) per record.
+
+        Profile versions are useful for matching to CVEs (e.g. HID 1.0 vs
+        1.1, HFP 1.5 vs 1.8). The data is pulled from the Profile
+        Descriptor List attribute of each record.
+        """
+        C = Colors
+        rows = []
+        for s in services:
+            for p in s.profiles or []:
+                label = s.name or (s.service_classes[0]["name"] if s.service_classes else "")
+                rows.append((label, p.get("name", ""), p.get("uuid", ""), p.get("version", "")))
+        if not rows:
+            return
+        print(f"\n  {C.BOLD}PROFILE VERSIONS{C.RESET}")
+        print(f"  {C.CYAN}{'─' * 78}{C.RESET}")
+        W = {"REC": 22, "PROFILE": 28, "UUID": 10, "VER": 10}
+        hdr = (f"  {C.BOLD}{'RECORD':<{W['REC']}}{'PROFILE':<{W['PROFILE']}}"
+               f"{'UUID':<{W['UUID']}}{'VERSION':<{W['VER']}}{C.RESET}")
+        print(hdr)
+        print("  " + "─" * sum(W.values()))
+        for label, name, uuid, ver in rows:
+            label_t = (label[:W["REC"]-2] + "..") if len(label) > W["REC"] else label
+            name_t  = (name[:W["PROFILE"]-2] + "..") if len(name) > W["PROFILE"] else name
+            print(f"  {label_t:<{W['REC']}}{name_t:<{W['PROFILE']}}"
+                  f"{uuid:<{W['UUID']}}{ver:<{W['VER']}}")
 
     def _print_risk(self, services: List[SDPService]) -> None:
         risky = [s for s in services if s.risk is not None]
@@ -988,8 +1029,18 @@ class Module(ScannerModule):
         self._print_table(target, services)
         if pnp:
             self._print_pnp(pnp)
+        self._print_profiles(services)
         self._print_risk(services)
         self._print_summary(services)
+
+        # Optional deep dump
+        if bool(self.get_option("dump_tree")):
+            tree = self._run_sdptool(["records", "--tree", target], timeout)
+            if tree and tree.strip():
+                print(f"\n  {Colors.BOLD}RECORDS --tree (raw){Colors.RESET}")
+                print(f"  {Colors.CYAN}{'─' * 78}{Colors.RESET}")
+                for line in tree.splitlines():
+                    print(f"  {line}")
 
         # ── Persist ──────────────────────────────────────────────────────
         result = {
