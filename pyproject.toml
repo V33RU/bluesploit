@@ -93,11 +93,15 @@ Repository = "https://github.com/V33RU/bluesploit"
 Issues = "https://github.com/V33RU/bluesploit/issues"
 
 [tool.setuptools]
-packages = ["bluesploit", "bluesploit.core", "bluesploit.core.utils", "bluesploit.modules"]
+py-modules = ["bluesploit"]
 include-package-data = true
 
+[tool.setuptools.packages.find]
+include = ["core*", "modules*"]
+exclude = ["tests*", "docs*", "scripts*", "new-add-ons*", "build*", "dist*"]
+
 [tool.setuptools.package-data]
-bluesploit = ["data/**/*"]
+"*" = ["data/**/*"]
 
 [tool.black]
 line-length = 100
