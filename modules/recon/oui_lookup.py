@@ -313,7 +313,7 @@ BUILTIN_OUI_DB = {
     "68:DF:DD": ("Xiaomi", "Xiaomi Communications Co Ltd"),
     "74:23:44": ("Xiaomi", "Xiaomi Communications Co Ltd"),
     "7C:1C:4E": ("Xiaomi", "Xiaomi Communications Co Ltd"),
-    "84:F3:EB": ("Xiaomi", "Xiaomi Communications Co Ltd"),
+    # 84:F3:EB removed - registered to Espressif per IEEE, kept above.
     "8C:BE:BE": ("Xiaomi", "Xiaomi Communications Co Ltd"),
     "98:FA:E3": ("Xiaomi", "Xiaomi Communications Co Ltd"),
     "9C:99:A0": ("Xiaomi", "Xiaomi Communications Co Ltd"),
@@ -491,13 +491,35 @@ class Module(ScannerModule):
             "manufacturer": "Unknown",
             "vendor_full": "Unknown",
             "device_hints": [],
-            "source": "none"
+            "source": "none",
+            "address_type": "Universal (IEEE-assigned OUI)",
         }
 
         mac = self._normalize_mac(mac)
         oui = self._get_oui(mac)
         result["mac"] = mac
         result["oui"] = oui
+
+        # Classify the address by the U/L and I/G bits of the first octet
+        # (per IEEE 802 standard). Locally-administered and multicast
+        # addresses do NOT have IEEE OUI mappings; flag them honestly
+        # instead of returning a misleading 'Unknown'.
+        try:
+            first_octet = int(mac.split(":")[0], 16)
+        except (ValueError, IndexError):
+            first_octet = 0
+        labels = []
+        if first_octet & 0x01:
+            labels.append("Multicast / group")
+        if first_octet & 0x02:
+            labels.append("Locally administered (random/private, no IEEE OUI)")
+        if labels:
+            result["address_type"] = "; ".join(labels)
+            result["manufacturer"] = "N/A (locally administered)" \
+                if (first_octet & 0x02) else result["manufacturer"]
+            result["source"] = "address-bits"
+            # Skip OUI table / online lookups, they cannot resolve LAAs.
+            return result
 
         # Try built-in first
         lookup = self._lookup_builtin(oui)
@@ -532,6 +554,7 @@ class Module(ScannerModule):
 
         print(f"\n  {C.BOLD}MAC Address:{C.RESET} {C.WHITE}{mac}{C.RESET}")
         print(f"  {C.BOLD}OUI:{C.RESET}         {result['oui']}")
+        print(f"  {C.BOLD}Type:{C.RESET}        {result.get('address_type', 'Universal')}")
         print(f"  {C.BOLD}Manufacturer:{C.RESET} {color}{mfg}{C.RESET}")
 
         if verbose and found:

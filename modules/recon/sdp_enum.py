@@ -141,6 +141,178 @@ def _decode_psm(psm: Optional[int]) -> str:
     return f"{psm} ({label})" if label else str(psm)
 
 
+# --- sdptool --tree parser helpers --------------------------------------------
+
+_TREE_ATTR_RE = re.compile(
+    r"^\s*Attribute Identifier\s*:\s*(0x[0-9a-fA-F]+)(?:\s*-\s*(.+))?$"
+)
+_TREE_UUID16_RE = re.compile(
+    r"UUID16\s*:\s*(0x[0-9a-fA-F]+)(?:\s*-\s*(.+))?", re.IGNORECASE
+)
+_TREE_INT_RE = re.compile(
+    r"(?:Channel/Port\s*\(Integer\)|Version\s*\(Integer\)|Integer)\s*:\s*(0x[0-9a-fA-F]+|\d+)",
+    re.IGNORECASE,
+)
+_TREE_STR_RE = re.compile(r'String\s*:\s*"?([^"]*)"?', re.IGNORECASE)
+_TREE_DATA_RE = re.compile(r"Data\s*:\s*((?:[0-9a-fA-F]{2}\s*)+)", re.IGNORECASE)
+
+
+def _hex_bytes_to_ascii(s: str) -> str:
+    """Convert 'Data : 4a 4c 5f 41 32 44 50 00' tail bytes to a printable
+    string. Trailing NULs are stripped; non-printable bytes are dropped."""
+    out = []
+    for tok in s.split():
+        try:
+            b = int(tok, 16)
+        except ValueError:
+            continue
+        if b == 0:
+            continue
+        if 0x20 <= b < 0x7F:
+            out.append(chr(b))
+    return "".join(out)
+
+
+def _parse_tree_block(lines: List[str]) -> Optional["SDPService"]:
+    """Convert one record's --tree block to an SDPService.
+
+    The block is bounded by a `Attribute Identifier : 0x0 - ServiceRecordHandle`
+    line at the top. Subsequent attribute groups follow until either the
+    block ends or a blank line is reached. Unknown attributes are preserved
+    in the SDPService.raw string but not invented into fields.
+    """
+    svc = SDPService(name="")
+    current_attr: Optional[int] = None
+    pending_uuid: Optional[str] = None
+    pending_uuid_name: Optional[str] = None
+
+    raw_lines: List[str] = []
+    for line in lines:
+        if not line.strip():
+            continue
+        raw_lines.append(line.rstrip())
+
+        m = _TREE_ATTR_RE.match(line)
+        if m:
+            try:
+                current_attr = int(m.group(1), 16)
+            except ValueError:
+                current_attr = None
+            pending_uuid = None
+            pending_uuid_name = None
+            continue
+
+        if current_attr is None:
+            continue
+
+        # 0x0  Service Record Handle: Integer
+        if current_attr == 0x0:
+            mi = _TREE_INT_RE.search(line)
+            if mi and not svc.record_handle:
+                svc.record_handle = mi.group(1)
+            continue
+
+        # 0x1  Service Class ID List: list of UUID16s
+        if current_attr == 0x1:
+            mu = _TREE_UUID16_RE.search(line)
+            if mu:
+                svc.service_classes.append({
+                    "uuid": mu.group(1).lower(),
+                    "name": (mu.group(2) or "").strip(),
+                })
+            continue
+
+        # 0x4  Protocol Descriptor List: nested Data Sequences with
+        # UUID16 + Integer (PSM for L2CAP, channel for RFCOMM, version
+        # for AVCTP/AVDTP).
+        if current_attr == 0x4:
+            mu = _TREE_UUID16_RE.search(line)
+            if mu:
+                pending_uuid = mu.group(1).lower()
+                pending_uuid_name = (mu.group(2) or "").strip()
+                svc.protocols.append({
+                    "uuid": pending_uuid,
+                    "name": pending_uuid_name,
+                })
+                continue
+            mi = _TREE_INT_RE.search(line)
+            if mi and pending_uuid:
+                try:
+                    val = int(mi.group(1), 16) if mi.group(1).startswith("0x") else int(mi.group(1))
+                except ValueError:
+                    val = None
+                if val is not None:
+                    if pending_uuid == "0x0100":     # L2CAP -> PSM
+                        if svc.psm is None:
+                            svc.psm = val
+                    elif pending_uuid == "0x0003":   # RFCOMM -> channel
+                        if svc.channel is None:
+                            svc.channel = val
+            continue
+
+        # 0x9  Bluetooth Profile Descriptor List: UUID16 + Version Integer
+        if current_attr == 0x9:
+            mu = _TREE_UUID16_RE.search(line)
+            if mu:
+                pending_uuid = mu.group(1).lower()
+                pending_uuid_name = (mu.group(2) or "").strip()
+                svc.profiles.append({
+                    "uuid": pending_uuid,
+                    "name": pending_uuid_name,
+                    "version": "",
+                })
+                continue
+            mi = _TREE_INT_RE.search(line)
+            if mi and svc.profiles:
+                svc.profiles[-1]["version"] = mi.group(1)
+            continue
+
+        # 0x100  Service Name: either String : "..." or Data : <hex bytes>
+        if current_attr == 0x100:
+            ms = _TREE_STR_RE.search(line)
+            if ms and ms.group(1):
+                svc.name = ms.group(1)
+                continue
+            md = _TREE_DATA_RE.search(line)
+            if md:
+                txt = _hex_bytes_to_ascii(md.group(1))
+                if txt:
+                    svc.name = txt
+            continue
+
+        # 0x101  Service Description
+        if current_attr == 0x101:
+            ms = _TREE_STR_RE.search(line)
+            if ms and ms.group(1):
+                svc.description = ms.group(1)
+                continue
+            md = _TREE_DATA_RE.search(line)
+            if md and not svc.description:
+                txt = _hex_bytes_to_ascii(md.group(1))
+                if txt:
+                    svc.description = txt
+            continue
+
+        # 0x102  Provider Name
+        if current_attr == 0x102:
+            ms = _TREE_STR_RE.search(line)
+            if ms and ms.group(1):
+                svc.provider = ms.group(1)
+                continue
+            md = _TREE_DATA_RE.search(line)
+            if md and not svc.provider:
+                txt = _hex_bytes_to_ascii(md.group(1))
+                if txt:
+                    svc.provider = txt
+            continue
+
+    svc.raw = "\n".join(raw_lines)
+    # Drop records that produced nothing actionable.
+    if not svc.record_handle and not svc.service_classes:
+        return None
+    return svc
+
+
 KNOWN_PROTOCOLS: Dict[str, str] = {
     "0x0001": "SDP",       "0x0002": "UDP",        "0x0003": "RFCOMM",
     "0x0004": "TCP",       "0x0005": "TCS-BIN",    "0x0006": "TCS-AT",
@@ -532,14 +704,33 @@ class Module(ScannerModule):
             return False
 
     def _run_sdptool(self, args: List[str], timeout: int) -> Optional[str]:
+        """Run sdptool and return its stdout.
+
+        sdptool prints records progressively but often never exits
+        cleanly (the underlying L2CAP socket can stay open waiting).
+        subprocess.run's timeout would discard partial stdout on
+        timeout-kill, so we use Popen + communicate(timeout=...) and
+        keep the partial stdout when the timer fires.
+        """
         try:
-            r = subprocess.run(["sdptool"] + args,
-                               capture_output=True, text=True, timeout=timeout)
-            if r.returncode != 0 and r.stderr:
-                print_warning(f"sdptool: {r.stderr.strip().splitlines()[-1]}")
-            return r.stdout
-        except subprocess.TimeoutExpired:
-            print_error(f"sdptool timed out after {timeout}s")
+            proc = subprocess.Popen(
+                ["sdptool"] + args,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            try:
+                stdout, stderr = proc.communicate(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                stdout, stderr = proc.communicate()
+            if proc.returncode != 0 and stderr:
+                last = stderr.strip().splitlines()[-1] if stderr.strip() else ""
+                if last:
+                    print_warning(f"sdptool: {last}")
+            return stdout or ""
+        except FileNotFoundError:
+            print_error("sdptool not found")
         except Exception as e:
             print_error(f"sdptool error: {e}")
         return None
@@ -656,6 +847,62 @@ class Module(ScannerModule):
                         cur.profiles[-1]["version"] = vm.group(1)
 
         _flush()
+        return services
+
+    # ── --tree parser ────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _parse_tree(output: str) -> List[SDPService]:
+        """Parse `sdptool browse --tree` / `sdptool records --tree` output.
+
+        Real format produced by BlueZ sdptool:
+
+            Attribute Identifier : 0x0 - ServiceRecordHandle
+              Integer : 0x10001
+            Attribute Identifier : 0x1 - ServiceClassIDList
+              Data Sequence
+                UUID16 : 0x110b - AudioSink
+            Attribute Identifier : 0x4 - ProtocolDescriptorList
+              Data Sequence
+                Data Sequence
+                  UUID16 : 0x0100 - L2CAP
+                  Channel/Port (Integer) : 0x19
+                Data Sequence
+                  UUID16 : 0x0019 - AVDTP
+                  Channel/Port (Integer) : 0x103
+            Attribute Identifier : 0x9 - BluetoothProfileDescriptorList
+              Data Sequence
+                Data Sequence
+                  UUID16 : 0x110d - AdvancedAudio
+                  Version (Integer) : 0x103
+            Attribute Identifier : 0x100
+              Data : 4a 4c 5f 41 32 44 50 00
+
+        Records separated by a blank line.
+        """
+        services: List[SDPService] = []
+        # Split into per-record blocks: any line that starts a new
+        # ServiceRecordHandle attribute begins a new record.
+        blocks: List[List[str]] = []
+        cur_block: List[str] = []
+        for line in output.splitlines():
+            if line.startswith("Attribute Identifier : 0x0 ") or \
+               line.startswith("Attribute Identifier : 0x0\t") or \
+               line.startswith("Attribute Identifier : 0x0-") or \
+               (line.startswith("Attribute Identifier : 0x0") and
+                (line.rstrip().endswith("0x0") or " - ServiceRecordHandle" in line)):
+                if cur_block:
+                    blocks.append(cur_block)
+                cur_block = [line]
+                continue
+            cur_block.append(line)
+        if cur_block:
+            blocks.append(cur_block)
+
+        for blk in blocks:
+            svc = _parse_tree_block(blk)
+            if svc is not None:
+                services.append(svc)
         return services
 
     @staticmethod
@@ -853,7 +1100,7 @@ class Module(ScannerModule):
             return
         print(f"\n  {C.BOLD}PROFILE VERSIONS{C.RESET}")
         print(f"  {C.CYAN}{'─' * 78}{C.RESET}")
-        W = {"REC": 22, "PROFILE": 28, "UUID": 10, "VER": 18}
+        W = {"REC": 22, "PROFILE": 36, "UUID": 10, "VER": 18}
         hdr = (f"  {C.BOLD}{'RECORD':<{W['REC']}}{'PROFILE':<{W['PROFILE']}}"
                f"{'UUID':<{W['UUID']}}{'VERSION':<{W['VER']}}{C.RESET}")
         print(hdr)
@@ -1013,31 +1260,53 @@ class Module(ScannerModule):
             return bool(output)
 
         # Browse / search
+        # Run four sdptool variants in full mode. --tree gives us the
+        # richest output (attribute IDs + nested Data Sequences); plain
+        # is the fallback. Any output that comes back gets parsed and
+        # the union deduplicated by record handle.
+        sources: List[Tuple[str, str]] = []
         if search:
             print_info(f"Searching '{search}'...")
-            output = self._run_sdptool(["search", "--bdaddr", target, search], timeout)
+            out = self._run_sdptool(["search", "--bdaddr", target, search], timeout)
+            if out: sources.append(("search", out))
         else:
-            output = self._run_sdptool(["browse", target], timeout)
+            # records --tree is the richest output and usually responds
+            # fastest because BlueZ caches it. Try the cached/fast paths
+            # first so we have data even if browse hangs waiting for a
+            # live response.
+            per_call = max(8, timeout // 2)
+            for cmd_label, cmd in (
+                ("records --tree", ["records", "--tree", target]),
+                ("records",        ["records", target]),
+                ("browse --tree",  ["browse", "--tree", target]),
+                ("browse",         ["browse", target]),
+            ):
+                if mode != "full" and "--tree" in cmd:
+                    continue
+                out = self._run_sdptool(cmd, per_call)
+                if out and out.strip():
+                    sources.append((cmd_label, out))
 
-        # In full mode also run `sdptool records`. It uses the same output
-        # format but sometimes returns records that browse misses; we
-        # merge them by handle so the operator sees the full set.
-        records_output = None
-        if mode == "full" and not search:
-            records_output = self._run_sdptool(["records", target], timeout)
-
-        combined = (output or "") + "\n" + (records_output or "")
-        if not combined.strip():
+        if not sources:
             print_warning("No SDP response, device out of range, paired-only, or stack patched")
             return False
 
-        services = self._dedupe_services(self._parse_browse(combined))
+        all_services: List[SDPService] = []
+        for label, out in sources:
+            if "--tree" in label:
+                parsed = self._parse_tree(out)
+            else:
+                parsed = self._parse_browse(out)
+            print_info(f"  {label}: {len(parsed)} record(s)")
+            all_services.extend(parsed)
+
+        services = self._dedupe_services(all_services)
         if not services:
             print_warning("SDP returned data but no service records parsed")
             return False
 
-        src = "browse + records" if records_output else "browse"
-        print_success(f"Parsed {len(services)} service record(s) ({src})")
+        print_success(f"Parsed {len(services)} unique service record(s) "
+                      f"from {len(sources)} source(s)")
 
         # Risk annotation
         self._annotate_risk(services)
