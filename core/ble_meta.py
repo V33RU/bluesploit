@@ -274,18 +274,38 @@ def short_uuid(uuid128: str) -> Optional[int]:
         return None
 
 
+# Vendor 128-bit service UUIDs that are common enough to label without
+# falling through to "(vendor)". Lowercase, no dashes.
+VENDOR_SERVICE_NAMES_128 = {
+    "6e400001b5a3f393e0a9e50e24dcca9e": "Nordic UART Service (NUS)",
+    "000015301212efde1523785feabcd123": "Nordic Legacy DFU",
+    "0000fe5900001000800000805f9b34fb": "Nordic Secure DFU",
+}
+
+
+# Vendor 128-bit characteristic UUIDs paired with the services above.
+VENDOR_CHARACTERISTIC_NAMES_128 = {
+    "6e400002b5a3f393e0a9e50e24dcca9e": "NUS RX (Write)",
+    "6e400003b5a3f393e0a9e50e24dcca9e": "NUS TX (Notify)",
+    "000015311212efde1523785feabcd123": "DFU Control Point",
+    "000015321212efde1523785feabcd123": "DFU Packet",
+}
+
+
 def name_for_service(uuid128: str) -> str:
     short = short_uuid(uuid128)
-    if short is None:
-        return ""
-    return SERVICE_NAMES.get(short, "")
+    if short is not None:
+        return SERVICE_NAMES.get(short, "")
+    cleaned = uuid128.replace("-", "").lower()
+    return VENDOR_SERVICE_NAMES_128.get(cleaned, "")
 
 
 def name_for_characteristic(uuid128: str) -> str:
     short = short_uuid(uuid128)
-    if short is None:
-        return ""
-    return CHARACTERISTIC_NAMES.get(short, "")
+    if short is not None:
+        return CHARACTERISTIC_NAMES.get(short, "")
+    cleaned = uuid128.replace("-", "").lower()
+    return VENDOR_CHARACTERISTIC_NAMES_128.get(cleaned, "")
 
 
 def name_for_descriptor(uuid128: str) -> str:
@@ -355,8 +375,8 @@ def permissions_from_bitmap(bits: int) -> List[str]:
 
 # ── Chipset / vendor identification ──────────────────────────────────────────
 #
-# Shared truth used by recon modules that walk GATT (gatt_enum,
-# ble_target_enum) and any future module that needs to map a BD_ADDR,
+# Shared truth used by recon modules that walk GATT (ble_target_enum)
+# and any future module that needs to map a BD_ADDR,
 # PnP vendor id, or LMP subversion to a chipset label. Live in one place
 # to avoid drift; previous duplicate copies caused real bugs (e.g. a
 # malformed 7-char OUI key that never matched).
@@ -485,6 +505,8 @@ __all__ = [
     "CHARACTERISTIC_NAMES",
     "DESCRIPTOR_NAMES",
     "PROP_BIT_NAMES",
+    "VENDOR_SERVICE_NAMES_128",
+    "VENDOR_CHARACTERISTIC_NAMES_128",
     "CHIPSET_VENDORS",
     "MFR_CHIPSET_HINTS",
     "LMP_SUBVER_CHIPSET",

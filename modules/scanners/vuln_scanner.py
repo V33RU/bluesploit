@@ -1130,7 +1130,7 @@ class Module(ScannerModule):
             ))
             if not gatt_scan:
                 plan.append((
-                    "modules.recon.gatt_enum",
+                    "modules.recon.ble_target_enum",
                     {"target": fp.address, "timeout": str(timeout)},
                     "GATT Service Enumeration",
                 ))
