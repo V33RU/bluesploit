@@ -27,10 +27,20 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from core.base import (
-    BTProtocol, ModuleInfo, ModuleOption, ScannerModule, Severity, Target,
+    BTProtocol,
+    ModuleInfo,
+    ModuleOption,
+    ScannerModule,
+    Severity,
+    Target,
 )
+from core.utils.bt import decode_company_id
 from core.utils.printer import (
-    Colors, print_error, print_info, print_success, print_warning,
+    Colors,
+    print_error,
+    print_info,
+    print_success,
+    print_warning,
 )
 
 try:
@@ -44,20 +54,32 @@ except ImportError:
 
 # ── Lookup tables ─────────────────────────────────────────────────────────────
 
+# Adv-only company-id additions on top of the curated table in
+# core.utils.bt. Keep the union here narrow (entries that show up in
+# Apple/Eddystone/iBeacon traffic). On miss, fall through to
+# `decode_company_id` which returns the BT SIG name or 'Unknown (0xNN)'.
+# Duplicate keys previously hid bugs (0x038F resolved to Espressif while
+# the comment promised Tile; 0x0131 silently flipped from Huawei to
+# Anhui Huami). Each key now appears once.
 COMPANY_IDS: Dict[int, str] = {
-    0x0000: "Ericsson",        0x0001: "Nokia",           0x0002: "Intel",
-    0x0006: "Microsoft",       0x000D: "Texas Instr.",    0x000F: "Broadcom",
-    0x001A: "Nokia",           0x001D: "Qualcomm",        0x0059: "Nordic Semi",
-    0x006B: "Toshiba",         0x0075: "Samsung",         0x0087: "Garmin",
-    0x00D2: "Dialog Semi",     0x00E0: "Google",          0x0131: "Huawei",
-    0x0157: "Xiaomi",          0x0171: "Amazon",          0x01FF: "Goodix",
-    0x022B: "Bose",            0x0310: "Wyze",            0x038F: "Tile",
-    0x03DA: "Bose",            0x0499: "Ruuvi",           0x004C: "Apple",
-    0x0603: "Sonos",           0x0822: "Espressif",       0x08D4: "Polar",
-    0x09A3: "Govee",           0x0969: "Tuya",            0x012D: "Jabra",
-    0x054C: "Sony",            0x008A: "LG Elec.",        0x0310: "Wyze",
-    0x04F7: "Tile",            0x038F: "Espressif",       0x0131: "Anhui Huami",
-    0x00CB: "KaHa",            0xCB55: "KaHa",
+    0x0000: "Ericsson",
+    0x001A: "Nokia",
+    0x006B: "Toshiba",
+    0x00CB: "KaHa",
+    0x00D2: "Dialog Semi",
+    0x00E0: "Google",
+    0x01FF: "Goodix",
+    0x022B: "Bose",
+    0x038F: "Tile",
+    0x0499: "Ruuvi",
+    0x04F7: "Tile",
+    0x0603: "Sonos",
+    0x008A: "LG Elec.",
+    0x08D4: "Polar",
+    0x0969: "Tuya",
+    0x09A3: "Govee",
+    0x0171: "Amazon",
+    0xCB55: "KaHa",
 }
 
 # 16-bit BT SIG service UUIDs
@@ -502,7 +524,7 @@ class Module(ScannerModule):
         if mfr:
             dev.mfg_id, dev.mfg_raw = next(iter(mfr.items()))
             dev.mfg_raw = bytes(dev.mfg_raw)
-            dev.mfg_name = COMPANY_IDS.get(dev.mfg_id, f"0x{dev.mfg_id:04X}")
+            dev.mfg_name = COMPANY_IDS.get(dev.mfg_id) or decode_company_id(dev.mfg_id)
 
             if dev.mfg_id == 0x004C:
                 dev.apple = _decode_apple_payload(dev.mfg_raw)
@@ -694,7 +716,7 @@ class Module(ScannerModule):
             if d.tx_power is not None:
                 print(f"    TX Power      : {d.tx_power:+d} dBm")
             if d.connectable:
-                print(f"    Connectable   : yes")
+                print("    Connectable   : yes")
             if d.flags is not None:
                 print(f"    Adv Flags     : 0x{d.flags:02X}  [{', '.join(d.flags_decoded) or '-'}]")
             if d.cross_transport:
@@ -751,12 +773,12 @@ class Module(ScannerModule):
 
             # Services
             if d.services_16:
-                print(f"    Services (16-bit):")
+                print("    Services (16-bit):")
                 for s in d.services_16:
                     risk = f"  {C.RED}[RISK]{C.RESET}" if s.get("risky") else ""
                     print(f"      {s['uuid']}  {s['name']}{risk}")
             if d.services_128:
-                print(f"    Services (128-bit):")
+                print("    Services (128-bit):")
                 for u in d.services_128:
                     label, risk = SERVICE_UUIDS_128.get(u, (u[:24], False))
                     risk_tag = f"  {C.RED}[RISK]{C.RESET}" if risk else ""

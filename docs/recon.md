@@ -18,7 +18,7 @@ Load any module with `use recon/<name>`.
 | [`recon/ble_scan_full`](#reconble_scan_full) | ℹ️ INFO | - | Active BLE scan with full advertising payload decoding (address type, flags, … |
 | [`recon/ble_target_enum`](#reconble_target_enum) | ℹ️ INFO | - | Connect to one BLE target and walk every service / characteristic / descripto… |
 | [`recon/discovery`](#recondiscovery) | ℹ️ INFO | - | Passive full-spectrum Bluetooth discovery, Classic + BLE |
-| [`recon/gatt_enum`](#recongatt_enum) | ℹ️ INFO | - | Enumerate GATT services and characteristics + device identity (deprecated - u… |
+| [`recon/gatt_enum`](#recongatt_enum) | ℹ️ INFO | - | Enumerate GATT services and characteristics + device identity (manufacturer, … |
 | [`recon/ll_features`](#reconll_features) | ℹ️ INFO | - | Read BLE Link Layer FeatureSet of a remote LE device |
 | [`recon/lmp_features`](#reconlmp_features) | ℹ️ INFO | - | Read LMP feature pages of a remote BR/EDR device via HCI |
 | [`recon/mesh_beacon_scan`](#reconmesh_beacon_scan) | ℹ️ INFO | - | Passive scan for Mesh Unprovisioned Device Beacons (UUID 0x1827) and Secure N… |
@@ -31,7 +31,7 @@ Load any module with `use recon/<name>`.
 
 ### `recon/adv_parser`
 
-**scanners/ble/adv_parser**
+**BLE Advertisement Parser**
 
 Deep BLE advertisement analysis, Apple Continuity, Eddystone, iBeacon, Fast Pair, risk scoring
 
@@ -118,13 +118,15 @@ Connect to one BLE target and walk every service / characteristic / descriptor, 
 
 ### `recon/discovery`
 
+**Bluetooth Discovery**
+
 Passive full-spectrum Bluetooth discovery, Classic + BLE
 
 **Severity:** ℹ️ INFO · **Protocol:** BOTH
 
 | Option | Required | Default | Description |
 |---|---|---|---|
-| `timeout` |  | `15` | Scan duration in seconds |
+| `timeout` |  | `20` | Scan duration in seconds per phase (Classic name-resolution can be slow; bump to 30+ when many devices in range) |
 | `mode` |  | `all` | Protocol: all \| ble \| classic |
 | `interface` |  | `hci0` | HCI adapter (e.g. hci0) |
 | `min_rssi` |  |  | Ignore BLE devices below this RSSI (e.g. -85) |
@@ -135,18 +137,18 @@ Passive full-spectrum Bluetooth discovery, Classic + BLE
 
 ### `recon/gatt_enum`
 
-**GATT Enumerator (use recon/ble_target_enum)**
+**GATT Enumerator**
 
-Enumerate GATT services and characteristics + device identity (deprecated - use recon/ble_target_enum which now includes all features)
+Enumerate GATT services and characteristics + device identity (manufacturer, chipset, LL version)
 
 **Severity:** ℹ️ INFO · **Protocol:** BLE
 
 | Option | Required | Default | Description |
 |---|---|---|---|
-| `target` | ✓ |  | Target BLE BD_ADDR |
-| `interface` |  | `hci0` | HCI adapter (Linux only, e.g. hci0) |
+| `target` | ✓ |  | Target BD_ADDR (XX:XX:XX:XX:XX:XX) |
 | `timeout` |  | `15` | Connection timeout in seconds |
-| `read_values` |  | `True` | Read characteristic values (true/false) |
+| `read_values` |  | `True` | Attempt to read characteristic values |
+| `output_file` |  |  | Save results to JSON file |
 
 **References:**
 - <https://www.bluetooth.com/specifications/gatt/>
@@ -213,7 +215,7 @@ Passive scan for Mesh Unprovisioned Device Beacons (UUID 0x1827) and Secure Netw
 
 ### `recon/oui_lookup`
 
-**scanners/oui_lookup**
+**OUI Manufacturer Lookup**
 
 Bluetooth MAC Address OUI Manufacturer Lookup
 
@@ -233,6 +235,8 @@ Bluetooth MAC Address OUI Manufacturer Lookup
 
 ### `recon/sdp_enum`
 
+**SDP Enumerator**
+
 Advanced SDP enumerator, risk + CVE map, PnP decode, L2CAP probe
 
 **Severity:** ℹ️ INFO · **Protocol:** CLASSIC
@@ -245,6 +249,7 @@ Advanced SDP enumerator, risk + CVE map, PnP decode, L2CAP probe
 | `probe_l2cap` |  | `True` | Attempt L2CAP connect on each PSM to confirm reachability |
 | `decode_pnp` |  | `True` | Decode PnP Information record (UUID 0x1200) |
 | `xml_attrs` |  | `True` | Also fetch & parse XML attribute records |
+| `dump_tree` |  | `False` | Append raw `sdptool records --tree` output (every attribute ID per record). Off by default; turn on for deep inspection. |
 | `timeout` |  | `30` | Per-command timeout in seconds |
 | `output_file` |  |  | Save the full structured report to JSON |
 

@@ -12,10 +12,30 @@ import subprocess
 from typing import Any, Dict, List, Optional
 
 from core.base import (
-    BTProtocol, ModuleInfo, ModuleOption, ScannerModule, Severity,
+    BTProtocol,
+    ModuleInfo,
+    ModuleOption,
+    ScannerModule,
+    Severity,
+)
+from core.ble_meta import (
+    CHIPSET_VENDORS as _CHIPSET_VENDORS,
+)
+from core.ble_meta import (
+    LMP_SUBVER_CHIPSET as _LMP_SUBVER_CHIPSET,
+)
+from core.ble_meta import (
+    MFR_CHIPSET_HINTS as _MFR_CHIPSET_HINTS,
+)
+from core.ble_meta import (
+    OUI_CHIPSET as _OUI_CHIPSET,
 )
 from core.utils.printer import (
-    Colors, print_error, print_info, print_success, print_warning,
+    Colors,
+    print_error,
+    print_info,
+    print_success,
+    print_warning,
 )
 
 try:
@@ -78,32 +98,6 @@ _IDENTITY_CHARS: Dict[str, str] = {
     "2a50": "pnp_id_raw",
 }
 
-# Bluetooth SIG company IDs used as chipset vendor lookup
-_CHIPSET_VENDORS: Dict[int, str] = {
-    0x0059: "Nordic Semiconductor",
-    0x000F: "Broadcom",
-    0x000D: "Texas Instruments",
-    0x0002: "Intel",
-    0x001D: "Qualcomm Atheros",
-    0x0822: "Espressif",
-    0x038F: "Espressif Systems",
-    0x0131: "Huawei Technologies",
-    0x0157: "Xiaomi / LYWSD",
-    0x004C: "Apple",
-    0x0006: "Microsoft",
-    0x0075: "Samsung",
-    0x00E0: "Google",
-    0x054C: "Sony",
-    0x0087: "Garmin",
-    0x03DA: "Bose",
-    0x012D: "GN Audio (Jabra)",
-    0x012E: "MediaTek",
-    0x0310: "Wyze Labs",
-    0x0499: "Ruuvi Innovations",
-    0x0603: "Sonos",
-}
-
-
 def _short_uuid(uuid: str) -> str:
     u = uuid.lower()
     if u.startswith("0000") and u.endswith("-0000-1000-8000-00805f9b34fb"):
@@ -133,62 +127,6 @@ def _decode_pnp_id(raw: bytes) -> Dict[str, Any]:
         "version":          f"{major}.{minor}.{patch}",
         "chipset":          vendor,
     }
-
-
-# Manufacturer name substrings → probable chipset vendor
-_MFR_CHIPSET_HINTS: Dict[str, str] = {
-    "nordic":       "Nordic Semiconductor nRF5x",
-    "dialog":       "Dialog Semiconductor DA14xxx",
-    "texas":        "Texas Instruments CC264x",
-    "ti ":          "Texas Instruments CC264x",
-    "silicon labs": "Silicon Labs EFR32",
-    "silabs":       "Silicon Labs EFR32",
-    "telink":       "Telink TLSR",
-    "realtek":      "Realtek RTL8762",
-    "beken":        "Beken BK36xx",
-    "mediatek":     "MediaTek MT25xx",
-    "qualcomm":     "Qualcomm QCC",
-    "cypress":      "Infineon/Cypress CYW43xxx",
-    "broadcom":     "Broadcom BCM",
-    "espressif":    "Espressif ESP32",
-    "esp":          "Espressif ESP32",
-    "nxp":          "NXP KW4x",
-    "kaha":         "Realtek RTL8762 (KaHa platform)",
-    "huawei":       "HiSilicon BLE SoC",
-    "xiaomi":       "Beken / MediaTek platform",
-}
-
-# LMP Subversion → exact chipset model
-_LMP_SUBVER_CHIPSET: Dict[int, str] = {
-    0x8762: "Realtek RTL8762",
-    0x8763: "Realtek RTL8763",
-    0x8761: "Realtek RTL8761",
-    0x1000: "Nordic nRF51xxx",
-    0x0001: "Nordic nRF52xxx",
-    0x000D: "Nordic nRF52840",
-    0x0048: "Texas Instruments CC2640",
-    0x0051: "Texas Instruments CC2642",
-    0x6109: "Qualcomm QCC512x",
-    0x9908: "Dialog DA14531",
-    0x22BB: "Silicon Labs EFR32BG22",
-}
-
-# OUI prefix → chipset / SoC vendor (first 6 hex chars, uppercase, no colons)
-_OUI_CHIPSET: Dict[str, str] = {
-    "D436390": "Nordic Semiconductor",
-    "F4CE36":  "Nordic Semiconductor",
-    "5091F7":  "Nordic Semiconductor",
-    "240AC4":  "Espressif ESP32",
-    "246FAB":  "Espressif ESP32",
-    "30AEA4":  "Espressif ESP32",
-    "3C71BF":  "Espressif ESP32",
-    "5CCF7F":  "Espressif ESP32",
-    "84CCA8":  "Espressif ESP32",
-    "001A8A":  "Samsung Electro-Mechanics",
-    "001E10":  "Huawei Technologies",
-    "000F00":  "Broadcom",
-    "001B10":  "Nokia / MediaTek",
-}
 
 
 def _infer_chipset(manufacturer: Optional[str], addr: str) -> Optional[str]:
