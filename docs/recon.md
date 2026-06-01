@@ -1,4 +1,4 @@
-# Reconnaissance (11)
+# Reconnaissance (10)
 
 Auto-generated from `modules/recon/`.  
 Load any module with `use recon/<name>`.
@@ -18,7 +18,6 @@ Load any module with `use recon/<name>`.
 | [`recon/ble_scan_full`](#reconble_scan_full) | ℹ️ INFO | - | Active BLE scan with full advertising payload decoding (address type, flags, … |
 | [`recon/ble_target_enum`](#reconble_target_enum) | ℹ️ INFO | - | Connect to one BLE target and walk every service / characteristic / descripto… |
 | [`recon/discovery`](#recondiscovery) | ℹ️ INFO | - | Passive full-spectrum Bluetooth discovery, Classic + BLE |
-| [`recon/gatt_enum`](#recongatt_enum) | ℹ️ INFO | - | Enumerate GATT services and characteristics + device identity (manufacturer, … |
 | [`recon/ll_features`](#reconll_features) | ℹ️ INFO | - | Read BLE Link Layer FeatureSet of a remote LE device |
 | [`recon/lmp_features`](#reconlmp_features) | ℹ️ INFO | - | Read LMP feature pages of a remote BR/EDR device via HCI |
 | [`recon/mesh_beacon_scan`](#reconmesh_beacon_scan) | ℹ️ INFO | - | Passive scan for Mesh Unprovisioned Device Beacons (UUID 0x1827) and Secure N… |
@@ -132,26 +131,6 @@ Passive full-spectrum Bluetooth discovery, Classic + BLE
 | `min_rssi` |  |  | Ignore BLE devices below this RSSI (e.g. -85) |
 | `live` |  | `True` | Print each new device as it is discovered |
 | `output_file` |  |  | Save results to JSON |
-
----
-
-### `recon/gatt_enum`
-
-**GATT Enumerator**
-
-Enumerate GATT services and characteristics + device identity (manufacturer, chipset, LL version)
-
-**Severity:** ℹ️ INFO · **Protocol:** BLE
-
-| Option | Required | Default | Description |
-|---|---|---|---|
-| `target` | ✓ |  | Target BD_ADDR (XX:XX:XX:XX:XX:XX) |
-| `timeout` |  | `15` | Connection timeout in seconds |
-| `read_values` |  | `True` | Attempt to read characteristic values |
-| `output_file` |  |  | Save results to JSON file |
-
-**References:**
-- <https://www.bluetooth.com/specifications/gatt/>
 
 ---
 

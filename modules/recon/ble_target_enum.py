@@ -281,7 +281,24 @@ class Module(ReconModule):
         read_values: bool,
         read_descs: bool,
     ) -> Optional[Dict[str, Any]]:
-        from bleak import BleakClient
+        from bleak import BleakClient, BleakScanner
+
+        # Pre-connect adv probe. Confirms the target is on the air and
+        # seeds device_name + adv_addr_type from a live advertisement.
+        # Caps at 5s so a missing target fails fast.
+        pre: Dict[str, Any] = {"device_name": None, "adv_addr_type": None}
+        try:
+            adv_dev = await BleakScanner.find_device_by_address(
+                target, timeout=5.0
+            )
+            if adv_dev is not None:
+                pre["device_name"] = getattr(adv_dev, "name", None)
+                details = getattr(adv_dev, "details", None) or {}
+                if isinstance(details, dict):
+                    props = details.get("props") or {}
+                    pre["adv_addr_type"] = props.get("AddressType")
+        except Exception:
+            pass
 
         client_kwargs: Dict[str, Any] = {"timeout": timeout}
         if interface:
@@ -290,6 +307,18 @@ class Module(ReconModule):
         async with BleakClient(target, **client_kwargs) as client:
             if not client.is_connected:
                 return None
+
+            # Address type from the BlueZ backend (public / random / RPA).
+            # Best-effort, private attribute; absence is not an error.
+            addr_type: Optional[str] = pre.get("adv_addr_type")
+            try:
+                backend = getattr(client, "_backend", None)
+                if backend is not None:
+                    info = getattr(backend, "_device_info", None) or {}
+                    if isinstance(info, dict):
+                        addr_type = info.get("AddressType") or addr_type
+            except Exception:
+                pass
 
             services_view: List[Dict[str, Any]] = []
             services_sorted = sorted(
@@ -357,6 +386,8 @@ class Module(ReconModule):
             return {
                 "target": target,
                 "services": services_view,
+                "addr_type": addr_type,
+                "adv_device_name": pre.get("device_name"),
             }
 
     # -- device identity capture --------------------------------------------
@@ -368,7 +399,9 @@ class Module(ReconModule):
         already in `topology` (read during enumeration) plus system tools."""
         identity: Dict[str, Any] = {
             "bd_addr": target.upper(),
-            "device_name": None, "manufacturer": None,
+            "addr_type": topology.get("addr_type"),
+            "device_name": topology.get("adv_device_name"),
+            "manufacturer": None,
             "model": None, "serial": None,
             "firmware": None, "hardware": None,
             "software": None, "system_id": None,
@@ -436,6 +469,7 @@ class Module(ReconModule):
             print(f"  {label:<16}: {color}{v}{C.RESET if color else ''}")
 
         row("BD_ADDR",      identity["bd_addr"],             C.WHITE)
+        row("Address Type", identity.get("addr_type"))
         row("Device Name",  identity.get("device_name"),     C.GREEN)
         row("Appearance",   identity.get("appearance"))
         row("Manufacturer", identity.get("manufacturer"))
