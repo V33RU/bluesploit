@@ -23,7 +23,7 @@ defined in BT Core Spec Vol 3 Part G Section 3.3.1.1.
 
 from __future__ import annotations
 
-from typing import Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional
 
 # 16-bit GATT service UUIDs and their short names.
 # Pulled from the Bluetooth SIG Assigned Numbers (Services section).
@@ -353,15 +353,150 @@ def permissions_from_bitmap(bits: int) -> List[str]:
     return out
 
 
+# ── Chipset / vendor identification ──────────────────────────────────────────
+#
+# Shared truth used by recon modules that walk GATT (gatt_enum,
+# ble_target_enum) and any future module that needs to map a BD_ADDR,
+# PnP vendor id, or LMP subversion to a chipset label. Live in one place
+# to avoid drift; previous duplicate copies caused real bugs (e.g. a
+# malformed 7-char OUI key that never matched).
+
+# Bluetooth SIG company identifiers -> chipset / brand vendor label.
+CHIPSET_VENDORS: Dict[int, str] = {
+    0x0002: "Intel",
+    0x0006: "Microsoft",
+    0x000D: "Texas Instruments",
+    0x000F: "Broadcom",
+    0x001D: "Qualcomm Atheros",
+    0x0059: "Nordic Semiconductor",
+    0x0075: "Samsung",
+    0x0087: "Garmin",
+    0x004C: "Apple",
+    0x00E0: "Google",
+    0x012D: "GN Audio (Jabra)",
+    0x012E: "MediaTek",
+    0x0131: "Huawei Technologies",
+    0x0157: "Xiaomi / LYWSD",
+    0x0310: "Wyze Labs",
+    0x038F: "Espressif Systems",
+    0x03DA: "Bose",
+    0x0499: "Ruuvi Innovations",
+    0x054C: "Sony",
+    0x0603: "Sonos",
+    0x0822: "Espressif",
+}
+
+# Manufacturer name substring -> probable chipset label. Used when the
+# Device Information Service exposes a manufacturer string but no PnP ID.
+MFR_CHIPSET_HINTS: Dict[str, str] = {
+    "nordic":       "Nordic Semiconductor nRF5x",
+    "dialog":       "Dialog Semiconductor DA14xxx",
+    "texas":        "Texas Instruments CC264x",
+    "ti ":          "Texas Instruments CC264x",
+    "silicon labs": "Silicon Labs EFR32",
+    "silabs":       "Silicon Labs EFR32",
+    "telink":       "Telink TLSR",
+    "realtek":      "Realtek RTL8762",
+    "beken":        "Beken BK36xx",
+    "mediatek":     "MediaTek MT25xx",
+    "qualcomm":     "Qualcomm QCC",
+    "cypress":      "Infineon/Cypress CYW43xxx",
+    "broadcom":     "Broadcom BCM",
+    "espressif":    "Espressif ESP32",
+    "esp":          "Espressif ESP32",
+    "nxp":          "NXP KW4x",
+    "kaha":         "Realtek RTL8762 (KaHa platform)",
+    "huawei":       "HiSilicon BLE SoC",
+    "xiaomi":       "Beken / MediaTek platform",
+}
+
+# LMP / LE-LL subversion value -> exact chipset model. Read off the
+# HCI_Read_Remote_Version response.
+LMP_SUBVER_CHIPSET: Dict[int, str] = {
+    0x0001: "Nordic nRF52xxx",
+    0x000D: "Nordic nRF52840",
+    0x0048: "Texas Instruments CC2640",
+    0x0051: "Texas Instruments CC2642",
+    0x1000: "Nordic nRF51xxx",
+    0x22BB: "Silicon Labs EFR32BG22",
+    0x6109: "Qualcomm QCC512x",
+    0x8761: "Realtek RTL8761",
+    0x8762: "Realtek RTL8762",
+    0x8763: "Realtek RTL8763",
+    0x9908: "Dialog DA14531",
+}
+
+# OUI prefix (6 uppercase hex chars, no colons) -> chipset / SoC vendor.
+# Smaller than the full IEEE OUI table; covers only the BLE-relevant
+# vendor blocks we want chipset attribution for.
+OUI_CHIPSET: Dict[str, str] = {
+    "000F00": "Broadcom",
+    "001A8A": "Samsung Electro-Mechanics",
+    "001B10": "Nokia / MediaTek",
+    "001E10": "Huawei Technologies",
+    "240AC4": "Espressif ESP32",
+    "246FAB": "Espressif ESP32",
+    "30AEA4": "Espressif ESP32",
+    "3C71BF": "Espressif ESP32",
+    "5091F7": "Nordic Semiconductor",
+    "5CCF7F": "Espressif ESP32",
+    "84CCA8": "Espressif ESP32",
+    "F4CE36": "Nordic Semiconductor",
+}
+
+
+def chipset_for_company_id(cid: int) -> Optional[str]:
+    """Map a Bluetooth SIG company id to a chipset / brand label."""
+    return CHIPSET_VENDORS.get(cid)
+
+
+def chipset_for_manufacturer(name: str) -> Optional[str]:
+    """Best-effort chipset label from a manufacturer string (case-insensitive
+    substring match against `MFR_CHIPSET_HINTS`)."""
+    if not name:
+        return None
+    low = name.lower()
+    for needle, label in MFR_CHIPSET_HINTS.items():
+        if needle in low:
+            return label
+    return None
+
+
+def chipset_for_lmp_subversion(subver: int) -> Optional[str]:
+    """Map an LMP / LE-LL subversion value to a specific chipset model."""
+    return LMP_SUBVER_CHIPSET.get(subver)
+
+
+def chipset_for_address(bd_addr: str) -> Optional[str]:
+    """Best-effort chipset / SoC vendor from a BD_ADDR's OUI prefix.
+
+    Accepts addresses with or without colons, in any case. Returns None
+    if the OUI is not in `OUI_CHIPSET`."""
+    if not bd_addr:
+        return None
+    oui = bd_addr.replace(":", "").upper()[:6]
+    if len(oui) != 6:
+        return None
+    return OUI_CHIPSET.get(oui)
+
+
 __all__ = [
     "SERVICE_NAMES",
     "CHARACTERISTIC_NAMES",
     "DESCRIPTOR_NAMES",
     "PROP_BIT_NAMES",
+    "CHIPSET_VENDORS",
+    "MFR_CHIPSET_HINTS",
+    "LMP_SUBVER_CHIPSET",
+    "OUI_CHIPSET",
     "short_uuid",
     "name_for_service",
     "name_for_characteristic",
     "name_for_descriptor",
     "properties_to_permissions",
     "permissions_from_bitmap",
+    "chipset_for_company_id",
+    "chipset_for_manufacturer",
+    "chipset_for_lmp_subversion",
+    "chipset_for_address",
 ]
