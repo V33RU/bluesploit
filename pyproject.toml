@@ -44,7 +44,7 @@ classifiers = [
 # on the maintainer's dev machine.
 dependencies = [
     # Cross-platform core (actually imported by modules/ or core/)
-    "bleak==3.0.1",          # 55 imports across modules/
+    "bleak==3.0.2",          # 55 imports across modules/
     "scapy==2.7.0",
     "cryptography==47.0.0",
     "pyserial==3.5",
