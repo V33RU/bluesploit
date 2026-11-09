@@ -140,7 +140,7 @@ class Module(ReconModule):
 
             pairing_req = struct.pack(
                 "BBBBBBB",
-                SMP_PAIRING_REQ, claim_io, 0x00, claim_ar,
+                SMP_PAIRING_REQ, claim_io, 0x00, claim_ar & 0xFF,
                 16, 0x0F, 0x0F,
             )
             print_info(f"Sending SMP Pairing Request: {pairing_req.hex()}")

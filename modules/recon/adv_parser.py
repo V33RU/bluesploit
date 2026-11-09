@@ -629,8 +629,8 @@ class Module(ScannerModule):
             print_warning("No devices found")
             return
 
-        devices.sort(key=lambda x: (-int(x.risky), x.rssi), reverse=False)
-        devices.sort(key=lambda x: x.rssi, reverse=True)
+        # Risky devices first, then strongest RSSI (None last).
+        devices.sort(key=lambda x: (not x.risky, -(x.rssi if x.rssi is not None else -999)))
 
         risky_count = sum(1 for d in devices if d.risky)
 
@@ -732,7 +732,9 @@ class Module(ScannerModule):
             if d.apple:
                 ap = d.apple
                 print(f"    {C.BOLD}Apple Continuity{C.RESET}")
-                print(f"      Type        : {ap['label']} (0x{ap['raw_type']:02X})")
+                _rt = ap.get("raw_type")
+                _rt_s = f"0x{_rt:02X}" if _rt is not None else "?"
+                print(f"      Type        : {ap['label']} ({_rt_s})")
                 det = ap.get("details", {})
                 if det:
                     if "uuid" in det:

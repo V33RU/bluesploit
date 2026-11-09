@@ -335,8 +335,7 @@ LMP_VERSION_LABELS = {
     0x0B: "5.2",
     0x0C: "5.3",
     0x0D: "5.4",
-    0x0E: "5.5",
-    0x0F: "6.0",
+    0x0E: "6.0",
 }
 
 # Curated common Company Identifiers (from the Bluetooth SIG Assigned
