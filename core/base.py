@@ -19,6 +19,7 @@ class ModuleType(Enum):
     PAYLOAD = "payloads"
     DOS = "dos"
     RECON = "recon"
+    POST = "post"
 
 
 class BTProtocol(Enum):
@@ -350,6 +351,25 @@ class BaseModule(ABC):
     def clear_results(self) -> None:
         """Clear stored results"""
         self._results.clear()
+
+    # Output helpers. Thin instance-level wrappers around the module-level
+    # functions in core.utils.printer, so modules may call either
+    # self.print_status(...) or the imported free function.
+    def print_status(self, *args, **kwargs) -> None:
+        from core.utils.printer import print_status
+        print_status(*args, **kwargs)
+
+    def print_success(self, *args, **kwargs) -> None:
+        from core.utils.printer import print_success
+        print_success(*args, **kwargs)
+
+    def print_warning(self, *args, **kwargs) -> None:
+        from core.utils.printer import print_warning
+        print_warning(*args, **kwargs)
+
+    def print_error(self, *args, **kwargs) -> None:
+        from core.utils.printer import print_error
+        print_error(*args, **kwargs)
 
     def show_options(self) -> None:
         """Display all module options in a formatted table"""

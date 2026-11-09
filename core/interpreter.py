@@ -703,7 +703,7 @@ class BlueSploitInterpreter(cmd.Cmd):
                 host_repr = h.address if h else "(missing)"
             value = c.value or ""
             value = value if len(value) <= 32 else value[:30] + ".."
-            captured = (c.created_at or "").replace("T", " ").rstrip("Z+0:")
+            captured = (c.created_at or "").replace("T", " ")[:19]
             rows.append((c.id, host_repr, c.kind, value, captured))
 
         render_table(
@@ -762,7 +762,7 @@ class BlueSploitInterpreter(cmd.Cmd):
                 h.name,
                 "" if h.rssi is None else h.rssi,
                 h.manufacturer,
-                (h.last_seen or "").replace("T", " ").rstrip("Z+0:"),
+                (h.last_seen or "").replace("T", " ")[:19],
             )
             for h in hosts
         ]

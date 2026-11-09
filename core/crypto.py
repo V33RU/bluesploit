@@ -188,10 +188,11 @@ def chi_square_uniform_bytes(data: bytes) -> Tuple[float, int]:
     Returns:
         (statistic, degrees_of_freedom).
 
-    For 16 bytes the degrees of freedom is 16 (one less than the
-    sample size) and the expected statistic for true uniform is
-    around 16; values >> 30 suggest non-uniformity. The caller is
-    responsible for thresholding given the small sample.
+    The test uses 256 bins (every byte value), so the degrees of
+    freedom is 255 regardless of sample size. For true uniform input
+    the expected statistic is ~255 (std ~22.6); much larger values
+    suggest non-uniformity. The caller is responsible for thresholding
+    given the small sample.
     """
     if not data:
         return (0.0, 0)
@@ -205,7 +206,7 @@ def chi_square_uniform_bytes(data: bytes) -> Tuple[float, int]:
     for byte in range(256):
         observed = counts.get(byte, 0)
         chi += (observed - expected) ** 2 / expected
-    return (chi, n - 1)
+    return (chi, 255)
 
 
 def repeated_byte_runs(data: bytes) -> List[Tuple[int, int]]:

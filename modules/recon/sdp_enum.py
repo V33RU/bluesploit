@@ -122,15 +122,15 @@ PSM_NAMES: Dict[int, str] = {
 
 
 def _decode_bt_version(hex_str: str) -> str:
-    """Decode a Bluetooth profile version field (0xJJMN) to 'J.M.N'."""
+    """Decode an SDP profile-descriptor version (high byte = major,
+    low byte = minor, e.g. 0x0105 -> '1.5')."""
     try:
         v = int(hex_str, 16)
     except (ValueError, TypeError):
         return hex_str or ""
     major = (v >> 8) & 0xFF
-    minor = (v >> 4) & 0x0F
-    patch = v & 0x0F
-    return f"{major}.{minor}.{patch}" if patch else f"{major}.{minor}"
+    minor = v & 0xFF
+    return f"{major}.{minor}"
 
 
 def _decode_psm(psm: Optional[int]) -> str:

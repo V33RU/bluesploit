@@ -173,7 +173,7 @@ def _decode_cod(cod_hex: str) -> str:
         cod   = int(cod_hex, 16)
         major = (cod >> 8) & 0x1F
         label = COD_MAJOR.get(major, "BT Device")
-        if ((cod >> 13) & 0x7FF) & 0x20:
+        if cod & 0x200000:  # Major Service Class bit 21 = Audio
             label += "/Audio"
         return label
     except Exception:

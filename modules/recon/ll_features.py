@@ -35,6 +35,7 @@ from core.utils.printer import (
     print_error,
     print_info,
     print_success,
+    print_warning,
 )
 
 # Per BT Core Spec Vol 6 Part B §4.6, LE LL features (8 bytes = 64 bits)
@@ -199,9 +200,9 @@ class Module(ReconModule):
         """HCI_LE_Read_Remote_Used_Features (OGF=0x08, OCF=0x0016)."""
         hci_cmd(hci, 0x08, 0x0016, struct.pack("<H", handle))
         pkt = wait_le_meta(hci, LE_READ_FEATURES_COMPL, timeout=8.0)
-        if pkt and len(pkt) >= 14 and pkt[4] == 0x00:
-            # status(1) + handle(2) + features(8)
-            return pkt[6:14]
+        if pkt and len(pkt) >= 15 and pkt[4] == 0x00:
+            # full LE meta pkt: 04 3E len subevent status handle(2) features(8)
+            return pkt[7:15]
         return None
 
     def _decode(self, data: bytes):
