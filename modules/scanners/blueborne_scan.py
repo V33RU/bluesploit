@@ -123,7 +123,6 @@ VULNERABLE_OUIS = {
     # Samsung (Android)
     "00:1A:8A": ("Samsung", "Android", VulnStatus.LIKELY_VULNERABLE),
     "00:1D:25": ("Samsung", "Android", VulnStatus.LIKELY_VULNERABLE),
-    "00:1E:75": ("Samsung", "Android", VulnStatus.LIKELY_VULNERABLE),
     "00:21:19": ("Samsung", "Android", VulnStatus.LIKELY_VULNERABLE),
     "00:21:D1": ("Samsung", "Android", VulnStatus.LIKELY_VULNERABLE),
     "00:23:39": ("Samsung", "Android", VulnStatus.LIKELY_VULNERABLE),
