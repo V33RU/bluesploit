@@ -78,7 +78,7 @@ jobs:
           cache: pip
 
       - name: Install test deps
-        # Pinned exactly. The tests under scripts/ stub anything that
+        # Pinned exactly. The tests under tests/ stub anything that
         # would touch hardware, so we deliberately do NOT install the
         # full runtime deps (bluepy/btlejack need root + native libs).
         # `rich` is pure Python and is imported eagerly by core/ui/tables.
@@ -94,7 +94,7 @@ jobs:
             "cryptography==47.0.0"
 
       - name: Run tests
-        run: pytest scripts -q
+        run: pytest tests -q
 
   typecheck:
     name: mypy (lenient, advisory)
