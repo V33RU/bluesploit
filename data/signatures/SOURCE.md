@@ -41,7 +41,7 @@ always include the confidence level so the operator can judge.
    lower severity.
 5. List `related_modules` so the future scanner can suggest a
    follow-up exploit module.
-6. Run `python3 -m pytest scripts/test_signatures.py`.
+6. Run `python3 -m pytest tests/test_signatures.py`.
 
 ## Format
 

@@ -1,14 +1,20 @@
+<div align="center">
+
 # BlueSploit
 
-![Version](https://img.shields.io/badge/Version-1.0.5-0099ff?style=for-the-badge)
-![Status](https://img.shields.io/badge/Status-Scaffold%20%2F%20Not%20Battle--Tested-orange?style=for-the-badge)
-![Modules](https://img.shields.io/badge/Modules-160-orange?style=for-the-badge)
-![Python](https://img.shields.io/badge/Python-3.8+-3776AB?style=for-the-badge)
-![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)
+**Bluetooth exploitation framework for Classic BR/EDR, BLE, and Mesh.**
 
-Bluetooth framework for Classic BR/EDR and BLE. 160 modules, persistent store.
+![version](https://img.shields.io/badge/version-1.0.5-0099ff?style=flat-square)
+![status](https://img.shields.io/badge/status-scaffold-orange?style=flat-square)
+![modules](https://img.shields.io/badge/modules-159-5c6bc0?style=flat-square)
+![python](https://img.shields.io/badge/python-3.8+-3776AB?style=flat-square)
+![license](https://img.shields.io/badge/license-MIT-yellow?style=flat-square)
 
-Docs: [v33ru.github.io/bluesploit](https://v33ru.github.io/bluesploit/) · Latest: [v1.0.5](https://github.com/V33RU/bluesploit/releases/tag/v1.0.5)
+[Docs](https://v33ru.github.io/bluesploit/) · [Releases](https://github.com/V33RU/bluesploit/releases)
+
+</div>
+
+---
 
 ## Install
 
@@ -18,66 +24,43 @@ cd bluesploit
 ./install.sh
 ```
 
-Linux (apt/dnf/pacman/zypper/apk/xbps/emerge) or macOS. Use `--full` for all extras, `--dev` for test tooling.
+Linux (apt/dnf/pacman/zypper/apk/xbps/emerge) or macOS. `--full` for all extras, `--dev` for tests.
 
 ## Run
 
 ```bash
-sudo python3 bluesploit.py        # interactive REPL
-python3 bluesploit.py --list      # list modules
+sudo python3 bluesploit.py     # interactive REPL
+python3 bluesploit.py --list   # list modules
 ```
 
-Most live modules need root for raw HCI. Bleak-based recon (`ble_scan_full`, `ble_target_enum`, `mesh_beacon_scan`) and all store-driven scanners run as a regular user.
+Live modules need root for raw HCI. Bleak recon and store-driven scanners run as a regular user.
 
-## Modules (160)
+## Modules
 
 | Category | Count |
-|---|---|
+|---|--:|
 | `exploits/` | 87 |
 | `dos/` | 29 |
 | `auxiliary/` | 14 |
 | `scanners/` | 12 |
-| `recon/` | 11 |
+| `recon/` | 10 |
 | `post/` | 7 |
+| **Total** | **159** |
 
-Full per-module docs at [v33ru.github.io/bluesploit](https://v33ru.github.io/bluesploit/).
+Per-module docs: [v33ru.github.io/bluesploit](https://v33ru.github.io/bluesploit/).
 
-## Engagement state
+## How it works
 
-Persists in `~/.bluesploit/store.db` (override with `BLUESPLOIT_HOME`). Tables: `hosts`, `credentials`, `loot`, `fingerprints`, `meta`. Workspaces scope all of them.
+- **REPL** — `use` / `set` / `run` / `check` / `back`, plus `setg`, workspaces, and `resource` scripts.
+- **Engagement store** — SQLite at `~/.bluesploit/store.db`: hosts, creds, loot, fingerprints. Recon writes fingerprints; scanners match CVEs against them offline.
+- **Crypto** — AES-128, RPA resolution (`ah`), Mesh K1-K4 / AES-CMAC / AES-CCM (spec-verified).
+- **Protocols** — BR/EDR, BLE, Mesh. PCAP per run via `btmon` / `tcpdump`.
+- **Hardware** — Ubertooth One, nRF52840, BTLEJack, HackRF One, YARD Stick One, UD100.
 
-## Core libraries
+## Disclaimer
 
-- `core/crypto.py`: AES-128, `ah` for RPA resolution, key stats
-- `core/mesh.py`: Mesh K1/K2/K3/K4, AES-CMAC, AES-CCM (spec-verified)
-- `core/cve.py`: CVE signature engine
-- `core/store.py`: SQLite engagement store
-- `core/ble_meta.py`: SIG UUID tables
+Authorized testing only. Use against equipment you own or have written permission to test.
 
 ## License
 
 [MIT](LICENSE)
-
-## Features
-
-| Feature | Detail |
-|---|---|
-| Modules | 160 across exploits, DoS, scanners, recon, auxiliary, post |
-| Store-driven scanners | Consume `adv`, `gatt_topology`, `lmp_features`, `ll_features`, `smp_pairing`, `mesh_beacon` fingerprints |
-| Engagement state | `~/.bluesploit/store.db`, hosts, creds, loot, fingerprints, workspaces |
-| CVEs | 40+ PoC exploits (2010-2026); 7 NVD-cited signatures for offline matching |
-| BLE crypto | AES-128, `ah` for RPA resolution, key stats |
-| Mesh crypto | K1/K2/K3/K4, AES-CMAC, PECB, AES-CCM (spec-verified) |
-| `set target` | BD_ADDR / host id / name substring; auto-fills creds |
-| Workspaces | Isolated engagements, persisted active workspace |
-| Resource scripts | `resource <file>` replays console commands |
-| Global options | Persistent `setg` / `unsetg` |
-| Install | Linux (apt/dnf/yum/pacman/zypper/apk/xbps/emerge) + macOS |
-| Hardware | Ubertooth One, nRF52840, BTLEJack, HackRF One, YARD Stick One, UD100 |
-| REPL | `use` / `set` / `run` / `check` / `back` |
-| PCAP | Per-run capture via `btmon` / `tcpdump` |
-| Protocols | BR/EDR, BLE, Mesh |
-
-## Disclaimer
-
-Authorized testing only. Use against equipment you own or have written permission to test. Authors disclaim liability for misuse.

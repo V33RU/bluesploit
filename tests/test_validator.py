@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-VALIDATOR_PATH = Path(__file__).resolve().parent / "validate_modules.py"
+VALIDATOR_PATH = Path(__file__).resolve().parent.parent / "scripts" / "validate_modules.py"
 
 
 @pytest.fixture(scope="module")

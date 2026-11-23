@@ -1,4 +1,4 @@
-"""Pytest config for tests housed under scripts/.
+"""Pytest config for tests housed under tests/.
 
 Adds the repo root to sys.path so tests can `from core...` and
 `from modules...` exactly the same way the runtime does.

@@ -98,7 +98,7 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 include = ["core*", "modules*"]
-exclude = ["tests*", "docs*", "scripts*", "new-add-ons*", "build*", "dist*"]
+exclude = ["tests*", "docs*", "scripts*", "vendor*", "build*", "dist*"]
 
 [tool.setuptools.package-data]
 "*" = ["data/**/*"]
@@ -110,7 +110,7 @@ target-version = ['py38', 'py39', 'py310', 'py311']
 [tool.ruff]
 line-length = 100
 target-version = "py38"
-extend-exclude = ["new-add-ons", "build", "dist", ".venv"]
+extend-exclude = ["vendor", "build", "dist", ".venv"]
 
 [tool.ruff.lint]
 # E,W: pycodestyle  F: pyflakes  I: isort  B: bugbear  UP: pyupgrade
@@ -146,9 +146,9 @@ check_untyped_defs = false
 # Allow `def f(x: str = None)` style. Codebase predates PEP 484
 # strict-Optional defaults; tightening is a Phase 4 task per the roadmap.
 implicit_optional = true
-exclude = "(new-add-ons|build|dist)"
+exclude = "(vendor|build|dist)"
 
 [tool.pytest.ini_options]
-testpaths = ["scripts"]
+testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-ra --strict-markers"
